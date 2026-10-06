@@ -11,5 +11,6 @@ export const SECTIONS = [
   { path: "/admin/files", title: "Filer", text: "Overblik over filer i Object Storage pr. bruger og forbrug i alt." },
   { path: "/admin/web", title: "Website", text: "Det offentlige website under /w: sider i Markdown på dansk og engelsk, med menu og forhåndsvisning." },
   { path: "/admin/integrations", title: "Udvidelse og Office", text: "Browserudvidelsen (/extension) og Office-tilføjelser til Word, Excel, PowerPoint og Outlook." },
+  { path: "/admin/ai", title: "AI", text: "Valgfri AI-chat via OVHcloud AI Endpoints: model, månedlig kvote pr. bruger og forbrug." },
   { path: "/admin/settings", title: "Indstillinger", text: "Navn, logo, SMS-afsender, e-mail til GDPR-forespørgsler og miljøets version." },
 ];

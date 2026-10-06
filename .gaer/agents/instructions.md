@@ -11,6 +11,7 @@ auth log and audit log. Every customer gets their own fork; updates are pulled f
 | `server/app/main.py` | app, CSRF + security headers, CSP per path, SPA fallback, `/health` |
 | `server/app/routes/` | `auth` login · `me` account · `files` · `clips` + bridge consent · `public` config, consent, analytics, GDPR form · `admin` /admin · `office` manifests · `web` /w website + extension zip |
 | `server/app/migrations/` | plain SQL, applied by `python -m app.migrate` |
+| `server/app/ai.py`, `routes/ai.py` | optional AI chat (OVHcloud AI Endpoints), client tools, usage + monthly limits |
 | `server/app/logs.py`, `retention.py` | auth/audit log writers, purge + daily maintenance |
 | `server/tests/` | pytest against real Postgres (`TEST_DATABASE_ADMIN_URL`) |
 | `web/src/` | `pages/` app · `admin/` /admin · `mobile/` /m · `extension/` /extension · `office/` /office-addin · `bridge/` postMessage clients |

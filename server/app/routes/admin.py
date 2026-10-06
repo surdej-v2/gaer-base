@@ -393,6 +393,8 @@ async def build_user_export(conn, user_id: int) -> dict:
         "audit_log": await rows("""select ts, action, table_name, row_id, before, after, host(ip) as ip from audit_log
                                    where (actor_user_id = %s or (table_name = 'users' and row_id = %s))
                                      and action <> 'admin.read' order by ts""", user_id, str(user_id)),
+        "ai_usage": await rows("""select ts, surface, model, prompt_tokens, completion_tokens from ai_usage
+                                  where user_id = %s order by ts""", user_id),
         "analytics_events": await rows("""select ts, kind, path, referrer, device, browser from analytics_events
                                           where user_id = %s or visitor_id = any(%s) order by ts limit 50000""",
                                        user_id, visitor_ids),
@@ -692,4 +694,60 @@ async def web_delete(page_id: int, admin: Principal = Depends(require_admin)):
             raise HTTPException(404, "Siden findes ikke")
         await audit(conn, "delete", actor_id=admin.user_id, meta=admin.meta, table="web_pages", row_id=page_id,
                     before=row)
+    return {"ok": True}
+
+
+# ── AI ──────────────────────────────────────────────────────────────────────
+
+class AiSettingsIn(BaseModel):
+    default_monthly_tokens: int = Field(ge=0, le=100_000_000)
+
+
+class AiUserLimitIn(BaseModel):
+    monthly_tokens: int | None = Field(default=None, ge=0, le=100_000_000)
+
+
+@router.get("/ai")
+async def ai_overview():
+    from app import ai
+    s = config.settings
+    async with db.connection() as conn:
+        default = await settings_store.get(conn, "ai_default_monthly_tokens")
+        users = await db.fetch_all(conn, """
+            select u.id, u.phone, u.display_name, u.ai_monthly_tokens,
+                   coalesce(sum(a.prompt_tokens + a.completion_tokens), 0) as used,
+                   count(a.id) as requests
+            from users u left join ai_usage a on a.user_id = u.id and a.ts >= date_trunc('month', now())
+            group by u.id order by used desc, u.id""")
+        per_surface = await db.fetch_all(conn, """
+            select surface, count(*) as requests, sum(prompt_tokens + completion_tokens) as tokens
+            from ai_usage where ts >= date_trunc('month', now()) group by surface order by tokens desc""")
+        per_day = await db.fetch_all(conn, """
+            select date_trunc('day', ts)::date as day, sum(prompt_tokens + completion_tokens) as tokens
+            from ai_usage where ts > now() - interval '30 days' group by 1 order by 1""")
+    return {"enabled": ai.enabled(), "base_url": s.ai_base_url, "model": s.ai_model,
+            "default_monthly_tokens": default, "users": users, "per_surface": per_surface, "per_day": per_day}
+
+
+@router.put("/ai")
+async def ai_settings(body: AiSettingsIn, admin: Principal = Depends(require_admin)):
+    async with db.connection() as conn:
+        before = await settings_store.get(conn, "ai_default_monthly_tokens")
+        await settings_store.set_many(conn, {"ai_default_monthly_tokens": body.default_monthly_tokens})
+        if before != body.default_monthly_tokens:
+            await audit(conn, "update", actor_id=admin.user_id, meta=admin.meta, table="settings", row_id="ai",
+                        before={"default_monthly_tokens": before}, after={"default_monthly_tokens": body.default_monthly_tokens})
+    return {"ok": True}
+
+
+@router.put("/ai/users/{user_id}")
+async def ai_user_limit(user_id: int, body: AiUserLimitIn, admin: Principal = Depends(require_admin)):
+    async with db.connection() as conn:
+        user = await _user_or_404(conn, user_id)
+        await conn.execute("update users set ai_monthly_tokens = %s, updated_at = now() where id = %s",
+                           (body.monthly_tokens, user_id))
+        if user["ai_monthly_tokens"] != body.monthly_tokens:
+            await audit(conn, "update", actor_id=admin.user_id, meta=admin.meta, table="users", row_id=user_id,
+                        before={"ai_monthly_tokens": user["ai_monthly_tokens"]},
+                        after={"ai_monthly_tokens": body.monthly_tokens})
     return {"ok": True}

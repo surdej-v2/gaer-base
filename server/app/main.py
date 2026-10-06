@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import config, db, retention
-from app.routes import admin, auth, clips, files, me, office, public, web
+from app.routes import admin, ai, auth, clips, files, me, office, public, web
 from app.sessions import optional_principal
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -78,7 +78,7 @@ def create_app() -> FastAPI:
             await conn.execute("select 1")
         return {"ok": True, "version": config.settings.version}
 
-    for r in (auth.router, me.router, files.router, clips.router, public.router, admin.router, office.router,
+    for r in (auth.router, ai.router, me.router, files.router, clips.router, public.router, admin.router, office.router,
               web.router, files.memory_router):
         app.include_router(r)
 

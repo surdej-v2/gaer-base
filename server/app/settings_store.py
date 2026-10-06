@@ -20,6 +20,7 @@ DEFAULTS: dict = {
     "retention_audit_log_days": 1825,
     "retention_analytics_days": 395,
     "retention_last_run": None,
+    "ai_default_monthly_tokens": 200_000,   # per user; 0 turns AI off for users without their own limit
 }
 
 PUBLIC_KEYS = ("app_name", "logo_key", "consent_version", "consent_title", "consent_text",

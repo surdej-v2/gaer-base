@@ -83,7 +83,7 @@ def clean_database():
     """Each test starts empty, but with the schema in place."""
     with psycopg.connect(OWNER_URL, autocommit=True) as conn:
         conn.execute("""truncate users, otp_codes, passkeys, sessions, webauthn_challenges, auth_log, audit_log,
-                        files, settings, gdpr_requests, consents, analytics_events, clips, bridge_consents
+                        files, settings, gdpr_requests, consents, analytics_events, clips, bridge_consents, ai_usage
                         restart identity cascade""")
     from app.storage import get_storage
     get_storage().objects.clear()
