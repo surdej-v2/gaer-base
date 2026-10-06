@@ -19,6 +19,32 @@ auth log and audit log. Every customer gets their own fork; updates are pulled f
 | `deploy/` | `deploy.sh` (on the instance), `Caddyfile`, `provision_database.py`, `.env.example` |
 | `.github/workflows/` | `test.yml` (PRs), `deploy.yml` (push to main → prod) |
 
+## Routes — one server, many surfaces
+Everything is served by the one Python server on one domain. Which surface answers depends on the path.
+They share the same login (session cookie), the same database and the same API.
+
+| Route | Who | What | Code |
+| --- | --- | --- | --- |
+| `/` | logged in | The web app's home. **Anonymous visitors are redirected to `/w/`** (by the server, and by the SPA on client-side navigation). | `main.py` `spa()`, `web/src/pages/Home.tsx` |
+| `/w/…` | everyone | **Public website**, server-rendered HTML from Markdown pages (`web_pages`), da/en via `?lang=` + `w_lang` cookie. The front page always ends with a **login card**; on a new instance (no users) it says the first person to log in becomes admin. A placeholder is shown until a front page is written. | `routes/web.py`, `web_static/w.css`, `w.js` |
+| `/login` | anonymous | Phone → one-time code → offer/require passkey (see `gaer-auth`). Shows the first-user/admin notice when `first_user` is true. Also `/extension/login` and `/m/login` (same page, embedded layout). | `pages/Login.tsx` |
+| `/klip`, `/filer`, `/konto`, `/privatliv` | logged in (privatliv: everyone) | Clips, files in Object Storage, account (passkeys, sessions), privacy + consent + GDPR requests. | `pages/`, `clips.tsx` |
+| `/admin/…` | admin role | Users, auth/audit log, analytics, heatmaps, GDPR, retention, consent, files, website (`/admin/web`), AI (`/admin/ai`), extension & Office (`/admin/integrations`), settings. Every read and change is audited. | `admin/`, `routes/admin.py` |
+| `/m/…` | logged in | **Mobile app (PWA)**: home, AI chat (if enabled), clips, files with camera upload, profile. Bottom tab bar, own manifest + service worker scoped to `/m/`. | `mobile/Mobile.tsx`, `public/m/` |
+| `/extension/…` | logged in, inside the browser extension | **Side panel** of the Chrome/Edge extension (iframe). Current page + per-domain consent + save as clip, AI chat with the page as context, clips, account. Talks to the panel over `gaer-bridge`. | `extension/` (both repo root and `web/src/extension/`), `bridge/extension.ts` |
+| `/office-addin?app=word\|excel\|powerpoint\|outlook` | public shell | **Office router**: loads Office.js, detects the host, embeds the matching tool. Must stay public (Office closes panes that do not initialise). | `office/OfficeShell.tsx`, `office/handlers.ts` |
+| `/extension/tools/word\|outlook\|document` | logged in, inside the Office shell | Office tools: insert/save clips and AI chat with the document or mail as context; Office.js calls go to the shell over `gaer-office-host`. | `office/Tools.tsx`, `bridge/officeHost.ts` |
+| `/api/…` | per endpoint | JSON API. State-changing calls need the `X-Gaer: 1` header (CSRF). Groups: `auth`, `me`, `files`, `clips`, `bridge-consent`, `ai`, `public`, `consent`, `collect`, `office`, `extension/download`, `admin`. | `routes/` |
+| `/health` | deploy | Database check + version; used by `deploy/deploy.sh` before switching versions. | `main.py` |
+
+Rules for routes:
+- A new page goes in `web/src/App.tsx`; pick the surface deliberately. Pages with their own chrome (`/m`, `/extension`,
+  `/office-addin`) are listed in `OWN_CHROME`.
+- Only `EMBEDDABLE` paths in `main.py` may be framed by the extension and Office hosts — add a path there only
+  if it really must run inside them.
+- Anything the public may see without login lives under `/w/`, `/login`, `/privatliv` or `/api/public/…`.
+- AI is optional: UI for it must hide itself when `/api/ai/status` says `enabled: false`.
+
 ## Rules that always apply
 1. **Login rules are fixed** (skill `gaer-auth`). Never add a way around the code, the grace logins or the passkey.
 2. **Every data change is audited** in the same transaction (skill `gaer-audit`). Logs are append-only; only the

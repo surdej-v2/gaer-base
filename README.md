@@ -22,6 +22,23 @@ herfra ind i sin fork.
 | **AI-chat (valgfri)** | Chat i browserudvidelsen (med siden som kontekst), Word og Outlook (med dokumentet/mailen som kontekst; AI'en kan indsætte tekst, sætte emne, åbne svar) og /m. Bruger OVHcloud AI Endpoints, så teksten behandles i Europa. Slås til med `AI_API_KEY`. Samtaler gemmes ikke; kun forbrug, med en månedlig kvote pr. bruger i /admin/ai. |
 | **AI-udvikling** | Skills og slash commands til Claude Code og GitHub Copilot: `/gaer-boot`, `/gaer-init`, `/gaer-dev`, `/gaer-db`, `/gaer-mix`, `/gaer-new-feature`, `/gaer-pr`, `/gaer-pr-review`, `/gaer-release`, `/gaer-recover`, `/gaer-whatsup`. |
 
+## Ruter
+
+Én server og ét domæne. Stien afgør, hvilken flade der svarer. Alle deler login, database og API.
+
+| Rute | Hvem | Hvad |
+| --- | --- | --- |
+| `/` | logget ind | Appens forside. Anonyme sendes til `/w/`. |
+| `/w/…` | alle | Offentligt website (Markdown fra `/admin/web`, dansk/engelsk). Forsiden har altid et login-kort; på en ny instans står der, at den første, der logger ind, bliver administrator. |
+| `/login` | anonyme | Telefonnummer → engangskode → passkey. Viser, når man bliver den første admin. |
+| `/klip`, `/filer`, `/konto`, `/privatliv` | logget ind | Klip, filer, konto og passkeys, privatliv og GDPR. |
+| `/admin/…` | admin | Administration. Alt logges. |
+| `/m/…` | logget ind | Mobil-app (PWA) med bundmenu, AI, klip, filer og profil. |
+| `/extension/…` | i browserudvidelsen | Sidepanelet: aktuel side, klip og AI med siden som kontekst. |
+| `/office-addin` | Office | Router for Word, Excel, PowerPoint og Outlook → værktøjerne under `/extension/tools/…`. |
+| `/api/…` | | JSON-API. |
+| `/health` | udrulning | Sundhedstjek. |
+
 ## Kom i gang lokalt
 
 Kræver Python 3.12+, Node 22 og Docker.
