@@ -109,3 +109,23 @@ async def test_embedded_login_gets_partitioned_cookie(client, monkeypatch):
                           headers={"x-gaer-embedded": "1"})
     cookie = r.headers["set-cookie"].lower()
     assert "samesite=none" in cookie and "partitioned" in cookie and "secure" in cookie
+
+
+async def test_front_page_has_login_card_and_first_user_notice(client, owner_conn):
+    body = (await client.get("/w/")).text
+    assert 'class="login-card"' in body and 'href="/login"' in body and "bliver administrator" in body
+    assert "first person to log in becomes" in (await client.get("/w/?lang=en")).text
+    await otp_login(client, "12345678")
+    body = (await client.get("/w/?lang=da")).text
+    assert 'class="login-card"' in body and "bliver administrator" not in body
+    assert 'class="login-card"' not in (await client.get("/w/om")).text  # only on the front page
+
+
+async def test_front_page_placeholder_when_none_written(client, owner_conn):
+    saved = owner_conn.execute("select id from web_pages where slug = '' and lang = 'da'").fetchone()[0]
+    owner_conn.execute("update web_pages set published = false where id = %s", (saved,))
+    try:
+        r = await client.get("/w/?lang=da")
+        assert r.status_code == 200 and "Her kommer jeres website" in r.text and 'class="login-card"' in r.text
+    finally:
+        owner_conn.execute("update web_pages set published = true where id = %s", (saved,))
