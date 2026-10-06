@@ -15,7 +15,8 @@ async def test_three_grace_logins_then_passkey_required(make_client, owner_conn)
     for expected_left in (2, 1, 0):
         client = make_client()
         body = await otp_login(client, "12345678")
-        assert body == {"status": "logged_in", "grace_left": expected_left, "offer_passkey": True}
+        assert body == {"status": "logged_in", "grace_left": expected_left, "offer_passkey": True,
+                        "became_admin": expected_left == 2}
         assert (await client.get("/api/me/sessions")).status_code == 200
 
     client = make_client()
@@ -110,3 +111,12 @@ async def test_state_changes_require_csrf_header(client):
 
 async def test_invalid_phone(client):
     assert (await client.post("/api/auth/otp/start", json={"phone": "abc"})).status_code == 400
+
+
+async def test_public_config_says_when_first_login_becomes_admin(make_client):
+    first = make_client()
+    assert (await first.get("/api/public/config")).json()["first_user"] is True
+    assert (await otp_login(first, "11111111"))["became_admin"] is True
+    second = make_client()
+    assert (await second.get("/api/public/config")).json()["first_user"] is False
+    assert (await otp_login(second, "22222222"))["became_admin"] is False

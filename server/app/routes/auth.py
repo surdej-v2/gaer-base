@@ -176,7 +176,8 @@ async def otp_verify(body: VerifyIn, request: Request, response: Response):
             await auth_event(conn, "grace.used", ok=True, meta=meta, phone=phone, user_id=user["id"],
                              used=used, of=s.grace_logins)
             await create_session(conn, response, user["id"], "full", meta)
-            return {"status": "logged_in", "grace_left": s.grace_logins - used, "offer_passkey": True}
+            return {"status": "logged_in", "grace_left": s.grace_logins - used, "offer_passkey": True,
+                    "became_admin": user.get("became_admin", False)}
 
         await create_session(conn, response, user["id"], "enroll", meta)
         return {"status": "passkey_required", "reason": "new_device" if has_passkey else "grace_exhausted"}
@@ -199,6 +200,7 @@ async def _get_or_create_user(conn, phone: str, meta: RequestMeta) -> dict:
                 after={"phone": phone, "role": user["role"]})
     if user["role"] == "admin":
         await audit(conn, "admin.first_user", actor_id=user["id"], meta=meta, table="users", row_id=user["id"])
+        user["became_admin"] = True
     return user
 
 

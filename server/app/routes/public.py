@@ -25,11 +25,19 @@ router = APIRouter(prefix="/api", tags=["public"])
 VISITOR_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
 
 
+async def is_first_user(conn) -> bool:
+    row = await db.fetch_one(conn, "select not exists (select 1 from users) as first")
+    return row["first"]
+
+
 @router.get("/public/config")
 async def public_config():
     async with db.connection() as conn:
         values = await settings_store.get_all(conn)
+        first_user = await is_first_user(conn)
     out = {k: values[k] for k in settings_store.PUBLIC_KEYS}
+    # A new instance has no users: the first person to log in becomes admin.
+    out["first_user"] = first_user
     out["logo_url"] = "/api/public/logo" if values["logo_key"] else None
     out.pop("logo_key")
     return out

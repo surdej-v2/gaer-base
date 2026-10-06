@@ -2,27 +2,14 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 
 export default function Home() {
-  const { user, scope, config } = useAuth();
+  const { user, scope, config, loading } = useAuth();
   const name = config?.app_name ?? "Gær";
 
+  if (loading) return null;
   if (!user || scope !== "full") {
-    return (
-      <div className="hero">
-        <div className="page" style={{ paddingTop: "clamp(48px, 9vw, 88px)" }}>
-          <div className="eyebrow">Velkommen</div>
-          <h1>
-            {name} — <span className="gradient-text">kom i gang</span>
-          </h1>
-          <p className="muted" style={{ maxWidth: 640, fontSize: 18 }}>
-            Log ind med dit telefonnummer. Første gang får du en engangskode på SMS, og efter tre logins bruger du en passkey.
-          </p>
-          <div className="row">
-            <Link to="/login" className="btn btn-primary" style={{ textDecoration: "none" }}>Log ind</Link>
-            <Link to="/privatliv" className="btn btn-outline" style={{ textDecoration: "none", color: "inherit" }}>Privatliv</Link>
-          </div>
-        </div>
-      </div>
-    );
+    // Anonymous visitors belong on the public website (the server redirects / there as well).
+    window.location.replace("/w/");
+    return null;
   }
 
   return (

@@ -8,11 +8,11 @@ import { Alert } from "../ui";
 type Step =
   | { kind: "phone" }
   | { kind: "code"; devCode?: string }
-  | { kind: "offer"; graceLeft: number }
+  | { kind: "offer"; graceLeft: number; admin: boolean }
   | { kind: "enroll"; reason: "grace_exhausted" | "new_device" };
 
 type VerifyResult =
-  | { status: "logged_in"; grace_left: number; offer_passkey: boolean }
+  | { status: "logged_in"; grace_left: number; offer_passkey: boolean; became_admin?: boolean }
   | { status: "passkey_required"; reason: "grace_exhausted" | "new_device" };
 
 const GRACE_LOGINS = 3;
@@ -31,7 +31,7 @@ function GracePills({ used }: { used: number }) {
 }
 
 export default function Login({ home = "/", embedded = false }: { home?: string; embedded?: boolean }) {
-  const { user, scope, refresh } = useAuth();
+  const { user, scope, refresh, config } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? home;
@@ -75,7 +75,7 @@ export default function Login({ home = "/", embedded = false }: { home?: string;
       const res = await api.post<VerifyResult>("/api/auth/otp/verify", { phone, code });
       await refresh();
       if (res.status === "logged_in") {
-        if (supportsPasskey) setStep({ kind: "offer", graceLeft: res.grace_left });
+        if (supportsPasskey || res.became_admin) setStep({ kind: "offer", graceLeft: res.grace_left, admin: !!res.became_admin });
         else navigate(from, { replace: true });
       } else {
         setStep({ kind: "enroll", reason: res.reason });
@@ -108,6 +108,11 @@ export default function Login({ home = "/", embedded = false }: { home?: string;
                 <h2>Dit telefonnummer</h2>
                 <p className="muted small">Vi sender en engangskode på SMS.</p>
               </div>
+              {config?.first_user && (
+                <Alert kind="warn">
+                  Instansen er ny og har ingen brugere. Du bliver den første bruger og dermed <strong>administrator</strong>.
+                </Alert>
+              )}
               <label className="field">
                 Telefonnummer
                 <input type="tel" autoComplete="tel" inputMode="tel" placeholder="12 34 56 78" value={phone}
@@ -157,6 +162,7 @@ export default function Login({ home = "/", embedded = false }: { home?: string;
                   engangskode {GRACE_LOGINS} gange. Derefter skal du have en passkey.
                 </p>
               </div>
+              {step.admin && <Alert kind="success">Du er den første bruger og er nu administrator. Du finder administrationen under /admin.</Alert>}
               <GracePills used={GRACE_LOGINS - step.graceLeft} />
               <Alert>{error}</Alert>
               <button className="btn btn-primary btn-block" onClick={createPasskey} disabled={busy}>Opret passkey nu</button>
