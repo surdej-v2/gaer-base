@@ -13,6 +13,7 @@ auth log and audit log. Every customer gets their own fork; updates are pulled f
 | `server/app/migrations/` | plain SQL, applied by `python -m app.migrate` |
 | `server/app/ai.py`, `routes/ai.py` | optional AI chat (OVHcloud AI Endpoints), client tools, usage + monthly limits |
 | `server/app/logs.py`, `retention.py` | auth/audit log writers, purge + daily maintenance |
+| `server/app/gdpr.py`, `reapply_erasures.py` | GDPR export (zip) and erasure; re-applying erasures after a backup restore |
 | `server/tests/` | pytest against real Postgres (`TEST_DATABASE_ADMIN_URL`) |
 | `web/src/` | `pages/` app · `admin/` /admin · `mobile/` /m · `extension/` /extension · `office/` /office-addin · `bridge/` postMessage clients |
 | `extension/` | MV3 browser extension (side panel) |
@@ -50,8 +51,10 @@ Rules for routes:
 2. **Every data change is audited** in the same transaction (skill `gaer-audit`). Logs are append-only; only the
    purge database user deletes, and the deletion is logged.
 3. **Admin = admin role.** Everything under `/api/admin` is guarded and audited.
-4. **Personal data** goes into the GDPR export and is removed on erasure. Analytics only identify a visitor
-   after consent. Nothing is sent to third parties.
+4. **Personal data** goes into the GDPR export and is removed on erasure — both live in `server/app/gdpr.py`,
+   used by `/admin/gdpr` and by users themselves (`/api/me/export`, `/api/me/delete`). A new table with personal
+   data is not done until it is in both. Analytics only identify a visitor after consent. Nothing is sent to
+   third parties.
 5. **Migrations are new files**; never edit an applied one.
 6. **No secrets in the repo.** Configuration comes from environment variables (`server/app/config.py`).
 7. Before you say you are done: `pytest server` and `npm run build --prefix web` pass.

@@ -16,8 +16,9 @@ Migrations are plain SQL in `server/app/migrations/NNNN_name.sql`, applied in or
      `<db>_app` user SELECT/INSERT/UPDATE/DELETE on all tables **except** the log tables.
    - A new **log-like** table (append-only) must be added to `log_tables` in a new version of
      `gaer_apply_grants()` and get a `before update` trigger with `gaer_reject_log_update()`.
-   - Personal data columns: make sure GDPR export (`build_user_export` in `routes/admin.py`) and
-     erasure (`gdpr_erase`, `retention.purge_user`) cover the new table.
+   - Personal data columns: make sure GDPR export (`build_user_export` in `server/app/gdpr.py`) and
+     erasure (`erase_user` there, `retention.purge_user` for logs) cover the new table. A FK to `users` with
+     `on delete cascade` handles erasure; the export needs an explicit entry.
    - Foreign keys to `users`: decide `on delete cascade` (owned data) vs `set null` (shared records).
 3. Apply and check:
    ```bash

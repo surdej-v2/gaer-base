@@ -15,6 +15,7 @@ Code: `server/app/logs.py`, `server/app/retention.py`, migration `0001_init.sql`
 - **audit_log** — `audit(conn, action, actor_id=..., meta=..., table=..., row_id=..., before=..., after=..., **detail)`.
   Actions: `create`, `update`, `delete`, `file.upload`, `file.delete`, `role.changed`, `admin.first_user`,
   `admin.read`, `gdpr.request`, `gdpr.export`, `gdpr.erasure`, `log.exported`, `log.purged`, `session.revoked`.
+  Auth events also include `phone.changed` (self-service with a code to the new number, or admin rectification).
 
 ## Rules
 1. Write the log line **in the same transaction** as the change (same `conn`). No change without its log.
@@ -23,7 +24,8 @@ Code: `server/app/logs.py`, `server/app/retention.py`, migration `0001_init.sql`
 3. Everything in `/admin` is audited: changes explicitly, reads automatically (`admin.read` in `require_admin`).
 4. The app's database user cannot UPDATE/DELETE/TRUNCATE log tables, and a trigger blocks UPDATE for everyone.
 5. Deletion only through `retention.py` on the **purge** user (`PURGE_DATABASE_URL`), and every purge writes
-   `log.purged` with counts in the same transaction. `log.purged` entries are never deleted.
+   `log.purged` with counts in the same transaction. `log.purged` and `gdpr.erasure` entries are never deleted —
+   they prove that data was erased and drive `app.reapply_erasures` after a backup restore.
 6. Automatic retention runs daily (`maintenance_loop`); periods are set in `/admin/retention`.
 
 ## Checklist for new code

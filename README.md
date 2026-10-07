@@ -39,6 +39,20 @@ herfra ind i sin fork.
 | `/api/…` | | JSON-API. |
 | `/health` | udrulning | Sundhedstjek. |
 
+## GDPR
+
+| Ret | Hvordan |
+| --- | --- |
+| **Samtykke** | Cookie-banner i appen og på `/w`. Uden samtykke kun anonyme sidevisninger; med samtykke et tilfældigt id til besøg, forløb og heatmaps. Kan ændres på `/privatliv`. Tekster og overblik i `/admin/consent`. |
+| **Indsigt** | Brugeren henter selv en zip på `/privatliv` (data.json + egne filer). Admin kan gøre det samme fra en anmodning i `/admin/gdpr`. Eksporten logges. |
+| **Rettelse** | Navn på `/konto`. Telefonnummer på `/konto` med kode til det nye nummer, eller af admin i `/admin/users` (“Ret nummer”). |
+| **Sletning** | Brugeren sletter selv sin konto på `/privatliv`, eller admin sletter fra en anmodning. Brugeren, filer, klip, passkeys, sessioner, AI-forbrug, samtykker, statistik og log-data om brugeren slettes. Tilbage bliver kun en notits uden persondata (`gdpr.erasure`, `log.purged`). Den sidste admin kan ikke slettes. |
+| **Anmodninger** | Indsigt, rettelse og sletning kan sendes fra `/privatliv`, også uden login. `/admin/gdpr` viser frist (30 dage) og status. |
+| **Opbevaring** | Logs slettes automatisk efter perioderne i `/admin/retention`. |
+| **Backups** | Managed PostgreSQL tager automatiske backups. Slettede data forsvinder fra dem, når backuppen udløber (se OVHcloud-planens opbevaringstid). Gendannes en backup, skal sletninger efter backup-tidspunktet gentages, før databasen tages i brug: `python -m app.reapply_erasures --from-url "$GAMMEL_DATABASE_URL" --since <backup-tidspunkt>` (se `/gaer-recover`). |
+
+Alle tabeller med persondata skal med i `server/app/gdpr.py` — både i eksporten og i sletningen.
+
 ## Kom i gang lokalt
 
 Kræver Python 3.12+, Node 22 og Docker.

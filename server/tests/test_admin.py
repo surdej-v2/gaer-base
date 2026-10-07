@@ -1,3 +1,7 @@
+import io
+import json
+import zipfile
+
 from tests.helpers import full_user, otp_login
 
 
@@ -97,7 +101,11 @@ async def test_gdpr_access_and_erasure(make_client, owner_conn):
     listing = (await admin.get("/api/admin/gdpr")).json()
     assert listing[0]["kind"] == "access" and listing[0]["user_phone"] == "+4522222222"
 
-    export = (await admin.get(f"/api/admin/gdpr/{request_id}/export")).json()
+    r = await admin.get(f"/api/admin/gdpr/{request_id}/export")
+    assert r.headers["content-type"] == "application/zip"
+    z = zipfile.ZipFile(io.BytesIO(r.content))
+    export = json.loads(z.read("data.json"))
+    assert any(n.endswith("cv.pdf") and z.read(n) == b"%PDF-1.4" for n in z.namelist())
     assert export["user"]["phone"] == "+4522222222"
     assert export["files"][0]["filename"] == "cv.pdf"
     assert any(e["event"] == "otp.verified" for e in export["auth_log"])
@@ -110,6 +118,9 @@ async def test_gdpr_access_and_erasure(make_client, owner_conn):
     assert owner_conn.execute("select count(*) from files").fetchone()[0] == 0
     assert owner_conn.execute("select count(*) from auth_log where phone_masked like '%22'").fetchone()[0] == 0
     assert owner_conn.execute("select count(*) from audit_log where action = 'log.purged'").fetchone()[0] == 1
+    # The record that the erasure happened survives the purge, without personal data.
+    assert owner_conn.execute("select count(*) from audit_log where action = 'gdpr.erasure'").fetchone()[0] == 1
+    assert {r[0] for r in owner_conn.execute("select contact from gdpr_requests").fetchall()} == {"slettet"}
 
 
 async def test_public_gdpr_request(client):

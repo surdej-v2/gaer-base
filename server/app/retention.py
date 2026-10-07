@@ -30,9 +30,10 @@ async def purge_old(*, actor_id: int | None, meta: RequestMeta, reason: str) -> 
     async with db.purge_connection() as conn:
         counts["auth_log"] = (await conn.execute(
             "delete from auth_log where ts < now() - make_interval(days => %s)", (days["auth_log"],))).rowcount
-        # The log.purged entries themselves are kept, so the history of deletions survives.
+        # log.purged and gdpr.erasure entries are kept, so the history of deletions survives.
         counts["audit_log"] = (await conn.execute(
-            "delete from audit_log where ts < now() - make_interval(days => %s) and action <> 'log.purged'",
+            """delete from audit_log where ts < now() - make_interval(days => %s)
+               and action not in ('log.purged', 'gdpr.erasure')""",
             (days["audit_log"],))).rowcount
         counts["analytics"] = (await conn.execute(
             "delete from analytics_events where ts < now() - make_interval(days => %s)",
@@ -62,7 +63,7 @@ async def purge_user(user_id: int, *, logs: list[str], actor_id: int | None, met
         if "audit_log" in logs:
             counts["audit_log"] = (await conn.execute("""
                 delete from audit_log
-                where action <> 'log.purged'
+                where action not in ('log.purged', 'gdpr.erasure')   -- the record that we erased must survive
                   and (actor_user_id = %s or (table_name = 'users' and row_id = %s))""",
                 (user_id, str(user_id)))).rowcount
         if "analytics" in logs:

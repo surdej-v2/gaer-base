@@ -1,11 +1,13 @@
 """The logged-in user's own account: profile, passkeys, sessions and GDPR requests."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
-from app import db
+from app import config, db, gdpr
 from app.logs import audit, auth_event, changed
-from app.sessions import Principal, current_user, revoke_sessions
+from app.routes.auth import check_send_limits, consume_code, issue_code
+from app.security import InvalidPhone, normalize_phone
+from app.sessions import Principal, clear_session_cookie, current_user, revoke_sessions
 
 router = APIRouter(prefix="/api/me", tags=["me"])
 
@@ -110,3 +112,84 @@ async def create_gdpr_request(body: GdprIn, p: Principal = Depends(current_user)
         await audit(conn, "gdpr.request", actor_id=p.user_id, meta=p.meta, table="gdpr_requests", row_id=row["id"],
                     after={"kind": body.kind, "status": "received"})
     return {"id": row["id"], "due_at": row["due_at"]}
+
+
+# ── Self-service GDPR: own data, phone number, delete account ──────────────
+
+@router.get("/export")
+async def export_my_data(p: Principal = Depends(current_user)):
+    """Right of access without waiting for an admin: a zip with data.json and the user's files."""
+    async with db.connection() as conn:
+        body = await gdpr.export_zip(conn, p.user_id)
+        await audit(conn, "gdpr.export", actor_id=p.user_id, meta=p.meta, table="users", row_id=p.user_id,
+                    by_self=True, bytes=len(body))
+    return Response(body, media_type="application/zip", headers={
+        "Content-Disposition": f'attachment; filename="{gdpr.export_filename(p.user_id)}"'})
+
+
+class PhoneIn(BaseModel):
+    phone: str = Field(max_length=32)
+
+
+class PhoneVerifyIn(PhoneIn):
+    code: str = Field(min_length=4, max_length=8)
+
+
+def _new_phone(raw: str, current: str) -> str:
+    try:
+        phone = normalize_phone(raw)
+    except InvalidPhone as e:
+        raise HTTPException(400, str(e))
+    if phone == current:
+        raise HTTPException(400, "Det er dit nuværende nummer")
+    return phone
+
+
+@router.post("/phone/start")
+async def change_phone_start(body: PhoneIn, p: Principal = Depends(current_user)):
+    """Rectification of the phone number: a code is sent to the new number to prove it belongs to the user."""
+    phone = _new_phone(body.phone, p.phone)
+    async with db.connection() as conn:
+        if await db.fetch_one(conn, "select 1 from users where phone = %s", (phone,)):
+            raise HTTPException(409, "Nummeret bruges allerede af en anden bruger")
+        await check_send_limits(conn, phone, p.meta, purpose="phone_change")
+        code = await issue_code(conn, phone, p.meta, purpose="phone_change", user_id=p.user_id)
+    s = config.settings
+    response = {"ok": True, "expires_in": s.otp_ttl_seconds}
+    if s.sms_provider == "console" and not s.is_production:
+        response["dev_code"] = code
+    return response
+
+
+@router.post("/phone/verify")
+async def change_phone_verify(body: PhoneVerifyIn, p: Principal = Depends(current_user)):
+    phone = _new_phone(body.phone, p.phone)
+    async with db.connection() as conn:
+        await consume_code(conn, phone, body.code, p.meta, purpose="phone_change", user_id=p.user_id)
+        if await db.fetch_one(conn, "select 1 from users where phone = %s", (phone,)):
+            raise HTTPException(409, "Nummeret bruges allerede af en anden bruger")
+        await conn.execute("update users set phone = %s, updated_at = now() where id = %s", (phone, p.user_id))
+        await audit(conn, "update", actor_id=p.user_id, meta=p.meta, table="users", row_id=p.user_id,
+                    before={"phone": p.phone}, after={"phone": phone})
+        await auth_event(conn, "phone.changed", ok=True, meta=p.meta, user_id=p.user_id, phone=phone)
+        # Other devices were logged in under the old number: log them out.
+        await conn.execute("""update sessions set revoked_at = now()
+                              where user_id = %s and id <> %s and revoked_at is null""", (p.user_id, p.session_id))
+    return {"ok": True, "phone": phone}
+
+
+class DeleteAccountIn(BaseModel):
+    confirm_phone: str = Field(max_length=32)
+
+
+@router.post("/delete")
+async def delete_my_account(body: DeleteAccountIn, response: Response, p: Principal = Depends(current_user)):
+    """The right to be forgotten, done by the user. The phone number must be typed as confirmation."""
+    try:
+        if normalize_phone(body.confirm_phone) != p.phone:
+            raise HTTPException(400, "Telefonnummeret passer ikke")
+    except InvalidPhone:
+        raise HTTPException(400, "Telefonnummeret passer ikke")
+    result = await gdpr.erase_user(p.user_id, actor_id=p.user_id, meta=p.meta, reason="self_service")
+    clear_session_cookie(response, p.meta.embedded)
+    return {"ok": True, **result}

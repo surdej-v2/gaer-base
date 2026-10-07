@@ -92,6 +92,10 @@ export default function Users() {
                         `Nulstil alle passkeys for ${u.phone}? Brugeren logges ud og skal oprette en ny passkey efter login med engangskode.`)}>Nulstil passkeys</button>
                       <button className="btn btn-ghost btn-sm" disabled={!u.active_sessions} onClick={() => act("Brugeren er logget ud alle steder",
                         () => api.post(`/api/admin/users/${u.id}/revoke-sessions`))}>Log ud</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => {
+                        const phone = prompt(`Nyt telefonnummer for ${u.phone} (rettelse). Brugeren logges ud.`, "");
+                        if (phone) act("Telefonnummeret er rettet", () => api.patch(`/api/admin/users/${u.id}/phone`, { phone }));
+                      }}>Ret nummer</button>
                       <Link className="btn btn-ghost btn-sm" to={`/admin/logs/auth?user_id=${u.id}`}>Log</Link>
                     </div>
                   </td>

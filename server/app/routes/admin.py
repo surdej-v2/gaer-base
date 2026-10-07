@@ -8,10 +8,10 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
-from app import config, db, retention, settings_store
+from app import config, db, gdpr, retention, settings_store
 from app.logs import audit, auth_event, changed
 from app.routes.files import delete_file, save_upload
 from app.security import bootstrap_admin_phone, mask_phone, normalize_phone, phone_hash
@@ -76,6 +76,33 @@ async def set_role(user_id: int, body: RoleIn, admin: Principal = Depends(requir
         await conn.execute("update users set role = %s, updated_at = now() where id = %s", (body.role, user_id))
         await audit(conn, "role.changed", actor_id=admin.user_id, meta=admin.meta, table="users", row_id=user_id,
                     before={"role": user["role"]}, after={"role": body.role})
+    return {"ok": True}
+
+
+class AdminPhoneIn(BaseModel):
+    phone: str = Field(max_length=32)
+
+
+@router.patch("/users/{user_id}/phone")
+async def set_phone(user_id: int, body: AdminPhoneIn, admin: Principal = Depends(require_admin)):
+    """Rectification by an admin, e.g. when a user lost the old number. The user's sessions are revoked
+    and passkeys are kept; the next login with a code goes to the new number."""
+    try:
+        phone = normalize_phone(body.phone)
+    except ValueError:
+        raise HTTPException(400, "Ugyldigt telefonnummer")
+    async with db.connection() as conn:
+        user = await _user_or_404(conn, user_id)
+        if phone == user["phone"]:
+            return {"ok": True}
+        if await db.fetch_one(conn, "select 1 from users where phone = %s", (phone,)):
+            raise HTTPException(409, "Nummeret bruges allerede af en anden bruger")
+        await conn.execute("update users set phone = %s, updated_at = now() where id = %s", (phone, user_id))
+        await audit(conn, "update", actor_id=admin.user_id, meta=admin.meta, table="users", row_id=user_id,
+                    before={"phone": user["phone"]}, after={"phone": phone}, reason="rectification")
+        await auth_event(conn, "phone.changed", ok=True, meta=admin.meta, user_id=user_id, phone=phone,
+                         by=admin.user_id)
+        await revoke_sessions(conn, meta=admin.meta, user_id=user_id, reason="phone_changed", actor_id=admin.user_id)
     return {"ok": True}
 
 
@@ -365,82 +392,34 @@ async def gdpr_update(request_id: int, body: GdprPatch, admin: Principal = Depen
     return {"ok": True}
 
 
-async def build_user_export(conn, user_id: int) -> dict:
-    """Everything stored about one user, for a GDPR access request."""
-    async def rows(sql, *params):
-        return await db.fetch_all(conn, sql, params)
-
-    user = await db.fetch_one(conn, """select id, phone, display_name, role, grace_logins_used, blocked_at,
-                                              created_at, updated_at, last_login_at from users where id = %s""", (user_id,))
-    if user is None:
-        raise HTTPException(404, "Brugeren findes ikke")
-    visitor_ids = [r["visitor_id"] for r in await rows(
-        "select distinct visitor_id from consents where user_id = %s and visitor_id is not null", user_id)]
-    return {
-        "generated_at": datetime.now().astimezone().isoformat(),
-        "user": user,
-        "passkeys": await rows("select id, name, created_at, last_used_at from passkeys where user_id = %s", user_id),
-        "sessions": await rows("""select created_at, last_seen_at, expires_at, revoked_at, host(ip) as ip, user_agent
-                                  from sessions where user_id = %s order by created_at""", user_id),
-        "files": await rows("select id, filename, content_type, size_bytes, created_at from files where user_id = %s",
-                            user_id),
-        "gdpr_requests": await rows("select id, kind, status, received_at, completed_at from gdpr_requests where user_id = %s",
-                                    user_id),
-        "consents": await rows("select ts, visitor_id, statistics, version, device from consents where user_id = %s",
-                               user_id),
-        "auth_log": await rows("""select ts, event, result, host(ip) as ip, device, detail from auth_log
-                                  where user_id = %s order by ts""", user_id),
-        "audit_log": await rows("""select ts, action, table_name, row_id, before, after, host(ip) as ip from audit_log
-                                   where (actor_user_id = %s or (table_name = 'users' and row_id = %s))
-                                     and action <> 'admin.read' order by ts""", user_id, str(user_id)),
-        "ai_usage": await rows("""select ts, surface, model, prompt_tokens, completion_tokens from ai_usage
-                                  where user_id = %s order by ts""", user_id),
-        "analytics_events": await rows("""select ts, kind, path, referrer, device, browser from analytics_events
-                                          where user_id = %s or visitor_id = any(%s) order by ts limit 50000""",
-                                       user_id, visitor_ids),
-    }
-
-
 @router.get("/gdpr/{request_id}/export")
 async def gdpr_export(request_id: int, admin: Principal = Depends(require_admin)):
+    """Access request: one zip with data.json and copies of the user's files."""
     async with db.connection() as conn:
         req = await _gdpr_or_404(conn, request_id)
         if req["user_id"] is None:
             raise HTTPException(409, "Knyt anmodningen til en bruger først")
-        data = await build_user_export(conn, req["user_id"])
+        body = await gdpr.export_zip(conn, req["user_id"])
         await audit(conn, "gdpr.export", actor_id=admin.user_id, meta=admin.meta, table="gdpr_requests",
-                    row_id=request_id, subject_user_id=req["user_id"])
+                    row_id=request_id, subject_user_id=req["user_id"], bytes=len(body))
         if req["status"] == "received":
             await conn.execute("update gdpr_requests set status = 'in_progress', handled_by = %s where id = %s",
                                (admin.user_id, request_id))
-    body = json.dumps(data, ensure_ascii=False, indent=2, default=str)
-    return StreamingResponse(iter([body]), media_type="application/json", headers={
-        "Content-Disposition": f'attachment; filename="indsigt-{request_id}.json"'})
+    return Response(body, media_type="application/zip", headers={
+        "Content-Disposition": f'attachment; filename="{gdpr.export_filename(req["user_id"])}"'})
 
 
 @router.post("/gdpr/{request_id}/erase")
 async def gdpr_erase(request_id: int, admin: Principal = Depends(require_admin)):
-    """Erasure: deletes the user's files, the user (passkeys and sessions cascade) and log data about them."""
     async with db.connection() as conn:
         req = await _gdpr_or_404(conn, request_id)
-        user_id = req["user_id"]
-        if user_id is None:
-            raise HTTPException(409, "Knyt anmodningen til en bruger først")
-        if user_id == admin.user_id:
-            raise HTTPException(409, "Du kan ikke slette dig selv")
-        user = await _user_or_404(conn, user_id)
-        await _ensure_not_last_admin(conn, user)
-        files = await db.fetch_all(conn, "delete from files where user_id = %s returning storage_key", (user_id,))
-        await conn.execute("delete from users where id = %s", (user_id,))
-        await conn.execute("""update gdpr_requests set status = 'completed', completed_at = now(), handled_by = %s,
-                              contact = 'slettet' where id = %s""", (admin.user_id, request_id))
-        await audit(conn, "gdpr.erasure", actor_id=admin.user_id, meta=admin.meta, table="users", row_id=user_id,
-                    gdpr_request=request_id, files=len(files))
-    for f in files:
-        await get_storage().delete(f["storage_key"])
-    counts = await retention.purge_user(user_id, logs=list(retention.LOGS), actor_id=admin.user_id,
-                                        meta=admin.meta, reason=f"gdpr.erasure #{request_id}", phone=user["phone"])
-    return {"ok": True, "files": len(files), "purged": counts}
+    if req["user_id"] is None:
+        raise HTTPException(409, "Knyt anmodningen til en bruger først")
+    if req["user_id"] == admin.user_id:
+        raise HTTPException(409, "Slet din egen konto under Privatliv")
+    result = await gdpr.erase_user(req["user_id"], actor_id=admin.user_id, meta=admin.meta,
+                                   reason=f"gdpr.erasure #{request_id}", gdpr_request=request_id)
+    return {"ok": True, **result}
 
 
 # ── Retention ───────────────────────────────────────────────────────────────

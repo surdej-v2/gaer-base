@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api, errorText } from "../api";
 import { passkeyErrorText, registerPasskey, useAuth } from "../auth";
 import { Alert, fmtDate, Loading, PageHeader, useLoad } from "../ui";
+import PhoneChange from "./PhoneChange";
 
 type Passkey = { id: number; name: string; created_at: string; last_used_at: string | null };
 type Session = { id: number; created_at: string; last_seen_at: string; ip: string | null; user_agent: string; current: boolean };
@@ -37,10 +38,7 @@ export default function Account() {
       <div className="grid" style={{ "--min": "320px" } as React.CSSProperties}>
         <div className="card">
           <span className="eyebrow">Profil</span>
-          <label className="field">
-            Telefonnummer
-            <input value={user?.phone ?? ""} disabled />
-          </label>
+          <PhoneChange />
           <label className="field">
             Navn
             <input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />

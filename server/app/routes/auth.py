@@ -85,46 +85,86 @@ async def _is_locked(conn, phone: str) -> bool:
 
 # ── One-time codes ──────────────────────────────────────────────────────────
 
+async def check_send_limits(conn, phone: str, meta: RequestMeta, **detail) -> None:
+    """Lock after too many wrong codes, and rate limits per number and per IP. Raises 429 (and logs it)."""
+    s = config.settings
+    if await _is_locked(conn, phone):
+        await auth_event(conn, "otp.sent", ok=False, meta=meta, phone=phone, reason="locked", **detail)
+        await conn.commit()
+        raise HTTPException(429, "For mange forkerte forsøg. Prøv igen om lidt.")
+    per_phone = await _count_events(conn, "otp.sent", since_minutes=60, phone=phone, result="ok")
+    per_ip = await _count_events(conn, "otp.sent", since_minutes=60, ip=meta.ip, result="ok") if meta.ip else 0
+    if per_phone >= s.otp_max_per_phone_per_hour or per_ip >= s.otp_max_per_ip_per_hour:
+        await auth_event(conn, "otp.sent", ok=False, meta=meta, phone=phone, reason="rate_limited", **detail)
+        await conn.commit()
+        raise HTTPException(429, "Der er sendt for mange koder. Prøv igen senere.")
+
+
+async def issue_code(conn, phone: str, meta: RequestMeta, *, purpose: str = "login", user_id: int | None = None) -> str:
+    """Stores a new one-time code (hashed) for the number and purpose, and sends it by SMS."""
+    s = config.settings
+    code = new_otp_code()
+    await conn.execute("""update otp_codes set consumed_at = now()
+                          where phone = %s and purpose = %s and consumed_at is null""", (phone, purpose))
+    await conn.execute("""insert into otp_codes (phone, purpose, user_id, code_hash, expires_at)
+                          values (%s, %s, %s, %s, now() + make_interval(secs => %s))""",
+                       (phone, purpose, user_id, otp_hash(phone, code), s.otp_ttl_seconds))
+    values = await settings_store.get_all(conn)
+    detail = {} if purpose == "login" else {"purpose": purpose}
+    try:
+        await send_sms(phone, otp_message(code, values["app_name"], max(1, s.otp_ttl_seconds // 60)),
+                       values["sms_sender"])
+    except SmsError as e:
+        await conn.rollback()
+        await auth_event(conn, "otp.sent", ok=False, meta=meta, phone=phone, user_id=user_id, reason="sms_error",
+                         error=str(e), **detail)
+        await conn.commit()
+        raise HTTPException(502, "Vi kunne ikke sende SMS'en. Prøv igen.")
+    await auth_event(conn, "otp.sent", ok=True, meta=meta, phone=phone, user_id=user_id, **detail)
+    return code
+
+
+async def consume_code(conn, phone: str, code: str, meta: RequestMeta, *, purpose: str = "login",
+                       user_id: int | None = None) -> None:
+    """Checks a one-time code and marks it used. Wrong codes count towards the lock. Raises 400/429."""
+    s = config.settings
+    detail = {} if purpose == "login" else {"purpose": purpose}
+    if await _is_locked(conn, phone):
+        await auth_event(conn, "otp.failed", ok=False, meta=meta, phone=phone, reason="locked", **detail)
+        await conn.commit()
+        raise HTTPException(429, "For mange forkerte forsøg. Prøv igen om lidt.")
+    otp = await db.fetch_one(conn, """
+        select id, code_hash, attempts from otp_codes
+        where phone = %s and purpose = %s and consumed_at is null and expires_at > now()
+          and (%s::bigint is null or user_id = %s)
+        order by created_at desc limit 1 for update""", (phone, purpose, user_id, user_id))
+    if otp is None or not otp_matches(phone, code.strip(), otp["code_hash"]):
+        if otp is not None:
+            attempts = otp["attempts"] + 1
+            await conn.execute(
+                "update otp_codes set attempts = %s, consumed_at = case when %s then now() end where id = %s",
+                (attempts, attempts >= s.otp_max_attempts, otp["id"]))
+        await auth_event(conn, "otp.failed", ok=False, meta=meta, phone=phone, user_id=user_id,
+                         reason="no_active_code" if otp is None else "wrong_code", **detail)
+        await conn.commit()
+        raise HTTPException(400, "Koden er forkert eller udløbet")
+    await conn.execute("update otp_codes set consumed_at = now() where id = %s", (otp["id"],))
+
+
 @router.post("/otp/start")
 async def otp_start(body: PhoneIn, request: Request):
     s = config.settings
     meta = request_meta(request)
     phone = _phone(body.phone)
     async with db.connection() as conn:
-        if await _is_locked(conn, phone):
-            await auth_event(conn, "otp.sent", ok=False, meta=meta, phone=phone, reason="locked")
-            await conn.commit()
-            raise HTTPException(429, "For mange forkerte forsøg. Prøv igen om lidt.")
-        per_phone = await _count_events(conn, "otp.sent", since_minutes=60, phone=phone, result="ok")
-        per_ip = await _count_events(conn, "otp.sent", since_minutes=60, ip=meta.ip, result="ok") if meta.ip else 0
-        if per_phone >= s.otp_max_per_phone_per_hour or per_ip >= s.otp_max_per_ip_per_hour:
-            await auth_event(conn, "otp.sent", ok=False, meta=meta, phone=phone, reason="rate_limited")
-            await conn.commit()
-            raise HTTPException(429, "Der er sendt for mange koder. Prøv igen senere.")
-
+        await check_send_limits(conn, phone, meta)
         user = await db.fetch_one(conn, "select id, blocked_at from users where phone = %s", (phone,))
         if user and user["blocked_at"]:
             # Answer as usual so the endpoint does not reveal which numbers are blocked.
             await auth_event(conn, "otp.sent", ok=False, meta=meta, phone=phone, user_id=user["id"],
                              reason="blocked")
             return {"ok": True, "expires_in": s.otp_ttl_seconds}
-
-        code = new_otp_code()
-        await conn.execute("update otp_codes set consumed_at = now() where phone = %s and consumed_at is null",
-                           (phone,))
-        await conn.execute(
-            "insert into otp_codes (phone, code_hash, expires_at) values (%s, %s, now() + make_interval(secs => %s))",
-            (phone, otp_hash(phone, code), s.otp_ttl_seconds))
-        values = await settings_store.get_all(conn)
-        try:
-            await send_sms(phone, otp_message(code, values["app_name"], max(1, s.otp_ttl_seconds // 60)),
-                           values["sms_sender"])
-        except SmsError as e:
-            await conn.rollback()
-            await auth_event(conn, "otp.sent", ok=False, meta=meta, phone=phone, reason="sms_error", error=str(e))
-            await conn.commit()
-            raise HTTPException(502, "Vi kunne ikke sende SMS'en. Prøv igen.")
-        await auth_event(conn, "otp.sent", ok=True, meta=meta, phone=phone, user_id=user["id"] if user else None)
+        code = await issue_code(conn, phone, meta, user_id=user["id"] if user else None)
 
     response = {"ok": True, "expires_in": s.otp_ttl_seconds}
     if s.sms_provider == "console" and not s.is_production:
@@ -138,27 +178,7 @@ async def otp_verify(body: VerifyIn, request: Request, response: Response):
     meta = request_meta(request)
     phone = _phone(body.phone)
     async with db.connection() as conn:
-        if await _is_locked(conn, phone):
-            await auth_event(conn, "otp.failed", ok=False, meta=meta, phone=phone, reason="locked")
-            await conn.commit()
-            raise HTTPException(429, "For mange forkerte forsøg. Prøv igen om lidt.")
-
-        otp = await db.fetch_one(conn, """
-            select id, code_hash, attempts from otp_codes
-            where phone = %s and consumed_at is null and expires_at > now()
-            order by created_at desc limit 1 for update""", (phone,))
-        if otp is None or not otp_matches(phone, body.code.strip(), otp["code_hash"]):
-            if otp is not None:
-                attempts = otp["attempts"] + 1
-                await conn.execute(
-                    "update otp_codes set attempts = %s, consumed_at = case when %s then now() end where id = %s",
-                    (attempts, attempts >= s.otp_max_attempts, otp["id"]))
-            await auth_event(conn, "otp.failed", ok=False, meta=meta, phone=phone,
-                             reason="no_active_code" if otp is None else "wrong_code")
-            await conn.commit()
-            raise HTTPException(400, "Koden er forkert eller udløbet")
-
-        await conn.execute("update otp_codes set consumed_at = now() where id = %s", (otp["id"],))
+        await consume_code(conn, phone, body.code, meta)
         user = await _get_or_create_user(conn, phone, meta)
         if user["blocked_at"]:
             await auth_event(conn, "otp.verified", ok=False, meta=meta, phone=phone, user_id=user["id"],
