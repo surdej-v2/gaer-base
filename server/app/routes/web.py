@@ -16,6 +16,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
 from app import config, db, settings_store
+from app.routes.auth import admin_open_to_anyone
 
 router = APIRouter(tags=["web"])
 
@@ -133,7 +134,7 @@ async def w_page(slug: str, request: Request):
                                   (slug, lang))
         nav = await db.fetch_all(conn, """select slug, title from web_pages where lang = %s and published
                                           and nav_order is not null order by nav_order, title""", (lang,))
-        first_user = (await db.fetch_one(conn, "select not exists (select 1 from users) as first"))["first"]
+        first_user = await admin_open_to_anyone(conn)
     html = _page_html(lang=lang, page=page, nav=nav, values=values, slug=slug, first_user=first_user)
     found = page is not None or slug == ""
     response = HTMLResponse(html, status_code=200 if found else 404, headers={"Cache-Control": "no-cache"})

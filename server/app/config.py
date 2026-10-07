@@ -32,6 +32,10 @@ class Settings:
     rp_name: str = field(default_factory=lambda: _env("RP_NAME", "Gær"))
     origin: str = field(default_factory=lambda: _env("ORIGIN", "http://localhost:5173"))
 
+    # Optional: the only phone number that may become the first admin. Without it, whoever logs in first
+    # on a new instance becomes admin. Set it in production so nobody else can claim a fresh instance.
+    bootstrap_admin_phone: str | None = field(default_factory=lambda: _env("BOOTSTRAP_ADMIN_PHONE"))
+
     # Login policy
     default_country_code: str = field(default_factory=lambda: _env("DEFAULT_COUNTRY_CODE", "+45"))
     grace_logins: int = field(default_factory=lambda: _int("GRACE_LOGINS", 3))

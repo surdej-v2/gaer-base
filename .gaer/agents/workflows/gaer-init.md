@@ -24,6 +24,7 @@ Sets up a fresh fork of gaer-base for a customer, or a fresh local checkout.
    - Object Storage bucket `gaer-<name>` and S3 credentials in the OVHcloud console.
    - OVHcloud SMS service and API credentials (`OVH_APPLICATION_KEY`, `OVH_APPLICATION_SECRET`, `OVH_CONSUMER_KEY`, `OVH_SMS_SERVICE`).
    - Public Cloud instance with Docker and a `deploy` user; copy `deploy/.env.example` to `~/gaer/.env` and fill it in.
+     Set `BOOTSTRAP_ADMIN_PHONE` to the customer's admin number, so nobody else can become admin on the new instance.
    - GitHub secrets: `OVH_REGISTRY`, `OVH_REGISTRY_USER`, `OVH_REGISTRY_PASSWORD`, `HOST`, `SSH_KEY`. Variable `DOMAIN`.
    - Point DNS for the domain at the instance. Caddy fetches the certificate on first deploy.
 5. Never commit `.env` files or credentials.

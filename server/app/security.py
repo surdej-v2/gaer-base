@@ -26,6 +26,12 @@ def normalize_phone(raw: str) -> str:
     return digits
 
 
+def bootstrap_admin_phone() -> str | None:
+    """BOOTSTRAP_ADMIN_PHONE normalized to E.164, or None. Raises InvalidPhone if it is set but invalid."""
+    raw = config.settings.bootstrap_admin_phone
+    return normalize_phone(raw) if raw else None
+
+
 def mask_phone(phone: str | None) -> str | None:
     """+4512345678 -> +45 •••• ••78. Used in logs and admin lists."""
     if not phone:

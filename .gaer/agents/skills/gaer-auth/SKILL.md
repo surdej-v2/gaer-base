@@ -13,7 +13,11 @@ Code: `server/app/routes/auth.py`, `server/app/sessions.py`, `server/app/securit
    (300), single use. A new code invalidates older ones. Max `OTP_MAX_ATTEMPTS` (5) failures per number within
    `OTP_LOCK_MINUTES` (15) locks the number. Max 5 codes per number and 30 per IP per hour.
    `otp/start` answers the same whether or not the number exists or is blocked.
-3. **First user becomes admin** (serialized with an advisory lock) and `admin.first_user` is audited.
+3. **First admin.** With `BOOTSTRAP_ADMIN_PHONE` set, only that number becomes admin, and only while the instance
+   has no admin (an existing normal user with that number is promoted, `role.changed`); everybody else becomes a
+   normal user. Without it, the very first user becomes admin. Decided in `_get_or_create_user` under an advisory
+   lock; `admin.first_user` is audited. `admin_open_to_anyone()` drives the "you become admin" notice on `/w` and
+   `/login` — it is false when the bootstrap number is set, so a fresh instance is not advertised.
 4. **Three grace logins.** Without a passkey and with `grace_logins_used < GRACE_LOGINS` a code gives a
    **full** session and increments `grace_logins_used` (`grace.used`). The user is offered a passkey each time.
 5. **Then passkey is required.** When grace is used up, or the user already has a passkey, a code gives an

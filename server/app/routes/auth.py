@@ -25,7 +25,8 @@ from webauthn.helpers.structs import (AuthenticatorSelectionCriteria, PublicKeyC
 
 from app import config, db, settings_store
 from app.logs import RequestMeta, audit, auth_event
-from app.security import InvalidPhone, new_otp_code, normalize_phone, otp_hash, otp_matches, phone_hash
+from app.security import (InvalidPhone, bootstrap_admin_phone, new_otp_code, normalize_phone, otp_hash,
+                          otp_matches, phone_hash)
 from app.sessions import (Principal, any_session, clear_session_cookie, create_session, optional_principal,
                           request_meta, revoke_sessions)
 from app.sms import SmsError, otp_message, send_sms
@@ -183,25 +184,50 @@ async def otp_verify(body: VerifyIn, request: Request, response: Response):
         return {"status": "passkey_required", "reason": "new_device" if has_passkey else "grace_exhausted"}
 
 
+async def admin_open_to_anyone(conn) -> bool:
+    """True when the next person to log in becomes admin: a new instance without BOOTSTRAP_ADMIN_PHONE."""
+    if bootstrap_admin_phone():
+        return False
+    return (await db.fetch_one(conn, "select not exists (select 1 from users) as open"))["open"]
+
+
 async def _get_or_create_user(conn, phone: str, meta: RequestMeta) -> dict:
+    """Creates the user on first login and decides who becomes admin:
+    - BOOTSTRAP_ADMIN_PHONE set: only that number becomes admin, and only while the instance has no admin.
+      If it already exists as a normal user then, it is promoted.
+    - not set: the very first user becomes admin."""
+    bootstrap = bootstrap_admin_phone()
+    user = await db.fetch_one(conn, "select * from users where phone = %s for update", (phone,))
+    if user and (phone != bootstrap or user["role"] == "admin"):
+        return user  # the normal case: an existing user, no admin decision to make
+    # Creating a user or promoting the bootstrap number: serialize so only one becomes the first admin.
+    await conn.execute("select pg_advisory_xact_lock(7301948)")
     user = await db.fetch_one(conn, "select * from users where phone = %s for update", (phone,))
     if user:
+        if phone == bootstrap and user["role"] != "admin" and not await _has_admin(conn):
+            await conn.execute("update users set role = 'admin', updated_at = now() where id = %s", (user["id"],))
+            await audit(conn, "role.changed", actor_id=user["id"], meta=meta, table="users", row_id=user["id"],
+                        before={"role": user["role"]}, after={"role": "admin"}, reason="bootstrap_admin_phone")
+            user = {**user, "role": "admin", "became_admin": True}
         return user
-    # Serialize user creation so exactly one user can be the first.
-    await conn.execute("select pg_advisory_xact_lock(7301948)")
-    user = await db.fetch_one(conn, "select * from users where phone = %s", (phone,))
-    if user:
-        return user
-    user = await db.fetch_one(conn, """
-        insert into users (phone, role)
-        values (%s, case when exists (select 1 from users) then 'user' else 'admin' end)
-        returning *""", (phone,))
+
+    if bootstrap:
+        role = "admin" if phone == bootstrap and not await _has_admin(conn) else "user"
+    else:
+        exists = (await db.fetch_one(conn, "select exists (select 1 from users) as e"))["e"]
+        role = "user" if exists else "admin"
+    user = await db.fetch_one(conn, "insert into users (phone, role) values (%s, %s) returning *", (phone, role))
     await audit(conn, "create", actor_id=user["id"], meta=meta, table="users", row_id=user["id"],
-                after={"phone": phone, "role": user["role"]})
-    if user["role"] == "admin":
-        await audit(conn, "admin.first_user", actor_id=user["id"], meta=meta, table="users", row_id=user["id"])
+                after={"phone": phone, "role": role})
+    if role == "admin":
+        await audit(conn, "admin.first_user", actor_id=user["id"], meta=meta, table="users", row_id=user["id"],
+                    via="bootstrap_admin_phone" if bootstrap else "first_login")
         user["became_admin"] = True
     return user
+
+
+async def _has_admin(conn) -> bool:
+    return (await db.fetch_one(conn, "select exists (select 1 from users where role = 'admin') as e"))["e"]
 
 
 # ── Passkeys ────────────────────────────────────────────────────────────────

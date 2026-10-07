@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from app import config, db, retention, settings_store
 from app.logs import audit, auth_event, changed
 from app.routes.files import delete_file, save_upload
-from app.security import normalize_phone, phone_hash
+from app.security import bootstrap_admin_phone, mask_phone, normalize_phone, phone_hash
 from app.sessions import Principal, require_admin, revoke_sessions
 from app.storage import get_storage
 
@@ -585,7 +585,8 @@ async def settings_get():
         "app_name": values["app_name"], "sms_sender": values["sms_sender"], "gdpr_email": values["gdpr_email"],
         "logo_url": "/api/public/logo" if values["logo_key"] else None,
         "environment": {"version": s.version, "env": s.environment, "sms_provider": s.sms_provider,
-                        "storage": s.storage_backend, "rp_id": s.rp_id, "grace_logins": s.grace_logins},
+                        "storage": s.storage_backend, "rp_id": s.rp_id, "grace_logins": s.grace_logins,
+                        "bootstrap_admin": mask_phone(bootstrap_admin_phone())},
     }
 
 

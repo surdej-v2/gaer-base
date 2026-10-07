@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from app import db, settings_store
 from app.logs import RequestMeta, audit
+from app.routes.auth import admin_open_to_anyone
 from app.security import classify_device, client_ip, user_agent
 from app.sessions import Principal, optional_principal, request_meta
 from app.storage import get_storage
@@ -25,18 +26,13 @@ router = APIRouter(prefix="/api", tags=["public"])
 VISITOR_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
 
 
-async def is_first_user(conn) -> bool:
-    row = await db.fetch_one(conn, "select not exists (select 1 from users) as first")
-    return row["first"]
-
-
 @router.get("/public/config")
 async def public_config():
     async with db.connection() as conn:
         values = await settings_store.get_all(conn)
-        first_user = await is_first_user(conn)
+        first_user = await admin_open_to_anyone(conn)
     out = {k: values[k] for k in settings_store.PUBLIC_KEYS}
-    # A new instance has no users: the first person to log in becomes admin.
+    # True only when the next person to log in becomes admin (new instance, no BOOTSTRAP_ADMIN_PHONE).
     out["first_user"] = first_user
     out["logo_url"] = "/api/public/logo" if values["logo_key"] else None
     out.pop("logo_key")

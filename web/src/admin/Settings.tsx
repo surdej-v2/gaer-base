@@ -5,7 +5,7 @@ import { Alert, Loading, PageHeader, useLoad } from "../ui";
 
 type Data = {
   app_name: string; sms_sender: string; gdpr_email: string; logo_url: string | null;
-  environment: { version: string; env: string; sms_provider: string; storage: string; rp_id: string; grace_logins: number };
+  environment: { version: string; env: string; sms_provider: string; storage: string; rp_id: string; grace_logins: number; bootstrap_admin: string | null };
 };
 
 export default function Settings() {
@@ -74,6 +74,7 @@ export default function Settings() {
                 <div className="spread"><span>Lager</span><span className="mono">{env?.storage}</span></div>
                 <div className="spread"><span>Passkey-domæne</span><span className="mono">{env?.rp_id}</span></div>
                 <div className="spread"><span>Grace logins</span><span className="mono">{env?.grace_logins}</span></div>
+                <div className="spread"><span>Første admin</span><span className="mono">{env?.bootstrap_admin ? `låst til ${env.bootstrap_admin}` : "den første, der logger ind"}</span></div>
               </div>
             </div>
           </div>
