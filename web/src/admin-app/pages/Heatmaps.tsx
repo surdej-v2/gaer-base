@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { api, query } from "../api";
-import { Alert, fmtNumber, PageHeader, useLoad } from "../ui";
+import { api, query } from "../../api";
+import { Alert, fmtNumber, PageHeader, useLoad } from "../../ui";
 
 type PageRow = { path: string; clicks: number; scrolls: number; pageviews: number };
 type Heat = { path: string; clicks: [number, number][]; scroll: { depth: number; share: number }[]; scroll_samples: number };

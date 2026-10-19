@@ -11,9 +11,35 @@ export class ApiError extends Error {
 // issues a partitioned SameSite=None session cookie that works there.
 const embedded = window.self !== window.top;
 
+// The admin app on /admin marks its calls, so the server always answers them as the real admin,
+// also while the app on / is impersonating a test account.
+let appName: string | null = null;
+export function setApiApp(name: "admin"): void {
+  appName = name;
+}
+
+// Optional observer used by the API tracer in /admin. Nothing is recorded unless one is set.
+export type ApiCall = {
+  id: number;
+  method: string;
+  path: string;
+  requestBody?: unknown;
+  status: number | null;
+  responseBody?: unknown;
+  startedAt: number;
+  ms: number;
+};
+export type ApiObserver = { start(call: ApiCall): void; end(call: ApiCall): void };
+let observer: ApiObserver | null = null;
+let callSeq = 0;
+export function setApiObserver(o: ApiObserver | null): void {
+  observer = o;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { "X-Gaer": "1" };
   if (embedded) headers["X-Gaer-Embedded"] = "1";
+  if (appName) headers["X-Gaer-App"] = appName;
   let payload: BodyInit | undefined;
   if (body instanceof FormData) {
     payload = body;
@@ -21,20 +47,36 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     headers["Content-Type"] = "application/json";
     payload = JSON.stringify(body);
   }
-  const res = await fetch(path, { method, headers, body: payload, credentials: "same-origin" });
+  const call: ApiCall | null = observer
+    ? { id: ++callSeq, method, path, requestBody: body instanceof FormData ? "[FormData]" : body, status: null,
+        startedAt: Date.now(), ms: 0 }
+    : null;
+  if (call) observer?.start(call);
+  let res: Response;
+  try {
+    res = await fetch(path, { method, headers, body: payload, credentials: "same-origin" });
+  } catch (e) {
+    if (call) observer?.end({ ...call, status: 0, responseBody: String(e), ms: Date.now() - call.startedAt });
+    throw e;
+  }
+  let data: unknown = undefined;
+  if (res.status !== 204) {
+    const text = await res.text();
+    try {
+      data = text ? JSON.parse(text) : undefined;
+    } catch {
+      data = text; // not JSON
+    }
+  }
+  if (call) observer?.end({ ...call, status: res.status, responseBody: data, ms: Date.now() - call.startedAt });
   if (!res.ok) {
     let message = `Fejl ${res.status}`;
-    try {
-      const data = await res.json();
-      if (typeof data.detail === "string") message = data.detail;
-      else if (Array.isArray(data.detail)) message = "Tjek felterne og prøv igen";
-    } catch {
-      /* not JSON */
-    }
+    const detail = (data as { detail?: unknown } | undefined)?.detail;
+    if (typeof detail === "string") message = detail;
+    else if (Array.isArray(detail)) message = "Tjek felterne og prøv igen";
     throw new ApiError(res.status, message);
   }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  return data as T;
 }
 
 export const api = {

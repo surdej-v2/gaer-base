@@ -84,6 +84,7 @@ def create_app() -> FastAPI:
 
     static_dir = os.path.abspath(config.settings.static_dir)
     index = os.path.join(static_dir, "index.html")
+    admin_index = os.path.join(static_dir, "admin.html")
     if os.path.isdir(os.path.join(static_dir, "assets")):
         app.mount("/assets", StaticFiles(directory=os.path.join(static_dir, "assets")), name="assets")
 
@@ -96,8 +97,10 @@ def create_app() -> FastAPI:
         candidate = os.path.abspath(os.path.join(static_dir, full_path))
         if full_path and candidate.startswith(static_dir + os.sep) and os.path.isfile(candidate):
             return FileResponse(candidate)
-        if os.path.isfile(index):
-            return FileResponse(index, headers={"Cache-Control": "no-cache"})
+        # /admin is a separate Vite entry (web/admin.html); everything else is the app on /.
+        page = admin_index if full_path == "admin" or full_path.startswith("admin/") else index
+        if os.path.isfile(page):
+            return FileResponse(page, headers={"Cache-Control": "no-cache"})
         return JSONResponse({"detail": "Frontend er ikke bygget. Kør npm run build i web/."}, status_code=404)
 
     return app

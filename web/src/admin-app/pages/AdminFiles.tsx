@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { api, errorText } from "../api";
-import { Alert, download, fmtBytes, fmtDate, fmtNumber, Loading, PageHeader, useLoad } from "../ui";
+import { api, errorText } from "../../api";
+import { Alert, download, fmtBytes, fmtDate, fmtNumber, Loading, PageHeader, useLoad } from "../../ui";
 
 type Data = {
   totals: { files: number; bytes: number };

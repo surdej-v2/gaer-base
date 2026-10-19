@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { api, errorText } from "../api";
-import { Alert, download, fmtDate, fmtDay, Loading, PageHeader, useLoad } from "../ui";
+import { api, errorText } from "../../api";
+import { Alert, download, fmtDate, fmtDay, Loading, PageHeader, useLoad } from "../../ui";
 
 type Request = {
   id: number; user_id: number | null; user_phone: string | null; user_name: string | null;

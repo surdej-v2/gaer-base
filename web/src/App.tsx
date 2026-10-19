@@ -8,20 +8,6 @@ import Home from "./pages/Home";
 import Account from "./pages/Account";
 import Files from "./pages/Files";
 import Privacy from "./pages/Privacy";
-import AdminLayout from "./admin/AdminLayout";
-import AdminHome from "./admin/AdminHome";
-import Users from "./admin/Users";
-import AuthLog from "./admin/AuthLog";
-import AuditLog from "./admin/AuditLog";
-import Analytics from "./admin/Analytics";
-import Heatmaps from "./admin/Heatmaps";
-import Gdpr from "./admin/Gdpr";
-import Retention from "./admin/Retention";
-import Consent from "./admin/Consent";
-import AdminFiles from "./admin/AdminFiles";
-import Settings from "./admin/Settings";
-import Web from "./admin/Web";
-import Integrations from "./admin/Integrations";
 import ExtensionLayout from "./extension/ExtensionLayout";
 import ExtensionPage from "./extension/ExtensionPage";
 import ExtensionAccount from "./extension/ExtensionAccount";
@@ -44,7 +30,7 @@ function TopBar() {
           {full && <NavLink to="/klip">Klip</NavLink>}
           {full && <NavLink to="/filer">Filer</NavLink>}
           {full && <NavLink to="/konto">Konto</NavLink>}
-          {full && user.role === "admin" && <NavLink to="/admin">Admin</NavLink>}
+          {full && user.role === "admin" && <a href="/admin">Admin</a>}
           {user ? (
             <button
               className="btn btn-ghost btn-sm"
@@ -129,21 +115,6 @@ export default function App() {
           <Route path="profil" element={<Account />} />
         </Route>
 
-        <Route path="/admin" element={<RequireUser admin><AdminLayout /></RequireUser>}>
-          <Route index element={<AdminHome />} />
-          <Route path="users" element={<Users />} />
-          <Route path="logs/auth" element={<AuthLog />} />
-          <Route path="logs/audit" element={<AuditLog />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="heatmaps" element={<Heatmaps />} />
-          <Route path="gdpr" element={<Gdpr />} />
-          <Route path="retention" element={<Retention />} />
-          <Route path="consent" element={<Consent />} />
-          <Route path="files" element={<AdminFiles />} />
-          <Route path="web" element={<Web />} />
-          <Route path="integrations" element={<Integrations />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {!pathname.startsWith("/extension") && !pathname.startsWith("/office-addin") && <ConsentBanner />}

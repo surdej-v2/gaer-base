@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api, query } from "../api";
-import { Alert, fmtDate, Json, Loading, PageHeader, Pager, useLoad } from "../ui";
+import { api, query } from "../../api";
+import { Alert, fmtDate, Json, Loading, PageHeader, Pager, useLoad } from "../../ui";
 
 type Row = { id: number; ts: string; event: string; result: "ok" | "fail"; user_id: number | null; phone_masked: string | null; ip: string | null; device: string | null; detail: object };
 

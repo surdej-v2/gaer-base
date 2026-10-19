@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { api, errorText } from "../api";
-import { useAuth } from "../auth";
-import { Alert, Loading, PageHeader, useLoad } from "../ui";
+import { api, errorText } from "../../api";
+import { useAuth } from "../../auth";
+import { Alert, Loading, PageHeader, useLoad } from "../../ui";
 
 type Data = {
   app_name: string; sms_sender: string; gdpr_email: string; logo_url: string | null;

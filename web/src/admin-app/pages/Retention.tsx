@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { api, errorText } from "../api";
-import { Alert, fmtBytes, fmtDate, fmtDay, fmtNumber, Loading, PageHeader, useLoad } from "../ui";
+import { api, errorText } from "../../api";
+import { Alert, fmtBytes, fmtDate, fmtDay, fmtNumber, Loading, PageHeader, useLoad } from "../../ui";
 
 type Data = {
   auth_log_days: number; audit_log_days: number; analytics_days: number; last_run: string | null;

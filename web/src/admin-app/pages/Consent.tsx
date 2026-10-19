@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { api, errorText } from "../api";
-import { Alert, fmtDate, fmtNumber, Loading, PageHeader, Pager, useLoad } from "../ui";
+import { api, errorText } from "../../api";
+import { Alert, fmtDate, fmtNumber, Loading, PageHeader, Pager, useLoad } from "../../ui";
 
 type Texts = { consent_title: string; consent_text: string; consent_accept: string; consent_decline: string; consent_version: number };
 type Record_ = { id: number; ts: string; visitor_id: string | null; user_id: number | null; user_phone: string | null; statistics: boolean; version: number; device: string | null };

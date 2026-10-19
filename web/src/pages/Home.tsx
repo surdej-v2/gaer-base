@@ -49,11 +49,11 @@ export default function Home() {
           <p className="muted small">Navn, passkeys, aktive logins og dine data.</p>
         </Link>
         {user.role === "admin" && (
-          <Link to="/admin" className="card">
+          <a href="/admin" className="card">
             <span className="eyebrow mono">/admin</span>
             <h3>Administration</h3>
             <p className="muted small">Brugere, logs, analytics, heatmaps, GDPR og indstillinger.</p>
-          </Link>
+          </a>
         )}
       </div>
     </div>

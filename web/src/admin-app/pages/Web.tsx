@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { api, errorText } from "../api";
-import { Alert, fmtDate, Loading, PageHeader, useLoad } from "../ui";
+import { api, errorText } from "../../api";
+import { Alert, fmtDate, Loading, PageHeader, useLoad } from "../../ui";
 
 type Page = { id: number; slug: string; lang: "da" | "en"; title: string; description: string; body: string; nav_order: number | null; published: boolean; updated_at: string };
 type Draft = Omit<Page, "id" | "updated_at"> & { id?: number };

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api, query } from "../api";
-import { Alert, download, fmtDate, Json, Loading, PageHeader, Pager, useLoad } from "../ui";
+import { api, query } from "../../api";
+import { Alert, download, fmtDate, Json, Loading, PageHeader, Pager, useLoad } from "../../ui";
 
 type Row = { id: number; ts: string; actor_user_id: number | null; action: string; table_name: string | null; row_id: string | null; before: object | null; after: object | null; ip: string | null; detail: object };
 

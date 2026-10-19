@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { api } from "../api";
-import { Alert, fmtDay, fmtNumber, Loading, PageHeader, useLoad } from "../ui";
+import { api } from "../../api";
+import { Alert, fmtDay, fmtNumber, Loading, PageHeader, useLoad } from "../../ui";
 
 type Stats = {
   days: number;

@@ -1,5 +1,5 @@
-import { api } from "../api";
-import { download, PageHeader, useLoad } from "../ui";
+import { api } from "../../api";
+import { download, PageHeader, useLoad } from "../../ui";
 
 type Manifest = { app: string; url: string; taskpane: string };
 const NAMES: Record<string, string> = { word: "Word", excel: "Excel", powerpoint: "PowerPoint", outlook: "Outlook" };
