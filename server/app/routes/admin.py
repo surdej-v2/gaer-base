@@ -39,6 +39,7 @@ async def list_users(q: str | None = None, limit: int = 100, offset: int = 0, ad
         rows = await db.fetch_all(conn, f"""
             select u.id, u.phone, u.display_name, u.role, u.grace_logins_used, u.blocked_at, u.created_at,
                    u.last_login_at, u.impersonation_only,
+                   (select ring from feature_rings r where r.user_id = u.id) as feature_ring,
                    (select count(*) from passkeys p where p.user_id = u.id) as passkeys,
                    (select count(*) from sessions s where s.user_id = u.id and s.revoked_at is null
                         and s.expires_at > now()) as active_sessions,
@@ -280,9 +281,12 @@ async def analytics(days: int = 30):
             select count(*) filter (where statistics) as accepted, count(*) filter (where not statistics) as declined
             from consents where {since}""", (days,))
         users, logins, logins_per_day = await _user_and_login_stats(conn, days)
+        features = await db.fetch_all(conn, """
+            select f.key, f.title, f.ring, count(*) as uses from feature_usage u join features f on f.key = u.feature_key
+            where u.ts > now() - make_interval(days => %s) group by f.key order by uses desc limit 10""", (days,))
     return {"days": days, "totals": totals, "per_day": per_day, "pages": pages, "sources": sources,
             "devices": devices, "browsers": browsers, "flows": flows, "entries": entries, "consent": consent,
-            "users": users, "logins": logins, "logins_per_day": logins_per_day}
+            "users": users, "logins": logins, "logins_per_day": logins_per_day, "features": features}
 
 
 # A successful login is a passkey login or a login with a one-time code (grace login).
@@ -424,6 +428,9 @@ async def build_user_export(conn, user_id: int) -> dict:
         "audit_log": await rows("""select ts, action, table_name, row_id, before, after, host(ip) as ip from audit_log
                                    where (actor_user_id = %s or (table_name = 'users' and row_id = %s))
                                      and action <> 'admin.read' order by ts""", user_id, str(user_id)),
+        "feature_level": await rows("select ring, updated_at from feature_rings where user_id = %s", user_id),
+        "feature_usage": await rows("select ts, feature_key from feature_usage where user_id = %s order by ts limit 50000",
+                                    user_id),
         "test_accounts": await rows("""select id, display_name, role, created_at from users
                                        where impersonation_only and impersonation_owner_id = %s""", user_id),
         "analytics_events": await rows("""select ts, kind, path, referrer, device, browser from analytics_events

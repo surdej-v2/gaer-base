@@ -11,6 +11,7 @@ import { ToastProvider } from "./ui";
 import Stats from "./pages/Stats";
 import Users from "./pages/Users";
 import Impersonation from "./pages/Impersonation";
+import Features from "./pages/Features";
 import AuthLog from "./pages/AuthLog";
 import AuditLog from "./pages/AuditLog";
 import Analytics from "./pages/Analytics";
@@ -61,6 +62,7 @@ createRoot(document.getElementById("root")!).render(
                   <Route index element={<Stats />} />
                   <Route path="users" element={<Users />} />
                   <Route path="impersonation" element={<Impersonation />} />
+                  <Route path="features" element={<Features />} />
                   <Route path="analytics" element={legacy(<Analytics />)} />
                   <Route path="heatmaps" element={legacy(<Heatmaps />)} />
                   <Route path="logs/auth" element={legacy(<AuthLog />)} />

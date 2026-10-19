@@ -39,6 +39,8 @@ async def purge_old(*, actor_id: int | None, meta: RequestMeta, reason: str) -> 
             (days["analytics"],))).rowcount
         counts["consents"] = (await conn.execute(
             "delete from consents where ts < now() - make_interval(days => %s)", (days["analytics"],))).rowcount
+        counts["feature_usage"] = (await conn.execute(
+            "delete from feature_usage where ts < now() - make_interval(days => %s)", (days["analytics"],))).rowcount
         await audit(conn, "log.purged", actor_id=actor_id, meta=meta, reason=reason, retention_days=days,
                     deleted=counts)
     async with db.connection() as conn:
@@ -73,6 +75,8 @@ async def purge_user(user_id: int, *, logs: list[str], actor_id: int | None, met
                 (user_id, user_id))).rowcount
             counts["consents"] = (await conn.execute(
                 "delete from consents where user_id = %s", (user_id,))).rowcount
+            counts["feature_usage"] = (await conn.execute(
+                "delete from feature_usage where user_id = %s", (user_id,))).rowcount
         await audit(conn, "log.purged", actor_id=actor_id, meta=meta, reason=reason, subject_user_id=user_id,
                     deleted=counts)
     return counts

@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
+import { FeatureGate } from "./features";
 import ConsentBanner from "./ConsentBanner";
 import { trackPageview } from "./tracker";
 import Login from "./pages/Login";
@@ -33,8 +34,8 @@ function TopBar() {
           {config?.app_name ?? "Gær"}
         </Link>
         <nav className="nav">
-          {full && <NavLink to="/klip">Klip</NavLink>}
-          {full && <NavLink to="/filer">Filer</NavLink>}
+          {full && <FeatureGate feature="klip"><NavLink to="/klip">Klip</NavLink></FeatureGate>}
+          {full && <FeatureGate feature="filer"><NavLink to="/filer">Filer</NavLink></FeatureGate>}
           {full && <NavLink to="/konto">Konto</NavLink>}
           {full && user.role === "admin" && <a href="/admin">Admin</a>}
           {user ? (
@@ -98,8 +99,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/privatliv" element={<Privacy />} />
         <Route path="/konto" element={<RequireUser><Account /></RequireUser>} />
-        <Route path="/filer" element={<RequireUser><Files /></RequireUser>} />
-        <Route path="/klip" element={<RequireUser><ClipsPage /></RequireUser>} />
+        <Route path="/filer" element={<RequireUser><FeatureGate feature="filer"><Files /></FeatureGate></RequireUser>} />
+        <Route path="/klip" element={<RequireUser><FeatureGate feature="klip"><ClipsPage /></FeatureGate></RequireUser>} />
 
         <Route path="/extension/login" element={<Login home="/extension" embedded />} />
         <Route path="/extension/tools" element={<RequireUser login="/extension/login"><ToolLayout /></RequireUser>}>

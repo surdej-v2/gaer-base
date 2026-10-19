@@ -14,6 +14,7 @@ export default function Account() {
   const [error, setError] = useState<string | null>(null);
   const passkeys = useLoad(() => api.get<Passkey[]>("/api/me/passkeys"));
   const sessions = useLoad(() => api.get<Session[]>("/api/me/sessions"));
+  const level = useLoad(() => api.get<{ level: number }>("/api/features"));
 
   useEffect(() => setName(user?.display_name ?? ""), [user?.display_name]);
 
@@ -106,6 +107,25 @@ export default function Account() {
             )}
           </div>
         ))}
+      </div>
+
+      <div className="card">
+        <span className="eyebrow">Dit niveau</span>
+        <p className="small muted">
+          Vælg hvor tidligt du vil se nye features. Ring 4 er kun det stabile. Lavere niveau giver adgang til features, der stadig er under udvikling.
+        </p>
+        <label className="field">
+          Niveau
+          <select value={String(level.data?.level ?? 4)} onChange={(e) => act(async () => {
+            await api.put("/api/features/level", { ring: Number(e.target.value) === 4 ? null : Number(e.target.value) });
+            await level.reload();
+          }, "Dit niveau er gemt")}>
+            <option value="1">Ring 1 · Internt</option>
+            <option value="2">Ring 2 · Beta</option>
+            <option value="3">Ring 3 · Preview</option>
+            <option value="4">Ring 4 · Stabilt</option>
+          </select>
+        </label>
       </div>
 
       <div className="card muted-bg">

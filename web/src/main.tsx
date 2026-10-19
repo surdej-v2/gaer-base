@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./auth";
+import { FeaturesProvider } from "./features";
 import { installTracker } from "./tracker";
 import "./styles.css";
 
@@ -12,7 +13,9 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <FeaturesProvider>
+          <App />
+        </FeaturesProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
