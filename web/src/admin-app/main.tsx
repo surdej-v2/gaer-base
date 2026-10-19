@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "../auth";
 import AdminShell from "./AdminShell";
 import { AdminProvider } from "./context";
 import { ToastProvider } from "./ui";
+import { installTracer } from "./tracer/tracerStore";
 import Stats from "./pages/Stats";
 import Users from "./pages/Users";
 import Impersonation from "./pages/Impersonation";
@@ -27,6 +28,7 @@ import "../styles.css";
 import "./admin.css";
 
 setApiApp("admin");
+installTracer();
 
 function RequireAdmin({ children }: { children: ReactNode }) {
   const { user, scope, loading } = useAuth();

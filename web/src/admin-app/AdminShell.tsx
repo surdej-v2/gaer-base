@@ -9,6 +9,8 @@ import { NAV, type NavBadge } from "./nav";
 import ToergaerMark from "./ToergaerMark";
 import { initials, MONO, SANS } from "./theme";
 import { useToast } from "./ui";
+import TracerOverlay from "./tracer/TracerOverlay";
+import TracerPanel from "./tracer/TracerPanel";
 
 export default function AdminShell() {
   const { user, config } = useAuth();
@@ -135,6 +137,15 @@ export default function AdminShell() {
           <Outlet />
         </main>
       </div>
+
+      <TracerOverlay />
+      <TracerPanel context={[
+        ["Side", `/admin${pathname === "/" ? "" : pathname}`],
+        ["Bruger", `${me} · #${user?.id} · admin`],
+        ["Efterligner", impersonating ? `${impersonating.display_name} · #${impersonating.id}` : "—"],
+        ["Udvidelse", "—"],
+        ["API", `${window.location.origin}/api`],
+      ]} />
     </div>
   );
 }

@@ -92,13 +92,13 @@ export function CloseBtn({ onClick }: { onClick: () => void }) {
   return <IconBtn icon={X} label="Luk" onClick={onClick} />;
 }
 
-export function Modal({ width = 440, z = 50, onClose, children }: { width?: number; z?: number; onClose: () => void; children: ReactNode }) {
+export function Modal({ width = 440, z = 50, gap = 14, onClose, children }: { width?: number; z?: number; gap?: number; onClose: () => void; children: ReactNode }) {
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: z, background: "rgba(2,8,23,0.4)" }} />
       <div role="dialog" style={{ position: "fixed", zIndex: z + 1, top: "50%", left: "50%", transform: "translate(-50%,-50%)", width,
         maxWidth: "calc(100vw - 32px)", boxSizing: "border-box", background: "#ffffff", borderRadius: 16, boxShadow: "var(--hm-shadow-2xl)",
-        padding: 22, display: "flex", flexDirection: "column", gap: 14 }}>
+        padding: 22, display: "flex", flexDirection: "column", gap }}>
         {children}
       </div>
     </>
