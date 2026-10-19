@@ -15,6 +15,8 @@ from app.logs import RequestMeta, audit, auth_event
 from app.security import client_ip, new_token, token_hash, user_agent
 
 COOKIE = "gaer_session"
+IMP_COOKIE = "gaer_imp"  # the impersonated test account's session, used only by the app on /
+REAL_ONLY_PATHS = ("/api/admin", "/api/impersonation")
 
 
 @dataclass
@@ -26,10 +28,11 @@ class Principal:
     scope: str
     display_name: str | None
     meta: RequestMeta
+    impersonator_id: int | None = None  # set when an admin is viewing the app as this test account
 
     @property
     def is_admin(self) -> bool:
-        return self.role == "admin" and self.scope == "full"
+        return self.role == "admin" and self.scope == "full" and self.impersonator_id is None
 
 
 def request_meta(request: Request) -> RequestMeta:
@@ -91,24 +94,51 @@ async def revoke_sessions(conn, *, meta: RequestMeta, user_id: int, session_id: 
     return cur.rowcount
 
 
+def wants_real_session(request: Request) -> bool:
+    """/admin, the impersonation endpoints and every call from the admin app always run as the real
+    admin. Only the app on / runs as the impersonated test account."""
+    path = request.url.path
+    return (path.startswith(REAL_ONLY_PATHS) or request.headers.get("x-gaer-app") == "admin")
+
+
+async def _session_row(conn, token: str, impersonator_id: int | None = None) -> dict | None:
+    if impersonator_id is None:
+        where = "s.impersonator_id is null and not u.impersonation_only"
+        params: tuple = (token_hash(token),)
+    else:
+        where = "s.impersonator_id = %s and u.impersonation_only and u.impersonation_owner_id = %s"
+        params = (token_hash(token), impersonator_id, impersonator_id)
+    row = await db.fetch_one(conn, f"""
+        select s.id as session_id, s.scope, s.last_seen_at, u.id as user_id, u.phone, u.role,
+               u.display_name, u.blocked_at
+        from sessions s join users u on u.id = s.user_id
+        where s.token_hash = %s and s.revoked_at is null and s.expires_at > now() and {where}""", params)
+    if row is None or row["blocked_at"] is not None:
+        return None
+    if datetime.now(timezone.utc) - row["last_seen_at"] > timedelta(minutes=5):
+        await conn.execute("update sessions set last_seen_at = now() where id = %s", (row["session_id"],))
+    return row
+
+
 async def _load(request: Request) -> Principal | None:
     token = request.cookies.get(COOKIE)
     if not token:
         return None
+    imp_token = request.cookies.get(IMP_COOKIE)
     async with db.connection() as conn:
-        row = await db.fetch_one(conn, """
-            select s.id as session_id, s.scope, s.last_seen_at, u.id as user_id, u.phone, u.role,
-                   u.display_name, u.blocked_at
-            from sessions s join users u on u.id = s.user_id
-            where s.token_hash = %s and s.revoked_at is null and s.expires_at > now()""",
-            (token_hash(token),))
-        if row is None or row["blocked_at"] is not None:
+        row = await _session_row(conn, token)
+        if row is None:
             return None
-        if datetime.now(timezone.utc) - row["last_seen_at"] > timedelta(minutes=5):
-            await conn.execute("update sessions set last_seen_at = now() where id = %s", (row["session_id"],))
+        meta = request_meta(request)
+        if imp_token and row["role"] == "admin" and row["scope"] == "full" and not wants_real_session(request):
+            imp = await _session_row(conn, imp_token, impersonator_id=row["user_id"])
+            if imp is not None:
+                meta.impersonator_id = row["user_id"]
+                return Principal(session_id=imp["session_id"], user_id=imp["user_id"], phone=imp["phone"], role=imp["role"],
+                                 scope=imp["scope"], display_name=imp["display_name"], meta=meta,
+                                 impersonator_id=row["user_id"])
     return Principal(session_id=row["session_id"], user_id=row["user_id"], phone=row["phone"],
-                     role=row["role"], scope=row["scope"], display_name=row["display_name"],
-                     meta=request_meta(request))
+                     role=row["role"], scope=row["scope"], display_name=row["display_name"], meta=meta)
 
 
 async def optional_principal(request: Request) -> Principal | None:
@@ -132,7 +162,7 @@ async def current_user(principal: Principal = Depends(any_session)) -> Principal
 async def require_admin(request: Request, principal: Principal = Depends(current_user)) -> Principal:
     """Everything in /admin is audited. Changes write their own detailed entries;
     reads are logged here as admin.read with the path and query."""
-    if principal.role != "admin":
+    if not principal.is_admin:
         raise HTTPException(403, "Kræver admin-rollen")
     if request.method == "GET":
         async with db.connection() as conn:

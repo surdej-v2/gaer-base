@@ -26,7 +26,7 @@ from webauthn.helpers.structs import (AuthenticatorSelectionCriteria, PublicKeyC
 from app import config, db, settings_store
 from app.logs import RequestMeta, audit, auth_event
 from app.security import InvalidPhone, new_otp_code, normalize_phone, otp_hash, otp_matches, phone_hash
-from app.sessions import (Principal, any_session, clear_session_cookie, create_session, optional_principal,
+from app.sessions import (IMP_COOKIE, Principal, any_session, clear_session_cookie, create_session, optional_principal,
                           request_meta, revoke_sessions)
 from app.sms import SmsError, otp_message, send_sms
 
@@ -184,6 +184,8 @@ async def otp_verify(body: VerifyIn, request: Request, response: Response):
 
 async def _get_or_create_user(conn, phone: str, meta: RequestMeta) -> dict:
     user = await db.fetch_one(conn, "select * from users where phone = %s for update", (phone,))
+    if user and user["impersonation_only"]:
+        raise HTTPException(403, "Testkonti kan ikke logge ind")
     if user:
         return user
     # Serialize user creation so exactly one user can be the first.
@@ -223,6 +225,8 @@ async def _take_challenge(conn, challenge_id: str, kind: str, user_id: int | Non
 
 @router.post("/passkey/register/options")
 async def passkey_register_options(principal: Principal = Depends(any_session)):
+    if principal.impersonator_id is not None:
+        raise HTTPException(403, "En testkonto kan ikke få en passkey")
     s = config.settings
     async with db.connection() as conn:
         existing = await db.fetch_all(conn, "select credential_id from passkeys where user_id = %s",
@@ -244,6 +248,8 @@ async def passkey_register_options(principal: Principal = Depends(any_session)):
 
 @router.post("/passkey/register/verify")
 async def passkey_register_verify(body: RegisterIn, response: Response, principal: Principal = Depends(any_session)):
+    if principal.impersonator_id is not None:
+        raise HTTPException(403, "En testkonto kan ikke få en passkey")
     s = config.settings
     meta = principal.meta
     async with db.connection() as conn:
@@ -300,7 +306,7 @@ async def passkey_login_verify(body: LoginIn, request: Request, response: Respon
             raw_id = b""
         passkey = await db.fetch_one(conn, """
             select p.*, u.phone, u.blocked_at from passkeys p join users u on u.id = p.user_id
-            where p.credential_id = %s""", (raw_id,))
+            where p.credential_id = %s and not u.impersonation_only""", (raw_id,))
         if passkey is None:
             await auth_event(conn, "passkey.login", ok=False, meta=meta, reason="unknown_credential")
             await conn.commit()
@@ -333,6 +339,14 @@ async def passkey_login_verify(body: LoginIn, request: Request, response: Respon
 
 @router.post("/logout")
 async def logout(request: Request, response: Response, principal: Principal | None = Depends(optional_principal)):
+    if principal and principal.impersonator_id is not None:
+        # Logging out of the app on / while impersonating ends the impersonation, not the admin's session.
+        async with db.connection() as conn:
+            await conn.execute("update sessions set revoked_at = now() where id = %s", (principal.session_id,))
+            await audit(conn, "impersonation.stop", actor_id=principal.impersonator_id, meta=principal.meta,
+                        table="users", row_id=principal.user_id, via="logout")
+        response.delete_cookie(IMP_COOKIE, path="/")
+        return {"ok": True}
     if principal:
         async with db.connection() as conn:
             await revoke_sessions(conn, meta=principal.meta, user_id=principal.user_id,
@@ -360,4 +374,12 @@ async def me(principal: Principal | None = Depends(optional_principal)):
             "grace_left": max(0, config.settings.grace_logins - user["grace_logins_used"]) if not user["passkeys"] else 0,
         },
         "scope": principal.scope,
+        "impersonator": await _impersonator(principal),
     }
+
+
+async def _impersonator(principal: Principal) -> dict | None:
+    if principal.impersonator_id is None:
+        return None
+    async with db.connection() as conn:
+        return await db.fetch_one(conn, "select id, display_name from users where id = %s", (principal.impersonator_id,))

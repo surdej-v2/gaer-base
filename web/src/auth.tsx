@@ -23,6 +23,8 @@ export type PublicConfig = {
 
 type AuthState = {
   user: User | null;
+  /** Set when an admin is viewing the app as a test account (/admin → Efterligning). */
+  impersonator: { id: number; display_name: string | null } | null;
   scope: "full" | "enroll" | null;
   loading: boolean;
   config: PublicConfig | null;
@@ -34,16 +36,18 @@ const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [impersonator, setImpersonator] = useState<AuthState["impersonator"]>(null);
   const [scope, setScope] = useState<AuthState["scope"]>(null);
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<PublicConfig | null>(null);
 
   const refresh = useCallback(async () => {
     const [me, cfg] = await Promise.all([
-      api.get<{ user: User | null; scope?: "full" | "enroll" }>("/api/auth/me"),
+      api.get<{ user: User | null; scope?: "full" | "enroll"; impersonator?: AuthState["impersonator"] }>("/api/auth/me"),
       api.get<PublicConfig>("/api/public/config"),
     ]);
     setUser(me.user);
+    setImpersonator(me.impersonator ?? null);
     setScope(me.scope ?? null);
     setConfig(cfg);
   }, []);
@@ -63,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, scope, loading, config, refresh, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, impersonator, scope, loading, config, refresh, logout }}>{children}</AuthContext.Provider>
   );
 }
 

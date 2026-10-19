@@ -20,6 +20,7 @@ class RequestMeta:
     ip: str | None = None
     user_agent: str = ""
     embedded: bool = False  # the app runs in an iframe (browser extension, Office add-in)
+    impersonator_id: int | None = None  # the admin behind a request made as an impersonated test account
 
 
 def _jsonable(value):
@@ -40,6 +41,8 @@ def _default(o):
 
 async def auth_event(conn, event: str, *, ok: bool, meta: RequestMeta, user_id: int | None = None,
                      phone: str | None = None, **detail) -> None:
+    if meta.impersonator_id is not None:
+        detail.setdefault("impersonator_id", meta.impersonator_id)
     await conn.execute(
         """insert into auth_log (event, result, user_id, phone_masked, phone_hash, ip, device, detail)
            values (%s, %s, %s, %s, %s, %s, %s, %s)""",
@@ -50,6 +53,10 @@ async def auth_event(conn, event: str, *, ok: bool, meta: RequestMeta, user_id: 
 
 async def audit(conn, action: str, *, actor_id: int | None, meta: RequestMeta, table: str | None = None,
                 row_id=None, before: dict | None = None, after: dict | None = None, **detail) -> None:
+    # While impersonating, the admin is the actor; the test account is recorded in the detail.
+    if meta.impersonator_id is not None and actor_id != meta.impersonator_id:
+        detail.setdefault("as_user_id", actor_id)
+        actor_id = meta.impersonator_id
     await conn.execute(
         """insert into audit_log (actor_user_id, action, table_name, row_id, before, after, ip, detail)
            values (%s, %s, %s, %s, %s, %s, %s, %s)""",

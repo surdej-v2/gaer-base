@@ -17,9 +17,15 @@ import { DocumentTool, OutlookTool, ToolLayout, WordTool } from "./office/Tools"
 import { MobileClips, MobileFiles, MobileHome, MobileLayout } from "./mobile/Mobile";
 
 function TopBar() {
-  const { user, scope, config, logout } = useAuth();
+  const { user, impersonator, scope, config, logout } = useAuth();
   const full = user && scope === "full";
   return (
+    <>
+    {impersonator && (
+      <div style={{ padding: "8px 16px", background: "#fffbeb", borderBottom: "1px solid rgba(245,158,11,0.4)", color: "#78350f", fontSize: 13, textAlign: "center" }}>
+        Du ser appen som testkontoen <strong>{user?.display_name}</strong>. Stop efterligningen i <a href="/admin/impersonation">/admin</a>.
+      </div>
+    )}
     <header className="topbar">
       <div className="topbar-inner">
         <Link to="/" className="brand">
@@ -49,6 +55,7 @@ function TopBar() {
         </nav>
       </div>
     </header>
+    </>
   );
 }
 

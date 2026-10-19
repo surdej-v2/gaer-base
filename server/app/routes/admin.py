@@ -28,16 +28,17 @@ def _page(limit: int, offset: int) -> tuple[int, int]:
 # ── Users and roles ─────────────────────────────────────────────────────────
 
 @router.get("/users")
-async def list_users(q: str | None = None, limit: int = 100, offset: int = 0):
+async def list_users(q: str | None = None, limit: int = 100, offset: int = 0, admin: Principal = Depends(require_admin)):
     limit, offset = _page(limit, offset)
-    where, params = "", []
+    # Test accounts are only shown to the admin who owns them.
+    where, params = "where (not u.impersonation_only or u.impersonation_owner_id = %s)", [admin.user_id]
     if q:
-        where = "where u.phone ilike %s or coalesce(u.display_name, '') ilike %s"
-        params = [f"%{q.strip()}%", f"%{q.strip()}%"]
+        where += " and (u.phone ilike %s or coalesce(u.display_name, '') ilike %s)"
+        params += [f"%{q.strip()}%", f"%{q.strip()}%"]
     async with db.connection() as conn:
         rows = await db.fetch_all(conn, f"""
             select u.id, u.phone, u.display_name, u.role, u.grace_logins_used, u.blocked_at, u.created_at,
-                   u.last_login_at,
+                   u.last_login_at, u.impersonation_only,
                    (select count(*) from passkeys p where p.user_id = u.id) as passkeys,
                    (select count(*) from sessions s where s.user_id = u.id and s.revoked_at is null
                         and s.expires_at > now()) as active_sessions,
@@ -59,8 +60,9 @@ async def _user_or_404(conn, user_id: int) -> dict:
 
 
 async def _ensure_not_last_admin(conn, user: dict) -> None:
-    if user["role"] == "admin":
-        n = await db.fetch_one(conn, "select count(*) as n from users where role = 'admin' and blocked_at is null")
+    if user["role"] == "admin" and not user["impersonation_only"]:
+        n = await db.fetch_one(conn, """select count(*) as n from users
+                                        where role = 'admin' and blocked_at is null and not impersonation_only""")
         if n["n"] <= 1:
             raise HTTPException(409, "Der skal være mindst én admin")
 
@@ -297,7 +299,7 @@ async def _user_and_login_stats(conn, days: int) -> tuple[dict, dict, list[dict]
                count(*) filter (where exists (select 1 from passkeys p where p.user_id = u.id)) as with_passkey,
                count(*) filter (where not exists (select 1 from passkeys p where p.user_id = u.id)
                                   and u.grace_logins_used >= %(g)s) as must_passkey
-        from users u""", {"d": days, "g": config.settings.grace_logins})
+        from users u where not u.impersonation_only""", {"d": days, "g": config.settings.grace_logins})
     logins = await db.fetch_one(conn, f"""
         select count(*) filter (where {LOGIN_OK} and event = 'passkey.login') as passkey,
                count(*) filter (where {LOGIN_OK} and event = 'grace.used') as otp,
@@ -422,6 +424,8 @@ async def build_user_export(conn, user_id: int) -> dict:
         "audit_log": await rows("""select ts, action, table_name, row_id, before, after, host(ip) as ip from audit_log
                                    where (actor_user_id = %s or (table_name = 'users' and row_id = %s))
                                      and action <> 'admin.read' order by ts""", user_id, str(user_id)),
+        "test_accounts": await rows("""select id, display_name, role, created_at from users
+                                       where impersonation_only and impersonation_owner_id = %s""", user_id),
         "analytics_events": await rows("""select ts, kind, path, referrer, device, browser from analytics_events
                                           where user_id = %s or visitor_id = any(%s) order by ts limit 50000""",
                                        user_id, visitor_ids),
