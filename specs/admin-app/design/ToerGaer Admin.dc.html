@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/happy-mates-design-system-019e2c51-c6f5-79d5-8af1-484a4845eab4/colors_and_type.css">
+  <script src="_ds/happy-mates-design-system-019e2c51-c6f5-79d5-8af1-484a4845eab4/_ds_bundle.js"></script>
+  <style>
+    html, body { margin: 0; font-family: var(--hm-font-sans); color: #020817; background: #f1f5f9; -webkit-font-smoothing: antialiased; }
+    a { color: var(--hm-primary); text-decoration: none; } a:hover { color: var(--hm-primary-90); text-decoration: underline; }
+    input:focus, select:focus { outline: none; border-color: #2563eb !important; box-shadow: 0 0 0 1px #2563eb; }
+    @keyframes tgpulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  </style>
+</helmet>
+<div data-screen-label="/admin" style="min-height:100vh; display:flex; font-size:14px;">
+  <aside style="position:sticky; top:0; height:100vh; width:232px; flex:none; box-sizing:border-box; display:flex; flex-direction:column; background:#0f172a; color:#ffffff; padding:20px 10px 16px; overflow-y:auto;">
+    <div style="display:flex; flex-direction:column; gap:6px; padding:0 10px 22px;">
+      <dc-import name="ToergaerMark" variant="{{ logo }}" size="28" byline="{{ false }}" dark="{{ true }}" hint-size="120px,28px"></dc-import>
+      <span style="font-size:11px; color:rgba(255,255,255,0.6); font-family:var(--hm-font-mono);">/admin · my-gaer</span>
+    </div>
+    <nav style="display:flex; flex-direction:column; gap:16px;">
+      <sc-for list="{{ nav }}" as="g" hint-placeholder-count="3">
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <div style="padding:0 10px 4px; font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.45);">{{ g.label }}</div>
+          <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="2">
+            <button onClick="{{ n.pick }}" style="position:relative; display:flex; align-items:center; gap:10px; width:100%; border:0; cursor:pointer; text-align:left; padding:8px 10px; border-radius:8px; font:{{ n.font }}; background:{{ n.bg }}; color:{{ n.fg }};">
+              <span style="position:absolute; left:0; top:50%; width:2px; height:16px; margin-top:-8px; border-radius:2px; background:{{ n.bar }};"></span>
+              <span style="width:16px; height:16px; flex:none; background:currentColor; -webkit-mask:url({{ n.icon }}) center/contain no-repeat; mask:url({{ n.icon }}) center/contain no-repeat;"></span>
+              <span style="flex:1; min-width:0;">{{ n.label }}</span>
+              <sc-if value="{{ n.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="min-width:18px; padding:0 6px; box-sizing:border-box; border-radius:9999px; background:{{ n.badgeBg }}; color:{{ n.badgeFg }}; font-size:10px; font-weight:700; text-align:center; line-height:18px;">{{ n.badge }}</span></sc-if>
+            </button>
+          </sc-for>
+        </div>
+      </sc-for>
+    </nav>
+    <div style="margin-top:auto; padding:12px 10px 0; border-top:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:10px; font-size:12px; color:rgba(255,255,255,0.7);">
+      <div style="display:flex; align-items:center; gap:8px;"><span style="width:8px; height:8px; border-radius:9999px; background:#10b981; animation:tgpulse 2s infinite;"></span>Server online · v1.14.2</div>
+      <a href="/" style="display:flex; align-items:center; gap:6px; color:rgba(255,255,255,0.7); text-decoration:none;"><span style="width:12px; height:12px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/arrow-left.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/arrow-left.svg) center/contain no-repeat;"></span>Til appen på /</a>
+    </div>
+  </aside>
+
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column;">
+    <sc-if value="{{ imp.on }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:10px 24px; background:#fffbeb; border-bottom:1px solid rgba(245,158,11,0.4); font-size:13px; color:#78350f;">
+        <span style="width:18px; height:18px; flex:none; background:#f59e0b; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/venetian-mask.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/venetian-mask.svg) center/contain no-repeat;"></span>
+        <span style="flex:1; min-width:240px; text-wrap:pretty;">Appen på <strong style="font-family:var(--hm-font-mono);">/</strong> kører nu som <strong>{{ imp.name }}</strong> ({{ imp.role }}). /admin bruger stadig din egen rolle, og alt logges med dig som aktør.</span>
+        <a href="/" target="_blank" style="display:inline-flex; align-items:center; height:30px; padding:0 12px; border-radius:8px; border:1px solid rgba(245,158,11,0.5); background:#ffffff; color:#78350f; font-weight:500; text-decoration:none;">Åbn / som {{ imp.name }}</a>
+        <button onClick="{{ stopImp }}" style="display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px; border-radius:8px; border:0; cursor:pointer; background:#78350f; color:#ffffff; font:500 13px var(--hm-font-sans);"><span style="width:14px; height:14px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/x.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/x.svg) center/contain no-repeat;"></span>Stop efterligning</button>
+      </div>
+    </sc-if>
+
+    <header style="position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:10px 24px; background:rgba(255,255,255,0.92); backdrop-filter:blur(8px); border-bottom:1px solid #e2e8f0; font-size:12px; color:#64748b;">
+      <span style="font:500 13px var(--hm-font-mono); color:#64748b;">my-gaer.dk<span style="color:#020817; font-weight:600;">{{ path }}</span></span>
+      <sc-if value="{{ showRange }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:2px; padding:2px; border-radius:8px; background:#f1f5f9;">
+          <sc-for list="{{ ranges }}" as="r" hint-placeholder-count="3">
+            <button onClick="{{ r.pick }}" style="border:0; cursor:pointer; padding:4px 10px; border-radius:6px; font:500 12px var(--hm-font-sans); background:{{ r.bg }}; color:{{ r.fg }}; box-shadow:{{ r.sh }};">{{ r.label }}</button>
+          </sc-for>
+        </div>
+      </sc-if>
+      <span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:9999px; border:1px solid #e2e8f0; background:#ffffff;"><span style="width:6px; height:6px; border-radius:9999px; background:#10b981;"></span>API 42 ms · Postgres ok</span>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+        <button onClick="{{ toggleExt }}" aria-label="Happy AI-udvidelse" title="{{ ext.title }}" style="position:relative; width:32px; height:32px; border-radius:9999px; border:1px solid {{ ext.btnBd }}; background:#ffffff; cursor:pointer; padding:0; display:flex; align-items:center; justify-content:center; box-shadow:{{ ext.btnRing }};">
+          <img src="assets/happy-mates-logo.svg" alt="" style="width:22px; height:22px; border-radius:9999px; filter:{{ ext.logoFilter }};">
+          <span style="position:absolute; right:-1px; bottom:-1px; width:10px; height:10px; border-radius:9999px; border:2px solid #ffffff; background:{{ ext.dot }};"></span>
+        </button>
+        <a href="/" target="_blank" style="display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 12px; border-radius:8px; border:1px solid #e2e8f0; background:#ffffff; color:#020817; font:500 13px var(--hm-font-sans); text-decoration:none;">Åbn appen<span style="width:13px; height:13px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/external-link.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/external-link.svg) center/contain no-repeat;"></span></a>
+        <span title="Mette Hansen · admin" style="width:30px; height:30px; border-radius:9999px; background:var(--hm-brand-gradient); color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">MH</span>
+      </div>
+    </header>
+
+    <main style="flex:1; padding:28px 24px 64px; box-sizing:border-box; width:100%; max-width:1240px; display:flex; flex-direction:column; gap:20px;">
+
+      <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+        <div data-screen-label="Statistik" style="display:flex; flex-direction:column; gap:20px;">
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <h1 style="margin:0; font-size:26px; letter-spacing:-0.02em; font-weight:700;">Statistik</h1>
+            <p style="margin:0; color:#64748b; max-width:720px; text-wrap:pretty;">Opsamlet af containerens egen server og gemt i dens Postgres. Ingen tredjepart. Besøgende tælles kun med samtykke.</p>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px;">
+            <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+              <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; gap:6px;">
+                <span style="font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#64748b;">{{ k.label }}</span>
+                <span style="font-size:30px; font-weight:700; letter-spacing:-0.02em; font-variant-numeric:tabular-nums;">{{ k.value }}</span>
+                <span style="font-size:12px; color:{{ k.subFg }};">{{ k.sub }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:14px;">
+            <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+              <span style="font-size:15px; font-weight:600;">Aktivitet pr. dag</span>
+              <span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#64748b;"><span style="width:10px; height:10px; border-radius:3px; background:#2563eb;"></span>Sidevisninger</span>
+              <span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#64748b;"><span style="width:10px; height:10px; border-radius:3px; background:#f59e0b;"></span>Logins</span>
+            </div>
+            <div style="height:180px; display:flex; align-items:flex-end; gap:{{ chartGap }}px; border-bottom:1px solid #e2e8f0;">
+              <sc-for list="{{ chart }}" as="d" hint-placeholder-count="30">
+                <div title="{{ d.title }}" style="flex:1; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; gap:2px;">
+                  <div style="height:{{ d.pv }}%; background:#2563eb; border-radius:3px 3px 0 0; opacity:0.85;"></div>
+                  <div style="height:{{ d.lg }}%; background:#f59e0b; border-radius:2px;"></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; font-variant-numeric:tabular-nums;"><span>{{ chartFrom }}</span><span>I dag</span></div>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px;">
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; align-items:center;"><span style="font-size:15px; font-weight:600;">Mest brugte features</span><button onClick="{{ goFeatures }}" style="margin-left:auto; border:0; background:transparent; cursor:pointer; color:#2563eb; font:500 12px var(--hm-font-sans);">Features og ringe →</button></div>
+              <sc-for list="{{ topFeatures }}" as="r" hint-placeholder-count="5">
+                <div style="display:flex; flex-direction:column; gap:5px;">
+                  <div style="display:flex; align-items:center; gap:8px; font-size:13px;"><span style="font-weight:500;">{{ r.title }}</span><span style="font-size:10px; font-weight:700; padding:1px 7px; border-radius:9999px; background:{{ r.ringBg }}; color:{{ r.ringFg }};">R{{ r.ring }}</span><span style="margin-left:auto; font-variant-numeric:tabular-nums; color:#64748b;">{{ r.value }}</span></div>
+                  <div style="height:6px; border-radius:9999px; background:#f1f5f9; overflow:hidden;"><div style="height:100%; width:{{ r.pct }}%; background:linear-gradient(90deg,#f97316,#f59e0b); border-radius:9999px;"></div></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:12px;">
+              <span style="font-size:15px; font-weight:600;">Sider</span>
+              <sc-for list="{{ pages }}" as="r" hint-placeholder-count="6">
+                <div style="display:flex; flex-direction:column; gap:5px;">
+                  <div style="display:flex; font-size:13px;"><span style="font-family:var(--hm-font-mono);">{{ r.label }}</span><span style="margin-left:auto; font-variant-numeric:tabular-nums; color:#64748b;">{{ r.value }}</span></div>
+                  <div style="height:6px; border-radius:9999px; background:#f1f5f9; overflow:hidden;"><div style="height:100%; width:{{ r.pct }}%; background:#2563eb; border-radius:9999px;"></div></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:14px;">
+              <span style="font-size:15px; font-weight:600;">Login</span>
+              <div style="display:flex; height:10px; border-radius:9999px; overflow:hidden; background:#f1f5f9;">
+                <div style="width:{{ login.pkPct }}%; background:#16a34a;"></div><div style="width:{{ login.otpPct }}%; background:#2563eb;"></div><div style="width:{{ login.failPct }}%; background:#dc2626;"></div>
+              </div>
+              <sc-for list="{{ login.rows }}" as="r" hint-placeholder-count="3">
+                <div style="display:flex; align-items:center; gap:8px; font-size:13px;"><span style="width:10px; height:10px; border-radius:3px; background:{{ r.c }};"></span><span>{{ r.label }}</span><span style="margin-left:auto; font-variant-numeric:tabular-nums; color:#64748b;">{{ r.value }}</span></div>
+              </sc-for>
+              <div style="padding-top:12px; border-top:1px solid #e2e8f0; display:flex; flex-direction:column; gap:8px; font-size:13px;">
+                <div style="display:flex;"><span style="color:#64748b;">Brugere med passkey</span><span style="margin-left:auto; font-weight:600; font-variant-numeric:tabular-nums;">{{ login.withPk }}</span></div>
+                <div style="display:flex;"><span style="color:#64748b;">Skal oprette passkey</span><span style="margin-left:auto; font-weight:600; font-variant-numeric:tabular-nums; color:#9a3412;">{{ login.mustPk }}</span></div>
+                <button onClick="{{ goUsersNoPk }}" style="align-self:flex-start; border:0; background:transparent; padding:0; cursor:pointer; color:#2563eb; font:500 12px var(--hm-font-sans);">Se brugere uden passkey →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isUsers }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Brugere" style="display:flex; flex-direction:column; gap:16px;">
+          <div style="display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap;">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <h1 style="margin:0; font-size:26px; letter-spacing:-0.02em; font-weight:700;">Brugere og roller</h1>
+              <p style="margin:0; color:#64748b; max-width:720px; text-wrap:pretty;">Den første bruger på en ny instans bliver admin. Der skal altid være mindst én admin. Alt her skrives i audit-loggen.</p>
+            </div>
+          </div>
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 12px; border-bottom:1px solid #e2e8f0;">
+              <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Søg på navn eller telefonnummer" style="flex:1 1 240px; min-width:0; height:34px; padding:0 10px; border:1px solid #e2e8f0; border-radius:8px; font:14px var(--hm-font-sans); box-sizing:border-box;">
+              <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                <sc-for list="{{ filters }}" as="c" hint-placeholder-count="6">
+                  <button onClick="{{ c.pick }}" style="cursor:pointer; height:28px; padding:0 10px; border-radius:9999px; border:1px solid {{ c.bd }}; background:{{ c.bg }}; color:{{ c.fg }}; font:500 12px var(--hm-font-sans); white-space:nowrap;">{{ c.label }} · {{ c.n }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <div style="min-width:860px;">
+                <div style="display:grid; grid-template-columns:minmax(240px,1.6fr) 110px 170px 130px 100px 40px; gap:10px; align-items:center; padding:8px 16px; border-bottom:1px solid #e2e8f0; font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:#64748b;">
+                  <span>Bruger</span><span>Rolle</span><span>Login</span><span>Sidst logget ind</span><span>Status</span><span></span>
+                </div>
+                <sc-for list="{{ rows }}" as="u" hint-placeholder-count="8">
+                  <div onClick="{{ u.open }}" style="display:grid; grid-template-columns:minmax(240px,1.6fr) 110px 170px 130px 100px 40px; gap:10px; align-items:center; padding:9px 16px; border-bottom:1px solid #f1f5f9; font-size:13px; cursor:pointer; background:{{ u.rowBg }};" style-hover="background:#f8fafc;">
+                    <span style="display:flex; align-items:center; gap:10px; min-width:0;">
+                      <span style="width:30px; height:30px; flex:none; border-radius:9999px; background:{{ u.avBg }}; color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">{{ u.initials }}</span>
+                      <span style="min-width:0; display:flex; flex-direction:column;">
+                        <span style="display:flex; align-items:center; gap:6px;"><span style="font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ u.name }}</span><sc-if value="{{ u.isTest }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px; font-weight:700; padding:1px 7px; border-radius:9999px; background:rgba(245,158,11,0.15); color:#92400e;">Testkonto</span></sc-if></span>
+                        <span style="font-size:12px; color:#64748b; font-variant-numeric:tabular-nums;">{{ u.sub }}</span>
+                      </span>
+                    </span>
+                    <span><span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px; background:{{ u.roleBg }}; color:{{ u.roleFg }};">{{ u.roleLabel }}</span></span>
+                    <span style="display:flex; flex-direction:column; gap:2px; align-items:flex-start;"><span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px; background:{{ u.loginBg }}; color:{{ u.loginFg }};">{{ u.loginLabel }}</span><span style="font-size:11px; color:#64748b;">{{ u.sessions }}</span></span>
+                    <span style="font-size:12px; color:#64748b;">{{ u.last }}</span>
+                    <span><span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px; background:{{ u.statusBg }}; color:{{ u.statusFg }};">{{ u.statusLabel }}</span></span>
+                    <span style="width:16px; height:16px; background:#94a3b8; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/chevron-right.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/chevron-right.svg) center/contain no-repeat;"></span>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ noRows }}" hint-placeholder-val="{{ false }}"><div style="padding:28px 16px; text-align:center; color:#64748b; font-size:13px;">Ingen brugere matcher.</div></sc-if>
+              </div>
+            </div>
+            <div style="padding:10px 16px; font-size:12px; color:#64748b;">{{ rowsCount }}</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isImp }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Efterligning" style="display:flex; flex-direction:column; gap:16px; max-width:880px;">
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <h1 style="margin:0; display:flex; align-items:center; gap:10px; font-size:26px; letter-spacing:-0.02em; font-weight:700;"><span style="width:24px; height:24px; background:#f59e0b; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/venetian-mask.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/venetian-mask.svg) center/contain no-repeat;"></span>Efterligning</h1>
+            <p style="margin:0; color:#64748b; text-wrap:pretty;">Opret testkonti og se appen på / som dem. En testkonto kan ikke logge ind selv, og kun du kan se og bruge dine egne. Start, stop, oprettelse og sletning skrives i audit-loggen.</p>
+          </div>
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; flex-direction:column; gap:4px;"><span style="font-size:15px; font-weight:600;">Opret testkonto</span><span style="font-size:13px; color:#64748b;">„Én pr. rolle“ opretter Test Bruger og Test Admin, hvis de mangler.</span></div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
+              <label style="display:flex; flex-direction:column; gap:6px; font-size:13px; font-weight:500;">Visningsnavn<input value="{{ impName }}" onChange="{{ onImpName }}" maxlength="80" placeholder="Test Kasserer" style="height:36px; padding:0 10px; border:1px solid #e2e8f0; border-radius:8px; font:14px var(--hm-font-sans);"></label>
+              <label style="display:flex; flex-direction:column; gap:6px; font-size:13px; font-weight:500;">Rolle
+                <select value="{{ impRole }}" onChange="{{ onImpRole }}" style="height:36px; padding:0 8px; border:1px solid #e2e8f0; border-radius:8px; font:14px var(--hm-font-sans); background:#ffffff;"><option value="user">Bruger</option><option value="admin">Admin</option></select>
+              </label>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button onClick="{{ addTest }}" style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 14px; border-radius:8px; border:0; cursor:pointer; background:#2563eb; color:#f8fafc; font:500 13px var(--hm-font-sans); opacity:{{ addOp }}; pointer-events:{{ addPe }};"><span style="width:14px; height:14px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/plus.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/plus.svg) center/contain no-repeat;"></span>Tilføj</button>
+              <button onClick="{{ addPresets }}" style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 14px; border-radius:8px; border:1px solid #e2e8f0; cursor:pointer; background:#ffffff; color:#020817; font:500 13px var(--hm-font-sans);"><span style="width:14px; height:14px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/sparkles.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/sparkles.svg) center/contain no-repeat;"></span>Én pr. rolle</button>
+            </div>
+          </div>
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:6px;">
+            <span style="font-size:15px; font-weight:600; padding-bottom:6px;">Dine testkonti</span>
+            <sc-if value="{{ noTests }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px; color:#64748b;">Ingen testkonti endnu.</span></sc-if>
+            <sc-for list="{{ tests }}" as="t" hint-placeholder-count="2">
+              <div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid #f1f5f9;">
+                <span style="width:30px; height:30px; flex:none; border-radius:9999px; background:#fef3c7; color:#92400e; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">{{ t.initials }}</span>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column;"><span style="font-weight:500;">{{ t.name }}</span><span style="font-size:12px; color:#64748b; font-family:var(--hm-font-mono);">{{ t.handle }}</span></div>
+                <span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:9999px; border:1px solid #e2e8f0; color:#475569;">{{ t.roleLabel }}</span>
+                <sc-if value="{{ t.current }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px; font-weight:700; padding:3px 10px; border-radius:9999px; background:#0f172a; color:#ffffff;">Aktiv</span></sc-if>
+                <sc-if value="{{ t.notCurrent }}" hint-placeholder-val="{{ true }}"><button onClick="{{ t.switchTo }}" style="display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 12px; border-radius:8px; border:0; cursor:pointer; background:#2563eb; color:#f8fafc; font:500 13px var(--hm-font-sans);"><span style="width:14px; height:14px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/venetian-mask.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/venetian-mask.svg) center/contain no-repeat;"></span>Skift til</button></sc-if>
+                <button onClick="{{ t.remove }}" aria-label="Slet testkonto" style="width:32px; height:32px; border-radius:8px; border:0; cursor:pointer; background:transparent; color:#64748b; display:flex; align-items:center; justify-content:center; opacity:{{ t.delOp }}; pointer-events:{{ t.delPe }};" style-hover="background:#f1f5f9;"><span style="width:16px; height:16px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/trash-2.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/trash-2.svg) center/contain no-repeat;"></span></button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isFeatures }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Features og ringe" style="display:flex; flex-direction:column; gap:16px;">
+          <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+            <div style="display:flex; flex-direction:column; gap:6px; flex:1; min-width:280px;">
+              <h1 style="margin:0; font-size:26px; letter-spacing:-0.02em; font-weight:700;">Features og ringe</h1>
+              <p style="margin:0; color:#64748b; max-width:720px; text-wrap:pretty;">Ringen sættes her og kun her. Nye features starter i ring 1. Alt er udrullet overalt, ringen afgør hvem der ser det.</p>
+            </div>
+            <button onClick="{{ importMissing }}" style="display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 12px; border-radius:8px; border:1px solid #e2e8f0; cursor:pointer; background:#ffffff; color:#020817; font:500 13px var(--hm-font-sans); opacity:{{ impOp }}; pointer-events:{{ impPe }};"><span style="width:14px; height:14px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/download.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/download.svg) center/contain no-repeat;"></span>Importér fra koden ({{ missingN }})</button>
+            <button onClick="{{ openNew }}" style="display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 12px; border-radius:8px; border:0; cursor:pointer; background:#2563eb; color:#f8fafc; font:500 13px var(--hm-font-sans);"><span style="width:14px; height:14px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/plus.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/plus.svg) center/contain no-repeat;"></span>Ny feature</button>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+            <sc-for list="{{ ringLegend }}" as="r" hint-placeholder-count="4">
+              <div style="display:flex; flex-direction:column; gap:6px; padding:12px 14px; border-radius:12px; background:#ffffff; border:1px solid #e2e8f0;">
+                <span style="display:flex; align-items:center; gap:8px;"><span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px; background:{{ r.bg }}; color:{{ r.fg }};">Ring {{ r.n }} · {{ r.label }}</span><span style="margin-left:auto; font-size:12px; color:#64748b; font-variant-numeric:tabular-nums;">{{ r.count }}</span></span>
+                <span style="font-size:12px; color:#64748b; text-wrap:pretty;">{{ r.who }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+            <div style="overflow-x:auto;">
+              <div style="min-width:960px;">
+                <div style="display:grid; grid-template-columns:minmax(200px,1.2fr) 100px minmax(200px,1.4fr) 230px 90px 150px 36px; gap:10px; align-items:center; padding:8px 16px; border-bottom:1px solid #e2e8f0; font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:#64748b;">
+                  <span>Feature</span><span>Område</span><span>Beskrivelse</span><span>Ring</span><span>Observation</span><span style="text-align:right;">Brug 30 d</span><span></span>
+                </div>
+                <sc-for list="{{ features }}" as="f" hint-placeholder-count="8">
+                  <div style="border-bottom:1px solid #f1f5f9;">
+                    <div style="display:grid; grid-template-columns:minmax(200px,1.2fr) 100px minmax(200px,1.4fr) 230px 90px 150px 36px; gap:10px; align-items:center; padding:10px 16px; font-size:13px;">
+                      <span style="display:flex; flex-direction:column; min-width:0;"><span style="font-weight:600;">{{ f.title }}</span><span style="font:11px var(--hm-font-mono); color:#64748b;">{{ f.key }}</span></span>
+                      <span>{{ f.area }}</span>
+                      <span style="color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ f.desc }}">{{ f.desc }}</span>
+                      <span style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:10px; font-weight:700; padding:2px 7px; border-radius:9999px; background:{{ f.ringBg }}; color:{{ f.ringFg }};">R{{ f.ring }}</span>
+                        <select value="{{ f.ringStr }}" onChange="{{ f.onRing }}" aria-label="Ring" style="height:30px; padding:0 6px; border:1px solid #e2e8f0; border-radius:8px; font:12px var(--hm-font-sans); background:#ffffff; width:170px;"><option value="1">Ring 1 · Internt</option><option value="2">Ring 2 · Beta</option><option value="3">Ring 3 · Preview</option><option value="4">Ring 4 · Stabilt</option></select>
+                      </span>
+                      <button onClick="{{ f.onObs }}" aria-label="Observation" style="width:36px; height:20px; border-radius:9999px; border:0; padding:2px; cursor:pointer; background:{{ f.obsBg }}; display:flex;"><span style="width:16px; height:16px; border-radius:9999px; background:#ffffff; box-shadow:0 1px 2px rgba(0,0,0,0.2); transform:translateX({{ f.obsX }}px); transition:transform .15s;"></span></button>
+                      <button onClick="{{ f.toggle }}" style="justify-self:end; display:inline-flex; align-items:center; gap:4px; border:0; background:transparent; cursor:pointer; padding:2px 4px; border-radius:6px; font:13px var(--hm-font-sans); color:#020817; font-variant-numeric:tabular-nums;" style-hover="background:#f1f5f9;">{{ f.count }} <span style="font-size:12px; color:#64748b;">/ {{ f.userCount }} brugere</span><span style="width:12px; height:12px; background:#64748b; -webkit-mask:url({{ f.chev }}) center/contain no-repeat; mask:url({{ f.chev }}) center/contain no-repeat;"></span></button>
+                      <span><sc-if value="{{ f.canDelete }}" hint-placeholder-val="{{ false }}"><button onClick="{{ f.del }}" aria-label="Slet" style="width:28px; height:28px; border:0; border-radius:6px; background:transparent; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;" style-hover="background:#f1f5f9;"><span style="width:15px; height:15px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/trash-2.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/trash-2.svg) center/contain no-repeat;"></span></button></sc-if></span>
+                    </div>
+                    <sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
+                      <div style="padding:10px 16px 14px; background:#f8fafc; display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:6px 24px; font-size:13px;">
+                        <sc-for list="{{ f.users }}" as="x" hint-placeholder-count="3">
+                          <div style="display:flex; gap:8px;"><span>{{ x.name }}</span><span style="margin-left:auto; color:#64748b; font-variant-numeric:tabular-nums;">{{ x.n }} · {{ x.last }}</span></div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:10px; max-width:720px;">
+            <span style="font-size:15px; font-weight:600;">Brugernes niveau</span>
+            <span style="font-size:12px; color:#64748b; text-wrap:pretty;">Uden række gælder ring 4. Brugeren vælger selv under Konto → Dit niveau, og du kan sætte eller nulstille det her. En feature vises, når dens ring er mindst brugerens niveau.</span>
+            <sc-for list="{{ levels }}" as="l" hint-placeholder-count="2">
+              <div style="display:flex; align-items:center; gap:10px; padding:6px 0; border-top:1px solid #f1f5f9; font-size:13px;">
+                <span style="flex:1; min-width:0;">{{ l.name }} <span style="color:#64748b; font-variant-numeric:tabular-nums;">{{ l.phone }}</span></span>
+                <select value="{{ l.ringStr }}" onChange="{{ l.onRing }}" style="height:30px; padding:0 6px; border:1px solid #e2e8f0; border-radius:8px; font:12px var(--hm-font-sans); background:#ffffff;"><option value="1">Ring 1 · Internt</option><option value="2">Ring 2 · Beta</option><option value="3">Ring 3 · Preview</option><option value="4">Ring 4 · Stabilt</option></select>
+                <button onClick="{{ l.reset }}" style="height:30px; padding:0 10px; border:0; border-radius:8px; background:transparent; cursor:pointer; font:500 12px var(--hm-font-sans); color:#020817;" style-hover="background:#f1f5f9;">Nulstil</button>
+              </div>
+            </sc-for>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; padding-top:8px; border-top:1px solid #f1f5f9;">
+              <select value="{{ lvlUser }}" onChange="{{ onLvlUser }}" style="height:32px; padding:0 6px; border:1px solid #e2e8f0; border-radius:8px; font:12px var(--hm-font-sans); background:#ffffff; min-width:220px;">
+                <option value="">Vælg bruger</option>
+                <sc-for list="{{ lvlOptions }}" as="o" hint-placeholder-count="6"><option value="{{ o.id }}">{{ o.label }}</option></sc-for>
+              </select>
+              <select value="{{ lvlRing }}" onChange="{{ onLvlRing }}" style="height:32px; padding:0 6px; border:1px solid #e2e8f0; border-radius:8px; font:12px var(--hm-font-sans); background:#ffffff;"><option value="1">Ring 1 · Internt</option><option value="2">Ring 2 · Beta</option><option value="3">Ring 3 · Preview</option><option value="4">Ring 4 · Stabilt</option></select>
+              <button onClick="{{ setLvl }}" style="height:32px; padding:0 12px; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff; cursor:pointer; font:500 12px var(--hm-font-sans); color:#020817; opacity:{{ lvlOp }}; pointer-events:{{ lvlPe }};">Sæt</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isStores }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="App Stores" style="display:flex; flex-direction:column; gap:16px;">
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <h1 style="margin:0; font-size:26px; letter-spacing:-0.02em; font-weight:700;">App Stores</h1>
+            <p style="margin:0; color:#64748b; max-width:720px; text-wrap:pretty;">Grafik, tekster og links til App Store og Google Play for instansens mobil-app. Navn, logo og farver kommer fra Indstillinger.</p>
+          </div>
+          <a href="Happy AI Sidepanel - App Stores.dc.html" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:12px; background:#ffffff; border:1px solid rgba(37,99,235,0.2); text-decoration:none; color:#020817;">
+            <img src="assets/happy-mates-logo.svg" alt="" style="width:24px; height:24px;">
+            <span style="flex:1; display:flex; flex-direction:column; gap:2px;"><span style="font-weight:600;">Har I ikke udviklerkonti endnu?</span><span style="font-size:13px; color:#64748b;">Happy AI-sidepanelet guider jer gennem Apple Developer og Google Play Console og tjekker nøglerne til upload.</span></span>
+            <span style="font-size:13px; font-weight:500; color:#2563eb; white-space:nowrap;">Åbn guiden →</span>
+          </a>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div style="display:flex; gap:4px; padding:4px; border-radius:10px; background:#e2e8f0;">
+              <sc-for list="{{ st.stores }}" as="x" hint-placeholder-count="2"><button onClick="{{ x.pick }}" style="border:0; cursor:pointer; height:32px; padding:0 14px; border-radius:7px; font:600 13px var(--hm-font-sans); background:{{ x.bg }}; color:{{ x.fg }}; box-shadow:{{ x.sh }};">{{ x.label }}</button></sc-for>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <a href="{{ st.consoleUrl }}" target="_blank" style="font-size:13px;">{{ st.consoleLabel }} ↗</a>
+              <div style="display:flex; gap:2px; padding:3px; border-radius:9999px; border:1px solid #e2e8f0; background:#ffffff;">
+                <sc-for list="{{ st.locales }}" as="x" hint-placeholder-count="2"><button onClick="{{ x.pick }}" style="border:0; cursor:pointer; height:26px; min-width:40px; padding:0 10px; border-radius:9999px; font:700 12px var(--hm-font-sans); background:{{ x.bg }}; color:{{ x.fg }};">{{ x.label }}</button></sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:4px; border-bottom:1px solid #e2e8f0; overflow-x:auto;">
+            <sc-for list="{{ st.tabs }}" as="t" hint-placeholder-count="6"><button onClick="{{ t.pick }}" style="margin-bottom:-1px; border:0; border-bottom:2px solid {{ t.bd }}; background:transparent; cursor:pointer; padding:10px 12px; white-space:nowrap; font:{{ t.font }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for>
+          </div>
+
+          <sc-if value="{{ st.isOverview }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">
+              <div style="flex:1 1 280px; max-width:380px; background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:16px;">
+                <div style="display:flex; align-items:center; gap:14px;">
+                  <div style="width:64px; height:64px; flex:none; border-radius:15px; border:1px solid #e2e8f0; background:{{ st.cfg.iconBg }}; display:flex; align-items:center; justify-content:center;"><img src="assets/happy-mates-logo.svg" alt="" style="width:40px; height:40px;"></div>
+                  <div style="min-width:0; display:flex; flex-direction:column;"><span style="font-size:18px; font-weight:700;">{{ st.cfg.name }}</span><span style="font:12px var(--hm-font-mono); color:#64748b;">{{ st.cfg.bundleId }}</span></div>
+                </div>
+                <p style="margin:0; color:#475569; text-wrap:pretty;">{{ st.tagline }}</p>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                  <div style="display:flex; font-size:13px;"><span style="font-weight:600;">{{ st.storeName }} — klar til indsendelse</span><span style="margin-left:auto; color:#64748b; font-variant-numeric:tabular-nums;">{{ st.okN }} af {{ st.checkN }}</span></div>
+                  <div style="height:8px; border-radius:9999px; background:#f1f5f9; overflow:hidden;"><div style="height:100%; width:{{ st.okPct }}%; background:#22c55e; border-radius:9999px;"></div></div>
+                </div>
+                <div style="display:grid; grid-template-columns:auto 1fr; gap:6px 12px; font-size:13px;">
+                  <span style="color:#64748b;">Domæne</span><span style="font:12px var(--hm-font-mono);">my-gaer.dk</span>
+                  <span style="color:#64748b;">App</span><span>Login, så /m i en WebView</span>
+                  <span style="color:#64748b;">Enheder</span><span>Telefon og tablet</span>
+                </div>
+              </div>
+              <div style="flex:2 1 420px; min-width:0; background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+                <div style="padding:14px 18px; border-bottom:1px solid #e2e8f0; font-weight:700;">Tjekliste · {{ st.storeName }}</div>
+                <sc-for list="{{ st.checks }}" as="c" hint-placeholder-count="8">
+                  <div style="display:flex; align-items:center; gap:12px; padding:11px 18px; border-bottom:1px solid #f1f5f9;">
+                    <span style="width:10px; height:10px; flex:none; border-radius:9999px; background:{{ c.dot }};"></span>
+                    <div style="flex:1; min-width:0; display:flex; flex-direction:column;"><span style="font-weight:600;">{{ c.label }}</span><span style="font-size:12px; color:#64748b; text-wrap:pretty;">{{ c.detail }}</span></div>
+                    <button onClick="{{ c.act }}" style="height:30px; padding:0 10px; border-radius:6px; border:1px solid {{ c.bd }}; background:#ffffff; cursor:pointer; font:500 12px var(--hm-font-sans); color:#020817; white-space:nowrap;">{{ c.actLabel }}</button>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ st.isAssets }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+                <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-weight:700;">App-indstillinger</span><span style="font-size:12px; color:#94a3b8;">Ændringer slår igennem i alle billeder og i mobile/app.json.</span></div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:12px;">
+                  <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:#475569;">Navn (maks. 30)<input name="name" value="{{ st.cfg.name }}" onChange="{{ st.onCfg }}" maxlength="30" style="height:36px; padding:0 10px; border:1px solid #e2e8f0; border-radius:8px; font:14px var(--hm-font-sans);"></label>
+                  <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:#475569;">Bundle ID<input name="bundleId" value="{{ st.cfg.bundleId }}" onChange="{{ st.onCfg }}" style="height:36px; padding:0 10px; border:1px solid #e2e8f0; border-radius:8px; font:13px var(--hm-font-mono);"></label>
+                  <sc-for list="{{ st.colors }}" as="c" hint-placeholder-count="3">
+                    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:#475569;">{{ c.label }}<span style="height:36px; display:flex; align-items:center; gap:8px; padding:0 8px; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff; box-sizing:border-box;"><input type="color" name="{{ c.key }}" value="{{ c.value }}" onChange="{{ st.onCfg }}" style="width:24px; height:24px; border:0; padding:0; background:transparent;"><span style="font:12px var(--hm-font-mono);">{{ c.value }}</span></span></label>
+                  </sc-for>
+                </div>
+              </div>
+              <sc-for list="{{ st.assetGroups }}" as="g" hint-placeholder-count="3">
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+                  <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-weight:700;">{{ g.title }}</span><span style="font-size:12px; color:#94a3b8;">{{ g.req }}</span><button onClick="{{ g.all }}" style="margin-left:auto; height:28px; padding:0 10px; border-radius:6px; border:1px solid #e2e8f0; background:#ffffff; cursor:pointer; font:500 12px var(--hm-font-sans); color:#020817;">Hent alle ({{ g.n }})</button></div>
+                  <div style="display:flex; gap:16px; overflow-x:auto; padding-bottom:4px;">
+                    <sc-for list="{{ g.items }}" as="a" hint-placeholder-count="4">
+                      <figure style="margin:0; flex:none; display:flex; flex-direction:column; gap:8px;">
+                        <div style="width:{{ a.pw }}px; height:{{ a.ph }}px; border-radius:{{ a.radius }}; border:1px solid #e2e8f0; background:{{ a.bg }}; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:{{ a.justify }}; gap:10px; padding:{{ a.pad }}px; box-sizing:border-box;">
+                          <sc-if value="{{ a.isShot }}" hint-placeholder-val="{{ false }}">
+                            <span style="color:#ffffff; font:700 13px/1.25 var(--hm-font-sans); text-align:center; text-wrap:balance; color:{{ a.capFg }};">{{ a.caption }}</span>
+                            <div style="flex:1; width:{{ a.screenW }}%; border-radius:10px 10px 0 0; background:#ffffff; box-shadow:0 -2px 8px rgba(2,8,23,0.15); display:flex; flex-direction:column; gap:5px; padding:8px; box-sizing:border-box;">
+                              <div style="height:8px; width:55%; border-radius:4px; background:{{ a.primary }}; opacity:0.85;"></div>
+                              <div style="height:18px; border-radius:5px; background:#f1f5f9;"></div><div style="height:18px; border-radius:5px; background:#f1f5f9;"></div><div style="height:18px; width:70%; border-radius:5px; background:#f1f5f9;"></div>
+                            </div>
+                          </sc-if>
+                          <sc-if value="{{ a.isMark }}" hint-placeholder-val="{{ true }}"><img src="assets/happy-mates-logo.svg" alt="" style="width:{{ a.markSize }}px; height:{{ a.markSize }}px; filter:{{ a.filter }};"></sc-if>
+                          <sc-if value="{{ a.isFeature }}" hint-placeholder-val="{{ false }}"><span style="font:700 15px var(--hm-font-sans); color:{{ a.capFg }};">{{ a.caption }}</span></sc-if>
+                        </div>
+                        <figcaption style="display:flex; flex-direction:column; gap:2px; font-size:12px; max-width:{{ a.capW }}px;">
+                          <span style="font-weight:600;">{{ a.name }}</span><span style="color:#64748b; font-variant-numeric:tabular-nums;">{{ a.dims }}</span>
+                          <sc-if value="{{ a.hasNote }}" hint-placeholder-val="{{ false }}"><span style="color:#94a3b8;">{{ a.note }}</span></sc-if>
+                          <button onClick="{{ a.dl }}" style="align-self:flex-start; margin-top:2px; border:0; background:transparent; padding:0; cursor:pointer; color:#2563eb; font:600 12px var(--hm-font-sans);">Hent PNG</button>
+                        </figcaption>
+                      </figure>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ st.isTexts }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <p style="margin:0; font-size:13px; color:#64748b; text-wrap:pretty;">{{ st.textsIntro }}</p>
+              <sc-for list="{{ st.fields }}" as="f" hint-placeholder-count="5">
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:8px;">
+                  <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-weight:700;">{{ f.label }}</span><span style="font-size:12px; color:#94a3b8;">{{ f.where }}</span><span style="margin-left:auto; font-size:12px; font-weight:600; font-variant-numeric:tabular-nums; color:{{ f.countFg }};">{{ f.len }} / {{ f.limit }}</span></div>
+                  <textarea name="{{ f.key }}" rows="{{ f.rows }}" value="{{ f.value }}" onChange="{{ st.onText }}" style="resize:vertical; padding:9px 12px; border:1px solid {{ f.bd }}; border-radius:8px; font:14px/1.5 var(--hm-font-sans); color:#020817;"></textarea>
+                  <div style="display:flex; gap:8px;"><button onClick="{{ f.copy }}" style="height:28px; padding:0 10px; border-radius:6px; border:1px solid #e2e8f0; background:#ffffff; cursor:pointer; font:500 12px var(--hm-font-sans); color:#020817;">Kopiér</button><sc-if value="{{ f.edited }}" hint-placeholder-val="{{ false }}"><button onClick="{{ f.reset }}" style="height:28px; padding:0 10px; border-radius:6px; border:0; background:transparent; cursor:pointer; font:500 12px var(--hm-font-sans); color:#020817;">Nulstil</button></sc-if></div>
+                </div>
+              </sc-for>
+              <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-weight:700;">Overskrifter på skærmbilleder</span><span style="font-size:12px; color:#94a3b8;">Bruges i begge butikker · anbefalet maks. 32 tegn</span></div>
+                <sc-for list="{{ st.captions }}" as="c" hint-placeholder-count="4">
+                  <label style="display:grid; grid-template-columns:110px minmax(0,1fr) 54px; gap:10px; align-items:center; font-size:13px;"><span style="color:#475569;">{{ c.label }}</span><input name="{{ c.key }}" value="{{ c.value }}" onChange="{{ st.onText }}" style="height:34px; padding:0 10px; border:1px solid #e2e8f0; border-radius:8px; font:14px var(--hm-font-sans); min-width:0;"><span style="text-align:right; font-size:12px; font-variant-numeric:tabular-nums; color:{{ c.countFg }};">{{ c.len }} / 32</span></label>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ st.isLinks }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">
+              <div style="flex:3 1 420px; min-width:0; background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+                <div style="padding:14px 16px; border-bottom:1px solid #e2e8f0; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-weight:700;">Links og kontakt · {{ st.storeName }}</span><span style="font-size:12px; color:#94a3b8;">Forslag er markeret. Ret og bekræft.</span></div>
+                <sc-for list="{{ st.links }}" as="l" hint-placeholder-count="6">
+                  <div style="display:grid; grid-template-columns:minmax(140px,200px) minmax(0,1fr) auto; gap:12px; align-items:center; padding:10px 16px; border-bottom:1px solid #f1f5f9;">
+                    <span style="display:flex; flex-direction:column; gap:3px; align-items:flex-start;"><span style="font-size:13px; font-weight:600;">{{ l.label }}</span><sc-if value="{{ l.pending }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px; font-weight:700; padding:1px 7px; border-radius:9999px; background:#fef3c7; color:#92400e;">FORSLAG</span></sc-if></span>
+                    <input name="{{ l.key }}" value="{{ l.value }}" onChange="{{ st.onLink }}" placeholder="{{ l.hint }}" style="height:34px; padding:0 10px; border:1px solid #e2e8f0; border-radius:8px; font:13px var(--hm-font-mono); min-width:0;">
+                    <button onClick="{{ l.copy }}" style="height:28px; padding:0 10px; border-radius:6px; border:0; background:transparent; cursor:pointer; font:500 12px var(--hm-font-sans); color:#020817;">Kopiér</button>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="flex:2 1 300px; min-width:0; background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+                <div style="padding:14px 16px; border-bottom:1px solid #e2e8f0; font-weight:700;">Identifikatorer</div>
+                <sc-for list="{{ st.ids }}" as="x" hint-placeholder-count="8">
+                  <div style="display:flex; align-items:center; gap:10px; padding:9px 16px; border-bottom:1px solid #f1f5f9;"><span style="flex:0 0 130px; font-size:12px; color:#64748b;">{{ x.k }}</span><span style="flex:1; min-width:0; font:12px var(--hm-font-mono); overflow-wrap:anywhere;">{{ x.v }}</span><button onClick="{{ x.copy }}" style="border:0; background:transparent; padding:0; cursor:pointer; color:#2563eb; font:600 12px var(--hm-font-sans);">Kopiér</button></div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ st.isPrivacy }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+              <div style="padding:14px 16px; border-bottom:1px solid #e2e8f0; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-weight:700;">{{ st.privacyTitle }}</span><span style="font-size:12px; color:#94a3b8;">Svarene følger af, hvad Gær gemmer. Tilføjer du features, skal de opdateres.</span></div>
+              <sc-for list="{{ st.privacy }}" as="p" hint-placeholder-count="8">
+                <div style="display:grid; grid-template-columns:minmax(140px,240px) minmax(0,1fr); gap:12px; padding:11px 16px; border-bottom:1px solid #f1f5f9; font-size:13px;"><span style="font-weight:600;">{{ p.q }}</span><span style="color:#334155; text-wrap:pretty;">{{ p.a }}</span></div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ st.isGuide }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">
+              <nav style="flex:1 1 220px; max-width:280px; display:flex; flex-direction:column; gap:4px;">
+                <sc-for list="{{ st.guides }}" as="g" hint-placeholder-count="3"><button onClick="{{ g.pick }}" style="text-align:left; cursor:pointer; padding:10px 12px; border-radius:8px; border:1px solid {{ g.bd }}; background:{{ g.bg }}; font:{{ g.font }}; color:#020817;">{{ g.title }}</button></sc-for>
+              </nav>
+              <div style="flex:3 1 420px; min-width:0; background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; display:flex; flex-direction:column; gap:16px;">
+                <h3 style="margin:0; font-size:18px; font-weight:700;">{{ st.guide.title }}</h3>
+                <ol style="margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:16px;">
+                  <sc-for list="{{ st.guide.steps }}" as="x" hint-placeholder-count="6">
+                    <li style="display:grid; grid-template-columns:28px minmax(0,1fr); gap:12px;"><span style="width:28px; height:28px; border-radius:9999px; background:#eff6ff; color:#1d4ed8; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;">{{ x.n }}</span><div style="display:flex; flex-direction:column; gap:4px; padding-top:4px;"><span style="font-weight:600;">{{ x.title }}</span><span style="color:#475569; line-height:1.55; text-wrap:pretty;">{{ x.body }}</span><sc-if value="{{ x.hasCode }}" hint-placeholder-val="{{ false }}"><pre style="margin:4px 0 0; padding:10px 12px; border-radius:8px; background:#0f172a; color:#e2e8f0; font:12px/1.55 var(--hm-font-mono); white-space:pre-wrap; overflow-wrap:anywhere;">{{ x.code }}</pre></sc-if></div></li>
+                  </sc-for>
+                </ol>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isMcp }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="MCP-servere" style="display:flex; flex-direction:column; gap:18px;">
+          <div style="display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap;">
+            <div style="display:flex; flex-direction:column; gap:6px; flex:1; min-width:280px;">
+              <h1 style="margin:0; font-size:26px; letter-spacing:-0.02em; font-weight:700;">MCP-servere</h1>
+              <p style="margin:0; color:#64748b; max-width:720px; text-wrap:pretty;">To servere i containeren. Appen arbejder som den bruger, der loggede ind, med egne data. Admin kan alt i /admin, og hver ændring kommer tilbage som en kladde, du bekræfter.</p>
+            </div>
+            <div style="display:flex; gap:4px; padding:4px; border-radius:9999px; background:#e2e8f0;">
+              <sc-for list="{{ mcp.servers }}" as="v" hint-placeholder-count="2">
+                <button onClick="{{ v.pick }}" style="border:0; cursor:pointer; display:flex; align-items:center; gap:8px; padding:6px 14px; border-radius:9999px; font:500 13px var(--hm-font-sans); background:{{ v.bg }}; color:{{ v.fg }}; box-shadow:{{ v.sh }};">{{ v.label }}<span style="font:11px var(--hm-font-mono); color:#64748b;">{{ v.path }}</span></button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex; gap:4px; border-bottom:1px solid #e2e8f0; overflow-x:auto;">
+            <sc-for list="{{ mcp.tabs }}" as="t" hint-placeholder-count="5">
+              <button onClick="{{ t.pick }}" style="margin-bottom:-1px; border:0; border-bottom:2px solid {{ t.bd }}; background:transparent; cursor:pointer; padding:10px 12px; white-space:nowrap; font:{{ t.font }}; color:{{ t.fg }};">{{ t.label }}</button>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{ mcp.loading }}" hint-placeholder-val="{{ false }}"><div style="padding:40px; text-align:center; color:#64748b; background:#ffffff; border:1px solid #e2e8f0; border-radius:16px;">Henter værktøjskatalog …</div></sc-if>
+
+          <sc-if value="{{ mcp.isOverview }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; flex-direction:column; gap:20px;">
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap:20px; align-items:start;">
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                  <span style="align-self:flex-start; padding:3px 10px; border-radius:9999px; background:#eff6ff; color:#1e58d3; font:600 12px var(--hm-font-mono);">my-gaer.dk{{ mcp.srv.path }}</span>
+                  <h2 style="margin:0; font-size:30px; line-height:1.15; letter-spacing:-0.025em; font-weight:700; text-wrap:balance;">{{ mcp.heroTitle }}</h2>
+                  <p style="margin:0; font-size:15px; line-height:1.6; color:#64748b; max-width:600px; text-wrap:pretty;">{{ mcp.heroBody }}</p>
+                </div>
+                <div style="position:relative; isolation:isolate;">
+                  <div style="position:absolute; inset:-4px; border-radius:20px; background:linear-gradient(90deg,#f97316,#f59e0b); filter:blur(12px); opacity:0.22; z-index:-1;"></div>
+                  <div style="background:#ffffff; border:1px solid rgba(37,99,235,0.2); border-radius:16px; padding:22px; display:flex; flex-direction:column; gap:14px;">
+                    <span style="font-size:12px; font-weight:600; letter-spacing:0.05em; color:#64748b;">FORBINDELSE</span>
+                    <div style="display:grid; grid-template-columns:100px minmax(0,1fr); gap:8px 12px; font-size:13px;">
+                      <sc-for list="{{ mcp.conn }}" as="c" hint-placeholder-count="5"><span style="color:#64748b;">{{ c.k }}</span><span style="font-family:{{ c.font }}; overflow-wrap:anywhere;">{{ c.v }}</span></sc-for>
+                    </div>
+                    <button onClick="{{ mcp.goConnect }}" style="align-self:flex-start; height:36px; padding:0 14px; border-radius:8px; border:0; cursor:pointer; background:#2563eb; color:#f8fafc; font:500 13px var(--hm-font-sans);">Se opsætning af klienter</button>
+                  </div>
+                </div>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px;">
+                <sc-for list="{{ mcp.stats }}" as="k" hint-placeholder-count="4">
+                  <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px; display:flex; flex-direction:column; gap:4px;"><span style="font-size:13px; color:#64748b;">{{ k.label }}</span><span style="font-size:28px; font-weight:700; font-variant-numeric:tabular-nums;">{{ k.value }}</span></div>
+                </sc-for>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <h3 style="margin:0; font-size:18px; font-weight:600;">Prøv at spørge</h3>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap:12px;">
+                  <sc-for list="{{ mcp.prompts }}" as="p" hint-placeholder-count="3">
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+                      <span style="font-size:14px; font-weight:500; text-wrap:pretty;">„{{ p.q }}“</span>
+                      <div style="display:flex; gap:6px; flex-wrap:wrap;"><sc-for list="{{ p.chips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.pick }}" style="border:0; cursor:pointer; padding:2px 8px; border-radius:6px; background:#f1f5f9; color:#334155; font:12px var(--hm-font-mono);">{{ c.name }}</button></sc-for></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <h3 style="margin:0; font-size:18px; font-weight:600;">Domæner</h3>
+                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:10px;">
+                  <sc-for list="{{ mcp.domainCards }}" as="d" hint-placeholder-count="4">
+                    <button onClick="{{ d.pick }}" style="text-align:left; cursor:pointer; background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:4px;" style-hover="border-color:rgba(37,99,235,0.4);">
+                      <span style="display:flex; align-items:baseline; gap:8px;"><span style="font-size:14px; font-weight:600; color:#020817;">{{ d.label }}</span><span style="margin-left:auto; font-size:12px; color:#64748b;">{{ d.n }} værktøjer</span></span>
+                      <span style="font:11px var(--hm-font-mono); color:#64748b; overflow-wrap:anywhere;">{{ d.src }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ mcp.isTools }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap:20px; align-items:start;">
+              <div style="display:flex; flex-direction:column; gap:12px; min-width:0;">
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+                  <input value="{{ mcp.q }}" onChange="{{ mcp.onQ }}" placeholder="Søg i værktøjer, beskrivelser og domæner" style="height:36px; padding:0 12px; border:1px solid #e2e8f0; border-radius:8px; font:14px var(--hm-font-sans);">
+                  <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <sc-for list="{{ mcp.modes }}" as="m" hint-placeholder-count="4"><button onClick="{{ m.pick }}" style="border:0; cursor:pointer; padding:4px 10px; border-radius:9999px; font:500 12px var(--hm-font-sans); background:{{ m.bg }}; color:{{ m.fg }};">{{ m.label }}</button></sc-for>
+                    <span style="margin-left:auto; font-size:12px; color:#64748b;">{{ mcp.countLabel }}</span>
+                  </div>
+                  <div style="display:flex; gap:6px; flex-wrap:wrap;"><sc-for list="{{ mcp.domainChips }}" as="d" hint-placeholder-count="5"><button onClick="{{ d.pick }}" style="border:0; cursor:pointer; padding:3px 10px; border-radius:6px; font:500 12px var(--hm-font-sans); background:{{ d.bg }}; color:{{ d.fg }};">{{ d.label }}</button></sc-for></div>
+                </div>
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+                  <sc-if value="{{ mcp.noTools }}" hint-placeholder-val="{{ false }}"><div style="padding:24px; text-align:center; color:#64748b; font-size:13px;">Ingen værktøjer matcher filteret.</div></sc-if>
+                  <sc-for list="{{ mcp.toolRows }}" as="r" hint-placeholder-count="8">
+                    <button onClick="{{ r.pick }}" style="width:100%; text-align:left; cursor:pointer; border:0; border-bottom:1px solid #f1f5f9; background:{{ r.bg }}; padding:11px 18px; display:flex; flex-direction:column; gap:3px;" style-hover="background:#f8fafc;">
+                      <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="font:600 13px var(--hm-font-mono); color:#020817;">{{ r.name }}</span><span style="font-size:11px; font-weight:600; padding:1px 8px; border-radius:9999px; background:{{ r.mBg }}; color:{{ r.mFg }};">{{ r.mode }}</span><sc-if value="{{ r.hasLink }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px; font-weight:600; padding:1px 8px; border-radius:9999px; background:#eff6ff; color:#1e58d3;">Deep link</span></sc-if><span style="margin-left:auto; font-size:11px; color:#94a3b8;">{{ r.domain }}</span></span>
+                      <span style="font-size:13px; color:#64748b; text-wrap:pretty;">{{ r.desc }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="position:sticky; top:72px; display:flex; flex-direction:column; gap:12px; min-width:0;">
+                <sc-if value="{{ mcp.noSel }}" hint-placeholder-val="{{ true }}">
+                  <div style="border:1px dashed #cbd5e1; border-radius:16px; padding:22px; display:flex; flex-direction:column; gap:6px; color:#64748b; font-size:13px;"><span style="font-size:15px; font-weight:600; color:#334155;">Inspektør</span><span style="text-wrap:pretty;">Vælg et værktøj for at se parametre og køre det. Læseværktøjer svarer med det samme. Kladdeværktøjer giver en kladde, som du bekræfter her eller med confirm_draft.</span></div>
+                </sc-if>
+                <sc-if value="{{ mcp.hasSel }}" hint-placeholder-val="{{ false }}">
+                  <div style="background:#ffffff; border:1px solid rgba(37,99,235,0.2); border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:14px;">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="font:600 16px var(--hm-font-mono);">{{ mcp.sel.name }}</span><span style="font-size:11px; font-weight:600; padding:1px 8px; border-radius:9999px; background:{{ mcp.sel.mBg }}; color:{{ mcp.sel.mFg }};">{{ mcp.sel.mode }}</span></div>
+                    <p style="margin:0; font-size:14px; line-height:1.55; color:#334155; text-wrap:pretty;">{{ mcp.sel.desc }}</p>
+                    <span style="font:11px var(--hm-font-mono); color:#64748b;">{{ mcp.sel.src }}</span>
+                    <sc-if value="{{ mcp.sel.noParams }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px; color:#64748b;">Ingen parametre.</span></sc-if>
+                    <sc-for list="{{ mcp.sel.params }}" as="p" hint-placeholder-count="2">
+                      <label style="display:flex; flex-direction:column; gap:4px;"><span style="font:12px var(--hm-font-mono); color:#334155;">{{ p.label }}</span><input name="{{ p.name }}" value="{{ p.value }}" onChange="{{ mcp.onArg }}" placeholder="{{ p.ph }}" style="height:34px; padding:0 10px; border:1px solid #e2e8f0; border-radius:8px; font:13px var(--hm-font-mono);"></label>
+                    </sc-for>
+                    <sc-if value="{{ mcp.sel.hasLink }}" hint-placeholder-val="{{ false }}">
+                      <div style="background:#eff6ff; border:1px solid rgba(37,99,235,0.2); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px;">
+                        <div style="display:flex; align-items:center;"><span style="font-size:12px; font-weight:600; color:#1e58d3;">DEEP LINK · {{ mcp.sel.linkLabel }}</span><button onClick="{{ mcp.copyLink }}" style="margin-left:auto; height:26px; padding:0 10px; border-radius:6px; border:1px solid rgba(37,99,235,0.3); background:#ffffff; cursor:pointer; font:500 12px var(--hm-font-sans); color:#1e58d3;">{{ mcp.copyLinkLabel }}</button></div>
+                        <span style="font:12px var(--hm-font-mono); color:#020817; overflow-wrap:anywhere;">{{ mcp.sel.url }}</span>
+                        <sc-if value="{{ mcp.sel.hasFocus }}" hint-placeholder-val="{{ false }}"><span style="align-self:flex-start; padding:1px 8px; border-radius:6px; background:#ffffff; font:11px var(--hm-font-mono); color:#334155;">focus {{ mcp.sel.focus }}</span></sc-if>
+                      </div>
+                    </sc-if>
+                    <div style="display:flex; gap:8px;">
+                      <button onClick="{{ mcp.run }}" style="height:36px; padding:0 16px; border-radius:8px; border:0; cursor:pointer; background:#2563eb; color:#f8fafc; font:500 13px var(--hm-font-sans);">{{ mcp.runLabel }}</button>
+                      <button onClick="{{ mcp.closeSel }}" style="height:36px; padding:0 14px; border-radius:8px; border:1px solid #e2e8f0; cursor:pointer; background:#ffffff; color:#020817; font:500 13px var(--hm-font-sans);">Luk</button>
+                    </div>
+                  </div>
+                  <sc-if value="{{ mcp.hasResult }}" hint-placeholder-val="{{ false }}">
+                    <div style="background:#0f172a; border-radius:16px; padding:14px 16px; display:flex; flex-direction:column; gap:8px;"><div style="display:flex; font-size:12px; color:#94a3b8;"><span style="font-weight:600; color:#e2e8f0;">Resultat</span><span style="margin-left:auto;">{{ mcp.resultMs }} ms</span></div><pre style="margin:0; font:12px/1.5 var(--hm-font-mono); color:#e2e8f0; white-space:pre-wrap; overflow-wrap:anywhere; max-height:320px; overflow:auto;">{{ mcp.result }}</pre></div>
+                  </sc-if>
+                  <sc-if value="{{ mcp.hasDraft }}" hint-placeholder-val="{{ false }}">
+                    <div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+                      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px;"><span style="font:700 12px var(--hm-font-mono); color:#92400e;">KLADDE {{ mcp.draft.id }}</span><span style="color:#92400e;">{{ mcp.draft.statusText }}</span></div>
+                      <span style="font-size:15px; font-weight:500; color:#451a03; text-wrap:pretty;">{{ mcp.draft.summary }}</span>
+                      <ul style="margin:0; padding-left:18px; display:flex; flex-direction:column; gap:3px; font-size:13px; color:#78350f;"><sc-for list="{{ mcp.draft.bullets }}" as="b" hint-placeholder-count="2"><li>{{ b }}</li></sc-for></ul>
+                      <sc-if value="{{ mcp.draft.pending }}" hint-placeholder-val="{{ true }}">
+                        <input value="{{ mcp.reason }}" onChange="{{ mcp.onReason }}" placeholder="Årsag (gemmes i audit-loggen)" style="height:34px; padding:0 10px; border:1px solid #fcd34d; border-radius:8px; font:13px var(--hm-font-sans); background:#ffffff;">
+                        <div style="display:flex; gap:8px;"><button onClick="{{ mcp.confirm }}" style="height:34px; padding:0 14px; border-radius:8px; border:0; cursor:pointer; background:#0f172a; color:#ffffff; font:500 13px var(--hm-font-sans); opacity:{{ mcp.confirmOp }}; pointer-events:{{ mcp.confirmPe }};">Bekræft</button><button onClick="{{ mcp.cancelDraft }}" style="height:34px; padding:0 14px; border-radius:8px; border:1px solid #fcd34d; cursor:pointer; background:transparent; color:#92400e; font:500 13px var(--hm-font-sans);">Annullér</button></div>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                </sc-if>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ mcp.isDrafts }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+              <div style="padding:12px 18px; border-bottom:1px solid #e2e8f0; font-size:12px; color:#64748b;">Afventende kladder udløber efter 10 minutter. Kun den, der oprettede en kladde, kan bekræfte den.</div>
+              <sc-if value="{{ mcp.noDrafts }}" hint-placeholder-val="{{ true }}"><div style="padding:28px; text-align:center; color:#64748b; font-size:13px;">Ingen kladder endnu. Kør et kladdeværktøj under Værktøjer.</div></sc-if>
+              <sc-for list="{{ mcp.draftRows }}" as="d" hint-placeholder-count="3">
+                <div style="display:grid; grid-template-columns:minmax(180px,1fr) minmax(200px,2fr) 110px 90px; gap:12px; align-items:center; padding:11px 18px; border-bottom:1px solid #f1f5f9; font-size:13px;">
+                  <span style="display:flex; flex-direction:column; min-width:0;"><span style="font:600 13px var(--hm-font-mono);">{{ d.tool }}</span><span style="font-size:11px; color:#64748b;">{{ d.meta }}</span></span>
+                  <span style="color:#334155; text-wrap:pretty;">{{ d.summary }}</span>
+                  <span><span style="font-size:11px; font-weight:600; padding:2px 8px; border-radius:9999px; background:{{ d.sBg }}; color:{{ d.sFg }};">{{ d.status }}</span></span>
+                  <span><sc-if value="{{ d.pending }}" hint-placeholder-val="{{ false }}"><button onClick="{{ d.review }}" style="height:28px; padding:0 10px; border-radius:6px; border:1px solid #e2e8f0; background:#ffffff; cursor:pointer; font:500 12px var(--hm-font-sans); color:#020817;">Gennemgå</button></sc-if></span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ mcp.isMonitor }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+              <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #e2e8f0; flex-wrap:wrap;">
+                <input value="{{ mcp.monQ }}" onChange="{{ mcp.onMonQ }}" placeholder="Filtrér på værktøj eller bruger" style="flex:1 1 220px; min-width:0; height:32px; padding:0 10px; border:1px solid #e2e8f0; border-radius:8px; font:13px var(--hm-font-sans);">
+                <button onClick="{{ mcp.toggleLive }}" style="display:flex; align-items:center; gap:6px; height:32px; padding:0 12px; border-radius:8px; border:1px solid #e2e8f0; background:#ffffff; cursor:pointer; font:500 12px var(--hm-font-sans); color:#020817;"><span style="width:8px; height:8px; border-radius:9999px; background:{{ mcp.liveDot }}; animation:{{ mcp.liveAnim }};"></span>{{ mcp.liveLabel }}</button>
+              </div>
+              <div style="display:grid; grid-template-columns:80px minmax(0,1.2fr) minmax(0,1fr) 100px 60px; gap:10px; padding:8px 16px; border-bottom:1px solid #e2e8f0; font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:#64748b;"><span>Tid</span><span>Værktøj</span><span>Bruger</span><span>Status</span><span style="text-align:right;">ms</span></div>
+              <sc-for list="{{ mcp.events }}" as="e" hint-placeholder-count="8">
+                <div style="display:grid; grid-template-columns:80px minmax(0,1.2fr) minmax(0,1fr) 100px 60px; gap:10px; align-items:center; padding:8px 16px; border-bottom:1px solid #f1f5f9; font-size:12px;">
+                  <span style="font-variant-numeric:tabular-nums; color:#64748b;">{{ e.time }}</span>
+                  <span style="font-family:var(--hm-font-mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ e.tool }}</span>
+                  <span style="color:#334155; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ e.user }}</span>
+                  <span><span style="font-size:11px; font-weight:600; padding:1px 8px; border-radius:9999px; background:{{ e.sBg }}; color:{{ e.sFg }};">{{ e.status }}</span></span>
+                  <span style="text-align:right; font-variant-numeric:tabular-nums; color:#64748b;">{{ e.ms }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ mcp.isConnect }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; flex-direction:column; gap:14px; max-width:900px;">
+              <p style="margin:0; font-size:14px; color:#475569; line-height:1.55; text-wrap:pretty;">{{ mcp.connectIntro }}</p>
+              <sc-for list="{{ mcp.clients }}" as="c" hint-placeholder-count="3">
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; align-items:center;"><span style="font-size:15px; font-weight:600;">{{ c.title }}</span><button onClick="{{ c.copy }}" style="margin-left:auto; height:28px; padding:0 10px; border-radius:6px; border:1px solid #e2e8f0; background:#ffffff; cursor:pointer; font:500 12px var(--hm-font-sans); color:#020817;">{{ c.copyLabel }}</button></div>
+                  <pre style="margin:0; padding:12px 14px; border-radius:10px; background:#0f172a; color:#e2e8f0; font:12px/1.55 var(--hm-font-mono); white-space:pre-wrap; overflow-wrap:anywhere;">{{ c.code }}</pre>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </main>
+  </div>
+
+  <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeSel }}" style="position:fixed; inset:0; z-index:40; background:rgba(2,8,23,0.35);"></div>
+    <aside data-screen-label="Bruger" style="position:fixed; top:0; right:0; bottom:0; z-index:41; width:420px; max-width:100vw; box-sizing:border-box; background:#ffffff; box-shadow:var(--hm-shadow-2xl); display:flex; flex-direction:column;">
+      <div style="display:flex; align-items:center; gap:12px; padding:18px 20px; border-bottom:1px solid #e2e8f0;">
+        <span style="width:40px; height:40px; flex:none; border-radius:9999px; background:{{ sel.avBg }}; color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700;">{{ sel.initials }}</span>
+        <div style="flex:1; min-width:0; display:flex; flex-direction:column;"><span style="font-size:17px; font-weight:700;">{{ sel.name }}</span><span style="font-size:12px; color:#64748b; font-variant-numeric:tabular-nums;">{{ sel.sub }}</span></div>
+        <button onClick="{{ closeSel }}" aria-label="Luk" style="width:32px; height:32px; border:0; border-radius:8px; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center;" style-hover="background:#f1f5f9;"><span style="width:16px; height:16px; background:#64748b; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/x.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/x.svg) center/contain no-repeat;"></span></button>
+      </div>
+      <div style="flex:1; overflow:auto; padding:20px; display:flex; flex-direction:column; gap:20px;">
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px; background:{{ sel.roleBg }}; color:{{ sel.roleFg }};">{{ sel.roleLabel }}</span>
+          <span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px; background:{{ sel.statusBg }}; color:{{ sel.statusFg }};">{{ sel.statusLabel }}</span>
+          <span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px; background:{{ sel.loginBg }}; color:{{ sel.loginFg }};">{{ sel.loginLabel }}</span>
+        </div>
+        <div style="display:flex; flex-direction:column; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; font-size:13px;">
+          <sc-for list="{{ sel.facts }}" as="x" hint-placeholder-count="6">
+            <div style="display:flex; gap:10px; padding:10px 14px; border-bottom:1px solid #f1f5f9;"><span style="width:130px; flex:none; color:#64748b;">{{ x.k }}</span><span style="font-weight:500; font-variant-numeric:tabular-nums;">{{ x.v }}</span></div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ sel.isTest }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:12px 14px; border-radius:12px; background:#fffbeb; border:1px solid rgba(245,158,11,0.35); display:flex; align-items:center; gap:10px; font-size:13px; color:#78350f;">
+            <span style="flex:1; text-wrap:pretty;">Testkonto. Kan kun bruges gennem efterligning.</span>
+            <button onClick="{{ sel.impersonate }}" style="height:32px; padding:0 12px; border-radius:8px; border:0; cursor:pointer; background:#78350f; color:#ffffff; font:500 13px var(--hm-font-sans); white-space:nowrap;">{{ sel.impLabel }}</button>
+          </div>
+        </sc-if>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#64748b;">Handlinger</span>
+          <sc-for list="{{ sel.actions }}" as="a" hint-placeholder-count="5">
+            <button onClick="{{ a.run }}" style="display:flex; align-items:center; gap:10px; width:100%; min-height:40px; padding:8px 12px; box-sizing:border-box; border-radius:8px; border:1px solid {{ a.bd }}; background:#ffffff; cursor:pointer; text-align:left; font:500 13px var(--hm-font-sans); color:{{ a.fg }}; opacity:{{ a.op }}; pointer-events:{{ a.pe }};" style-hover="background:#f8fafc;">
+              <span style="width:16px; height:16px; flex:none; background:currentColor; -webkit-mask:url({{ a.icon }}) center/contain no-repeat; mask:url({{ a.icon }}) center/contain no-repeat;"></span>
+              <span style="flex:1; display:flex; flex-direction:column; gap:1px;"><span>{{ a.label }}</span><span style="font-size:12px; font-weight:400; color:#64748b;">{{ a.hint }}</span></span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </aside>
+  </sc-if>
+
+  <sc-if value="{{ newOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeNew }}" style="position:fixed; inset:0; z-index:50; background:rgba(2,8,23,0.4);"></div>
+    <div style="position:fixed; z-index:51; top:50%; left:50%; transform:translate(-50%,-50%); width:440px; max-width:calc(100vw - 32px); box-sizing:border-box; background:#ffffff; border-radius:16px; box-shadow:var(--hm-shadow-2xl); padding:22px; display:flex; flex-direction:column; gap:14px;">
+      <span style="font-size:18px; font-weight:700;">Ny feature</span>
+      <label style="display:flex; flex-direction:column; gap:6px; font-size:13px; font-weight:500;">Nøgle<input name="key" value="{{ nf.key }}" onChange="{{ onNf }}" placeholder="min-feature" style="height:36px; padding:0 10px; border:1px solid #e2e8f0; border-radius:8px; font:14px var(--hm-font-mono);"></label>
+      <label style="display:flex; flex-direction:column; gap:6px; font-size:13px; font-weight:500;">Titel<input name="title" value="{{ nf.title }}" onChange="{{ onNf }}" style="height:36px; padding:0 10px; border:1px solid #e2e8f0; border-radius:8px; font:14px var(--hm-font-sans);"></label>
+      <label style="display:flex; flex-direction:column; gap:6px; font-size:13px; font-weight:500;">Beskrivelse<input name="desc" value="{{ nf.desc }}" onChange="{{ onNf }}" style="height:36px; padding:0 10px; border:1px solid #e2e8f0; border-radius:8px; font:14px var(--hm-font-sans);"></label>
+      <label style="display:flex; flex-direction:column; gap:6px; font-size:13px; font-weight:500;">Område
+        <select name="area" value="{{ nf.area }}" onChange="{{ onNf }}" style="height:36px; padding:0 8px; border:1px solid #e2e8f0; border-radius:8px; font:14px var(--hm-font-sans); background:#ffffff;"><option value="bruger">Bruger</option><option value="integration">Integration</option><option value="admin">Admin</option><option value="platform">Platform</option></select>
+      </label>
+      <span style="font-size:12px; color:#64748b;">Starter i ring 1 (Internt). Nøglen må kun have små bogstaver, tal og bindestreg.</span>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button onClick="{{ closeNew }}" style="height:36px; padding:0 14px; border-radius:8px; border:1px solid #e2e8f0; background:#ffffff; cursor:pointer; font:500 13px var(--hm-font-sans); color:#020817;">Annullér</button>
+        <button onClick="{{ createNew }}" style="height:36px; padding:0 16px; border-radius:8px; border:0; background:#2563eb; color:#f8fafc; cursor:pointer; font:500 13px var(--hm-font-sans); opacity:{{ nfOp }}; pointer-events:{{ nfPe }};">Opret</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ extOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ toggleExt }}" style="position:fixed; inset:0; z-index:44;"></div>
+    <div data-screen-label="Happy AI-udvidelse" style="position:fixed; z-index:45; top:54px; right:24px; width:380px; max-width:calc(100vw - 32px); max-height:calc(100vh - 72px); overflow:auto; box-sizing:border-box; background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; box-shadow:var(--hm-shadow-2xl); display:flex; flex-direction:column;">
+      <div style="display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid #e2e8f0;">
+        <img src="assets/happy-mates-logo.svg" alt="" style="width:24px; height:24px;">
+        <span style="font-size:13px; font-weight:800; letter-spacing:0.04em; background:var(--hm-brand-gradient); background-size:200% auto; -webkit-background-clip:text; background-clip:text; color:transparent; animation:hm-rainbow 3s ease infinite;">HAPPY AI</span>
+        <span style="margin-left:auto; font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px; background:{{ ext.pillBg }}; color:{{ ext.pillFg }};">{{ ext.pill }}</span>
+      </div>
+
+      <sc-if value="{{ ext.missing }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:16px; display:flex; flex-direction:column; gap:12px; font-size:13px;">
+          <p style="margin:0; color:#475569; line-height:1.55; text-wrap:pretty;">Udvidelsen er ikke fundet i denne browser. Med den kan /admin læse den aktuelle fane, slå brugere op fra en markering og åbne appen i sidepanelet.</p>
+          <a href="https://chromewebstore.google.com/detail/happy-ai/cpfeknokgmlbnnllagedhmiaiocflegh" target="_blank" style="align-self:flex-start; display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 14px; border-radius:8px; background:#2563eb; color:#f8fafc; font-weight:500; text-decoration:none;">Åbn Chrome Web Store</a>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ ext.present }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; flex-direction:column;">
+          <sc-if value="{{ ext.outdated }}" hint-placeholder-val="{{ false }}">
+            <div style="margin:12px 16px 0; padding:10px 12px; border-radius:10px; background:rgba(249,115,22,0.08); border:1px solid rgba(249,115,22,0.3); font-size:12px; color:#9a3412; text-wrap:pretty;">Version {{ ext.version }} er installeret. Opdatér til {{ ext.latest }} for at bruge efterligning i sidepanelet.</div>
+          </sc-if>
+          <div style="padding:14px 16px; display:flex; flex-direction:column; gap:8px; border-bottom:1px solid #f1f5f9;">
+            <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#64748b;">Aktuel fane</span>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="width:28px; height:28px; flex:none; border-radius:8px; background:#f1f5f9; display:flex; align-items:center; justify-content:center;"><span style="width:14px; height:14px; background:#475569; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/app-window.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/app-window.svg) center/contain no-repeat;"></span></span>
+              <div style="min-width:0; display:flex; flex-direction:column;"><span style="font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ ext.tabTitle }}</span><span style="font:12px var(--hm-font-mono); color:#64748b;">{{ ext.tabHost }}</span></div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px; padding:10px 12px; border-radius:10px; background:#f8fafc; border:1px solid #e2e8f0;">
+              <span style="font-size:12px; color:#64748b;">Markeret tekst</span>
+              <span style="font:13px var(--hm-font-mono);">{{ ext.selection }}</span>
+              <sc-if value="{{ ext.hasMatch }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ ext.openMatch }}" style="align-self:flex-start; display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 10px; border-radius:8px; border:1px solid #e2e8f0; background:#ffffff; cursor:pointer; font:500 12px var(--hm-font-sans); color:#020817;"><span style="width:13px; height:13px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/user-search.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/user-search.svg) center/contain no-repeat;"></span>Åbn {{ ext.matchName }}</button>
+              </sc-if>
+              <button onClick="{{ ext.readSel }}" style="align-self:flex-start; border:0; background:transparent; padding:0; cursor:pointer; color:#2563eb; font:500 12px var(--hm-font-sans);">Læs markering igen</button>
+            </div>
+          </div>
+          <div style="padding:10px 8px; display:flex; flex-direction:column; gap:2px; border-bottom:1px solid #f1f5f9;">
+            <sc-for list="{{ ext.actions }}" as="a" hint-placeholder-count="3">
+              <button onClick="{{ a.run }}" style="display:flex; align-items:center; gap:10px; padding:8px; border:0; border-radius:8px; background:transparent; cursor:pointer; text-align:left; font:500 13px var(--hm-font-sans); color:#020817; opacity:{{ a.op }}; pointer-events:{{ a.pe }};" style-hover="background:#f1f5f9;">
+                <span style="width:16px; height:16px; flex:none; background:currentColor; -webkit-mask:url({{ a.icon }}) center/contain no-repeat; mask:url({{ a.icon }}) center/contain no-repeat;"></span>
+                <span style="flex:1; display:flex; flex-direction:column; gap:1px;"><span>{{ a.label }}</span><span style="font-size:12px; font-weight:400; color:#64748b;">{{ a.hint }}</span></span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="padding:14px 16px; display:flex; flex-direction:column; gap:8px; border-bottom:1px solid #f1f5f9;">
+            <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#64748b;">Instans i sidepanelet</span>
+            <sc-for list="{{ ext.instances }}" as="i" hint-placeholder-count="2">
+              <button onClick="{{ i.pick }}" style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; border:1px solid {{ i.bd }}; background:{{ i.bg }}; cursor:pointer; text-align:left;">
+                <span style="width:14px; height:14px; flex:none; border-radius:9999px; border:2px solid {{ i.ring }}; box-sizing:border-box; display:flex; align-items:center; justify-content:center;"><span style="width:6px; height:6px; border-radius:9999px; background:{{ i.dot }};"></span></span>
+                <span style="flex:1; min-width:0; display:flex; flex-direction:column;"><span style="font:600 13px var(--hm-font-sans); color:#020817;">{{ i.label }}</span><span style="font:11px var(--hm-font-mono); color:#64748b;">{{ i.url }}</span></span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="padding:12px 16px 14px; display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#64748b; padding-bottom:4px;">Bro · happyai-bridge</span>
+            <sc-for list="{{ ext.log }}" as="l" hint-placeholder-count="3">
+              <div style="display:flex; gap:8px; font:11px var(--hm-font-mono); color:#475569;"><span style="color:{{ l.c }};">{{ l.mark }}</span><span>{{ l.verb }}</span><span style="margin-left:auto; color:#94a3b8;">{{ l.detail }}</span></div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ guideOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeGuide }}" style="position:fixed; inset:0; z-index:46; background:rgba(2,8,23,0.35);"></div>
+    <aside data-screen-label="Installér udvidelsen" style="position:fixed; top:0; right:0; bottom:0; z-index:47; width:440px; max-width:100vw; box-sizing:border-box; background:#ffffff; box-shadow:var(--hm-shadow-2xl); display:flex; flex-direction:column;">
+      <div style="display:flex; align-items:center; gap:10px; padding:16px 20px; border-bottom:1px solid #e2e8f0;">
+        <img src="assets/happy-mates-logo.svg" alt="" style="width:26px; height:26px;">
+        <div style="flex:1; min-width:0; display:flex; flex-direction:column;"><span style="font-size:13px; font-weight:800; letter-spacing:0.04em; background:var(--hm-brand-gradient); background-size:200% auto; -webkit-background-clip:text; background-clip:text; color:transparent; animation:hm-rainbow 3s ease infinite;">HAPPY AI</span><span style="font-size:12px; color:#64748b;">Browserudvidelse til my-gaer</span></div>
+        <button onClick="{{ closeGuide }}" aria-label="Luk" style="width:32px; height:32px; border:0; border-radius:8px; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center;" style-hover="background:#f1f5f9;"><span style="width:16px; height:16px; background:#64748b; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/x.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/x.svg) center/contain no-repeat;"></span></button>
+      </div>
+      <div style="flex:1; overflow:auto; padding:20px; display:flex; flex-direction:column; gap:20px;">
+        <div style="display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border-radius:12px; background:{{ hs.bg }}; border:1px solid {{ hs.bd }}; font-size:13px; color:{{ hs.fg }};">
+          <span style="width:8px; height:8px; flex:none; margin-top:5px; border-radius:9999px; background:{{ hs.dot }}; animation:{{ hs.anim }};"></span>
+          <span style="display:flex; flex-direction:column; gap:2px;"><span style="font-weight:600;">{{ hs.title }}</span><span style="font:11px var(--hm-font-mono); opacity:0.8;">{{ hs.detail }}</span></span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <h2 style="margin:0; font-size:20px; line-height:1.25; letter-spacing:-0.015em; font-weight:700; text-wrap:balance;">Installér udvidelsen</h2>
+          <p style="margin:0; font-size:14px; line-height:1.55; color:#64748b; text-wrap:pretty;">Med udvidelsen kan /admin læse den aktuelle fane, slå brugere op fra en markering og vise appen i sidepanelet — også som en testkonto.</p>
+        </div>
+        <div style="display:flex; gap:2px; padding:3px; border-radius:9999px; background:#f1f5f9; align-self:flex-start;">
+          <sc-for list="{{ browsers }}" as="b" hint-placeholder-count="2">
+            <button onClick="{{ b.pick }}" style="border:0; cursor:pointer; padding:5px 14px; border-radius:9999px; font:600 12px var(--hm-font-sans); background:{{ b.bg }}; color:{{ b.fg }}; box-shadow:{{ b.sh }};">{{ b.label }}</button>
+          </sc-for>
+        </div>
+        <ol style="margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:14px;">
+          <sc-for list="{{ guideSteps }}" as="g" hint-placeholder-count="5">
+            <li style="display:flex; gap:12px;">
+              <span style="width:24px; height:24px; flex:none; border-radius:9999px; background:{{ g.numBg }}; color:{{ g.numFg }}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;">{{ g.n }}</span>
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:6px;">
+                <span style="font-size:14px; font-weight:600;">{{ g.title }}</span>
+                <span style="font-size:13px; line-height:1.5; color:#64748b; text-wrap:pretty;">{{ g.body }}</span>
+                <sc-if value="{{ g.hasCode }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; align-items:center; gap:8px; height:34px; padding:0 6px 0 10px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc;">
+                    <span style="flex:1; min-width:0; font:13px var(--hm-font-mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ g.code }}</span>
+                    <button onClick="{{ g.copy }}" style="height:26px; padding:0 10px; border-radius:6px; border:1px solid #e2e8f0; background:#ffffff; cursor:pointer; font:500 12px var(--hm-font-sans); color:#020817;">{{ g.copyLabel }}</button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ g.hasDownload }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ g.download }}" style="align-self:flex-start; display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 14px; border-radius:8px; border:0; cursor:pointer; background:#2563eb; color:#f8fafc; font:500 13px var(--hm-font-sans);"><span style="width:14px; height:14px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/download.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/download.svg) center/contain no-repeat;"></span>{{ g.downloadLabel }}</button>
+                </sc-if>
+              </div>
+            </li>
+          </sc-for>
+        </ol>
+        <p style="margin:0; font-size:12px; color:#64748b; text-wrap:pretty;">Kan du ikke installere fra Chrome Web Store, fx på en låst arbejdscomputer, kan du hente en zip med instansens adresse under <a href="/admin/integrations">/admin/integrations</a> og indlæse den upakket i <span style="font-family:var(--hm-font-mono);">{{ browserUrl }}</span>.</p>
+      </div>
+      <div style="padding:12px 20px; border-top:1px solid #e2e8f0; display:flex; align-items:center; gap:10px;">
+        <button onClick="{{ closeGuide }}" style="height:38px; padding:0 14px; border-radius:8px; border:1px solid #e2e8f0; background:#ffffff; cursor:pointer; font:500 13px var(--hm-font-sans); color:#020817;">Senere</button>
+        <button onClick="{{ retryHs }}" style="margin-left:auto; display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 18px; border-radius:8px; border:0; cursor:pointer; background:#2563eb; color:#f8fafc; font:500 13px var(--hm-font-sans); opacity:{{ hs.btnOp }}; pointer-events:{{ hs.btnPe }};"><span style="width:14px; height:14px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/refresh-cw.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/refresh-cw.svg) center/contain no-repeat;"></span>{{ hs.btn }}</button>
+      </div>
+    </aside>
+  </sc-if>
+
+  <sc-if value="{{ tr.shown }}" hint-placeholder-val="{{ true }}">
+    <div role="button" tabindex="0" aria-label="API-tracer — åbn fejlsøgningspanelet" title="Klik: fejlsøgningspanel · træk: flyt · ×: skjul" onPointerDown="{{ tr.down }}" onPointerMove="{{ tr.move }}" onPointerUp="{{ tr.up }}" style="position:fixed; z-index:60; left:{{ tr.left }}; top:{{ tr.top }}; bottom:{{ tr.bottom }}; display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:9999px; border:1px solid {{ tr.bd }}; background:{{ tr.bg }}; color:{{ tr.fg }}; font:11px var(--hm-font-sans); box-shadow:var(--hm-shadow-lg); backdrop-filter:blur(8px); cursor:grab; user-select:none; touch-action:none;">
+      <span style="width:8px; height:8px; border-radius:9999px; background:{{ tr.dot }}; animation:{{ tr.anim }};"></span>
+      <span style="width:12px; height:12px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/zap.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/zap.svg) center/contain no-repeat;"></span>
+      <span style="font-weight:500;">Tracer</span>
+      <sc-if value="{{ tr.hasCount }}" hint-placeholder-val="{{ false }}"><span style="padding:0 4px; border-radius:4px; font:9px var(--hm-font-mono); background:{{ tr.countBg }}; color:{{ tr.countFg }};">{{ tr.count }}</span></sc-if>
+      <button onPointerDown="{{ tr.stop }}" onClick="{{ tr.askHide }}" aria-label="Skjul tracer" title="Skjul tracer" style="margin:0 -4px 0 2px; width:16px; height:16px; padding:0; border:0; border-radius:9999px; background:transparent; cursor:pointer; color:inherit; display:flex; align-items:center; justify-content:center;" style-hover="background:#f1f5f9;"><span style="width:10px; height:10px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/x.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/x.svg) center/contain no-repeat;"></span></button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tr.asking }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ tr.cancelHide }}" style="position:fixed; inset:0; z-index:70; background:rgba(2,8,23,0.4);"></div>
+    <div style="position:fixed; z-index:71; top:50%; left:50%; transform:translate(-50%,-50%); width:384px; max-width:calc(100vw - 32px); box-sizing:border-box; background:#ffffff; border-radius:16px; box-shadow:var(--hm-shadow-2xl); padding:22px; display:flex; flex-direction:column; gap:12px;">
+      <span style="font-size:17px; font-weight:700;">Skjul API-traceren</span>
+      <span style="font-size:13px; color:#64748b;">Hvor længe skal mærket være skjult?</span>
+      <button onClick="{{ tr.hideRefresh }}" style="height:38px; padding:0 14px; border-radius:8px; border:1px solid #e2e8f0; background:#ffffff; cursor:pointer; text-align:left; font:500 13px var(--hm-font-sans); color:#020817;">Indtil siden genindlæses</button>
+      <button onClick="{{ tr.hideSession }}" style="height:38px; padding:0 14px; border-radius:8px; border:1px solid #e2e8f0; background:#ffffff; cursor:pointer; text-align:left; font:500 13px var(--hm-font-sans); color:#020817;">Resten af denne browsersession</button>
+      <div style="display:flex; justify-content:flex-end;"><button onClick="{{ tr.cancelHide }}" style="height:34px; padding:0 12px; border:0; border-radius:8px; background:transparent; cursor:pointer; font:500 13px var(--hm-font-sans); color:#020817;">Annullér</button></div>
+      <span style="font-size:12px; color:#64748b; text-wrap:pretty;">Hent den frem igen med „Vis API-tracer“ i udvidelsens menu i topbaren.</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tr.open }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="API Tracer" style="position:fixed; top:0; right:0; bottom:0; z-index:50; width:420px; max-width:100%; box-sizing:border-box; background:#ffffff; border-left:1px solid #e2e8f0; box-shadow:var(--hm-shadow-2xl); display:flex; flex-direction:column; font-size:12px;">
+      <div style="display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
+        <span style="width:16px; height:16px; background:#2563eb; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/zap.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/zap.svg) center/contain no-repeat;"></span>
+        <span style="flex:1; font-size:14px; font-weight:600;">API Tracer</span>
+        <sc-if value="{{ tr.hasPending }}" hint-placeholder-val="{{ false }}"><span style="font-size:9px; font-weight:700; padding:2px 7px; border-radius:9999px; background:#2563eb; color:#ffffff; animation:tgpulse 1s infinite;">{{ tr.pending }} in-flight</span></sc-if>
+        <sc-if value="{{ tr.hasErrors }}" hint-placeholder-val="{{ false }}"><span style="font-size:9px; font-weight:700; padding:2px 7px; border-radius:9999px; background:#dc2626; color:#ffffff;">{{ tr.errors }} errors</span></sc-if>
+        <span style="width:1px; height:20px; background:#e2e8f0;"></span>
+        <button onClick="{{ tr.clear }}" title="Clear all" style="width:28px; height:28px; border:0; border-radius:6px; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#475569;" style-hover="background:#f1f5f9;"><span style="width:14px; height:14px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/trash-2.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/trash-2.svg) center/contain no-repeat;"></span></button>
+        <button onClick="{{ tr.close }}" title="Luk" style="width:28px; height:28px; border:0; border-radius:6px; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#475569;" style-hover="background:#f1f5f9;"><span style="width:14px; height:14px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/x.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/x.svg) center/contain no-repeat;"></span></button>
+      </div>
+      <div style="padding:10px 16px; border-bottom:1px solid #e2e8f0; display:grid; grid-template-columns:96px minmax(0,1fr); gap:4px 10px; font-size:11px;">
+        <sc-for list="{{ tr.ctx }}" as="c" hint-placeholder-count="5"><span style="color:#64748b;">{{ c.k }}</span><span style="font-family:var(--hm-font-mono); color:#020817; overflow-wrap:anywhere;">{{ c.v }}</span></sc-for>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; padding:8px 16px; border-bottom:1px solid #e2e8f0;">
+        <button onClick="{{ tr.toggleRec }}" style="display:flex; align-items:center; gap:6px; padding:4px 8px; border:0; border-radius:6px; cursor:pointer; font:500 12px var(--hm-font-sans); background:{{ tr.recBg }}; color:{{ tr.recFg }};"><span style="width:8px; height:8px; border-radius:9999px; background:{{ tr.dot }}; animation:{{ tr.anim }};"></span>{{ tr.recLabel }}</button>
+        <span style="flex:1; color:#64748b;">{{ tr.total }} requests captured</span>
+      </div>
+      <sc-if value="{{ tr.hasRows }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; align-items:center; gap:6px; padding:6px 16px; border-bottom:1px solid #e2e8f0; color:#64748b;">
+          <button onClick="{{ tr.selAll }}" style="display:flex; align-items:center; gap:6px; padding:4px 8px; border:0; border-radius:6px; background:transparent; cursor:pointer; font:12px var(--hm-font-sans); color:#475569;" style-hover="background:#f1f5f9;"><span style="width:14px; height:14px; background:{{ tr.allBoxC }}; -webkit-mask:url({{ tr.allBox }}) center/contain no-repeat; mask:url({{ tr.allBox }}) center/contain no-repeat;"></span>{{ tr.allLabel }}</button>
+          <sc-if value="{{ tr.hasSel }}" hint-placeholder-val="{{ false }}">
+            <span>· {{ tr.selN }} selected</span>
+            <span style="flex:1;"></span>
+            <button onClick="{{ tr.copyYaml }}" style="display:flex; align-items:center; gap:4px; height:24px; padding:0 8px; border:0; border-radius:6px; background:transparent; cursor:pointer; font:11px var(--hm-font-sans); color:#020817;" style-hover="background:#f1f5f9;"><span style="width:12px; height:12px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/copy.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/copy.svg) center/contain no-repeat;"></span>{{ tr.copyLabel }}</button>
+            <button onClick="{{ tr.download }}" style="display:flex; align-items:center; gap:4px; height:24px; padding:0 8px; border:0; border-radius:6px; background:transparent; cursor:pointer; font:11px var(--hm-font-sans); color:#020817;" style-hover="background:#f1f5f9;"><span style="width:12px; height:12px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/download.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/download.svg) center/contain no-repeat;"></span>Download</button>
+          </sc-if>
+        </div>
+      </sc-if>
+      <div style="flex:1; overflow-y:auto;">
+        <sc-if value="{{ tr.empty }}" hint-placeholder-val="{{ false }}">
+          <div style="height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:0 32px; text-align:center; color:#94a3b8;">
+            <span style="width:32px; height:32px; background:#cbd5e1; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/zap.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/zap.svg) center/contain no-repeat;"></span>
+            <span style="font-size:14px; font-weight:500;">No requests captured</span>
+            <span>{{ tr.emptyHint }}</span>
+          </div>
+        </sc-if>
+        <sc-for list="{{ tr.rows }}" as="r" hint-placeholder-count="6">
+          <div style="border-bottom:1px solid #f1f5f9; background:{{ r.bg }};">
+            <div style="display:flex; align-items:center; gap:8px; padding:9px 16px;">
+              <button onClick="{{ r.toggleSel }}" style="width:14px; height:14px; flex:none; padding:0; border:0; background:transparent; cursor:pointer;"><span style="display:block; width:14px; height:14px; background:{{ r.boxC }}; -webkit-mask:url({{ r.box }}) center/contain no-repeat; mask:url({{ r.box }}) center/contain no-repeat;"></span></button>
+              <button onClick="{{ r.toggle }}" style="flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:0; border:0; background:transparent; cursor:pointer; text-align:left;">
+                <span style="width:12px; height:12px; flex:none; background:#64748b; -webkit-mask:url({{ r.chev }}) center/contain no-repeat; mask:url({{ r.chev }}) center/contain no-repeat;"></span>
+                <span style="flex:none; padding:1px 6px; border-radius:4px; border:1px solid {{ r.mBd }}; background:{{ r.mBg }}; color:{{ r.mFg }}; font:600 9px var(--hm-font-mono);">{{ r.method }}</span>
+                <span style="flex:1; min-width:0; font:12px var(--hm-font-mono); color:#020817; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ r.path }}">{{ r.path }}</span>
+                <span style="flex:none; font:600 10px var(--hm-font-mono); color:{{ r.sC }};">{{ r.status }}</span>
+                <span style="flex:none; font:10px var(--hm-font-mono); color:#64748b;">{{ r.dur }}</span>
+                <span style="flex:none; font-size:9px; color:#94a3b8;">{{ r.time }}</span>
+              </button>
+            </div>
+            <sc-if value="{{ r.open }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:0 16px 12px; display:flex; flex-direction:column; gap:8px;">
+                <div style="font:10px var(--hm-font-mono); color:#64748b; background:#f1f5f9; padding:4px 8px; border-radius:4px; overflow-wrap:anywhere;">{{ r.url }}</div>
+                <div style="font-size:10px; color:#64748b; font-family:var(--hm-font-mono);">↳ side: {{ r.pageUrl }}</div>
+                <sc-if value="{{ r.hasReq }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:10px; font-weight:600; color:#64748b;">Request Body</span>
+                  <pre style="margin:0; font:10px/1.45 var(--hm-font-mono); background:#f1f5f9; padding:6px 8px; border-radius:4px; overflow-x:auto; max-height:160px; color:#334155;">{{ r.reqBody }}</pre>
+                </sc-if>
+                <span style="font-size:10px; font-weight:600; color:#64748b;">Response Body</span>
+                <pre style="margin:0; font:10px/1.45 var(--hm-font-mono); background:#f1f5f9; padding:6px 8px; border-radius:4px; overflow-x:auto; max-height:190px; color:#334155;">{{ r.resBody }}</pre>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; z-index:60; bottom:24px; left:50%; transform:translateX(-50%); padding:10px 16px; border-radius:10px; background:#0f172a; color:#ffffff; font-size:13px; box-shadow:var(--hm-shadow-lg); max-width:calc(100vw - 48px);">{{ toast }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;logo&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;],&quot;default&quot;:&quot;a&quot;,&quot;tsType&quot;:&quot;'a'|'b'|'c'&quot;,&quot;section&quot;:&quot;Brand&quot;},&quot;section&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;overview&quot;,&quot;users&quot;,&quot;impersonation&quot;,&quot;features&quot;,&quot;stores&quot;,&quot;mcp&quot;],&quot;default&quot;:&quot;overview&quot;,&quot;tsType&quot;:&quot;'overview'|'users'|'impersonation'|'features'|'stores'|'mcp'&quot;,&quot;section&quot;:&quot;Start&quot;},&quot;extension&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;connected&quot;,&quot;outdated&quot;,&quot;missing&quot;],&quot;default&quot;:&quot;connected&quot;,&quot;tsType&quot;:&quot;'connected'|'outdated'|'missing'&quot;,&quot;section&quot;:&quot;Udvidelse&quot;}}">
+const IC = n => 'https://unpkg.com/lucide-static@0.562.0/icons/' + n + '.svg';
+const TONE = { green: ['rgba(22,163,74,0.12)', '#166534'], red: ['rgba(220,38,38,0.1)', '#b91c1c'], orange: ['rgba(249,115,22,0.12)', '#9a3412'], blue: ['rgba(37,99,235,0.1)', '#1d4ed8'], dark: ['#0f172a', '#ffffff'], gray: ['#f1f5f9', '#475569'] };
+const RING = { 1: ['Internt', 'red', 'Kun brugere, der har sagt ja til tidlige features, eller har niveau 1.'], 2: ['Beta', 'orange', 'Som ring 1, eller brugere med niveau 2 eller lavere.'], 3: ['Preview', 'blue', 'Alle. Én info-besked pr. browser.'], 4: ['Stabilt', 'green', 'Alle, uden besked.'] };
+const AREA = { bruger: 'Bruger', integration: 'Integration', admin: 'Admin', platform: 'Platform' };
+const AV = ['#E63946', '#F77F00', '#06D6A0', '#118AB2', '#2563eb', '#7c3aed'];
+const GRACE = 3;
+const ME = 1;
+const U = (id, name, phone, role, pk, grace, last, sessions, created, extra = {}) => ({ id, name, phone, role, pk, grace, last, sessions, created, blocked: false, test: false, ...extra });
+const USERS = [
+  U(1, 'Mette Hansen', '+45 22 41 18 90', 'admin', 2, 3, 0, 2, '3. mar 2026'),
+  U(2, 'Jonas Kristensen', '+45 31 07 55 12', 'admin', 1, 3, 1, 1, '3. mar 2026'),
+  U(3, 'Sara Nielsen', '+45 40 18 22 73', 'user', 1, 3, 0, 2, '12. mar 2026'),
+  U(4, 'Ahmad Rahimi', '+45 27 90 44 01', 'user', 0, 2, 2, 1, '2. okt 2026'),
+  U(5, 'Line Mortensen', '+45 51 33 10 08', 'user', 2, 3, 5, 1, '28. apr 2026'),
+  U(6, 'Oliver Bech', '+45 61 72 09 35', 'user', 0, 1, 12, 0, '6. okt 2026'),
+  U(7, 'Freja Lund', '+45 29 64 81 17', 'user', 1, 3, 40, 0, '19. maj 2026', { blocked: true }),
+  U(8, 'Mikkel Thomsen', '+45 42 15 66 90', 'user', 1, 3, 3, 1, '2. jun 2026'),
+  U(9, 'Ida Poulsen', '+45 53 88 02 44', 'user', 0, 3, 8, 0, '14. sep 2026'),
+  U(10, 'Noah Jensen', '+45 20 47 39 61', 'user', 1, 3, 0, 3, '21. jul 2026'),
+  U(11, 'Emma Larsen', '+45 30 12 95 70', 'user', 1, 3, 22, 0, '9. aug 2026'),
+  U(12, '', '+45 60 12 34 56', 'user', 0, 0, null, 0, '18. okt 2026'),
+  U(101, 'Test Bruger', '', 'user', 0, 0, 1, 0, '17. okt 2026', { test: true })
+];
+const F = (key, title, desc, ring, area, count, userIds, observe = false, builtin = true) => ({ key, title, desc, ring, area, count, userIds, observe, builtin });
+const FEATURES = [
+  F('klip', 'Klip', 'Gem tekst og links som klip og brug dem i Office og udvidelsen', 4, 'bruger', 1284, [1, 2, 3, 5, 8, 10, 11, 4]),
+  F('filer', 'Filer', 'Upload til Object Storage, download via links der udløber', 4, 'bruger', 642, [1, 3, 5, 10, 8]),
+  F('passkey', 'Passkey', 'Passkey efter tre logins med engangskode', 4, 'bruger', 311, [1, 2, 3, 5, 7, 8, 10, 11]),
+  F('mobil', 'Mobil-app', 'PWA under /m med bundmenu, kamera-upload og klip', 3, 'bruger', 458, [3, 4, 10, 5], true),
+  F('extension', 'Browserudvidelse', 'Sidepanel i Chrome og Edge, gem siden som klip', 2, 'integration', 207, [1, 2, 10], true),
+  F('office', 'Office-tilføjelser', 'Word, Excel, PowerPoint og Outlook i én router', 2, 'integration', 96, [1, 3]),
+  F('website', 'Website /w', 'Offentlige Markdown-sider på dansk og engelsk', 3, 'platform', 54, [1, 2]),
+  F('heatmaps', 'Heatmaps', 'Klik- og scroll-heatmaps pr. side', 1, 'admin', 18, [1], true),
+  F('gdpr-export', 'GDPR-eksport', 'Samlet eksport ved anmodning om indsigt', 3, 'admin', 7, [2]),
+  F('gaer-sync', 'Hent opdateringer', 'Træk ændringer fra gaer-base ind i din fork', 1, 'platform', 4, [1])
+];
+const MISSING = [
+  F('ai-klip', 'AI-opsummering', 'Opsummér et klip med AI', 1, 'bruger', 0, []),
+  F('feedback', 'Feedback', 'Ikon i toppen: idé, fejl, ros og svar', 1, 'platform', 0, [])
+];
+const STORE_URL = 'https://chromewebstore.google.com/detail/happy-ai/cpfeknokgmlbnnllagedhmiaiocflegh';
+const PAGE_PATHS = { overview: '/admin', users: '/admin/users', impersonation: '/admin/impersonation', features: '/admin/features', stores: '/admin/app-stores', mcp: '/admin/mcp' };
+const METHOD = { GET: ['rgba(16,185,129,0.15)', '#047857', 'rgba(16,185,129,0.3)'], POST: ['rgba(59,130,246,0.15)', '#1d4ed8', 'rgba(59,130,246,0.3)'], PATCH: ['rgba(168,85,247,0.15)', '#7e22ce', 'rgba(168,85,247,0.3)'], PUT: ['rgba(245,158,11,0.15)', '#b45309', 'rgba(245,158,11,0.3)'], DELETE: ['rgba(239,68,68,0.15)', '#b91c1c', 'rgba(239,68,68,0.3)'] };
+const statusC = st => st === null ? '#64748b' : st < 300 ? '#10b981' : st < 400 ? '#3b82f6' : st < 500 ? '#f59e0b' : '#ef4444';
+const toYaml = reqs => reqs.map(r => '- method: ' + r.method + '\n  path: ' + r.path + '\n  status: ' + r.status + '\n  duration_ms: ' + r.dur + '\n  timestamp: ' + new Date(r.ts).toISOString() + (r.reqBody ? '\n  request:\n    body: ' + JSON.stringify(r.reqBody) : '') + '\n  response:\n    body: ' + JSON.stringify(r.resBody)).join('\n');
+const fmt = n => new Intl.NumberFormat('da-DK').format(Math.round(n));
+const initials = u => (u.name || 'Uden navn').split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase();
+const lastLabel = d => d === null || d === undefined ? 'Aldrig' : d === 0 ? 'I dag' : d === 1 ? 'I går' : 'For ' + d + ' dage siden';
+const pill = t => TONE[t];
+const TODAY = new Date(2026, 9, 19);
+const dayFmt = new Intl.DateTimeFormat('da-DK', { day: 'numeric', month: 'short' });
+
+class Component extends DCLogic {
+  state = {
+    section: this.props.section ?? 'overview', range: 30,
+    users: USERS, features: FEATURES, missing: MISSING,
+    q: '', filter: 'all', sel: null, expanded: null,
+    imp: null, impName: '', impRole: 'user',
+    levels: [{ userId: 2, ring: 1 }, { userId: 10, ring: 2 }], lvlUser: '', lvlRing: '2',
+    stStore: 'apple', stLoc: 'da', stTab: 'overview', stGuide: 'apple', stOv: {}, stLinks: {}, stManual: {}, stCfg: { name: 'my-gaer', bundleId: 'dk.mygaer.app', primary: '#2563eb', primarySoft: '#dbeafe', iconBg: '#ffffff', splashBg: '#f8fafc' },
+    mcpCat: null, mcpServer: 'admin', mcpTab: 'overview', mcpQ: '', mcpMode: 'all', mcpDomain: '', mcpSel: null, mcpArgs: {}, mcpResult: null, mcpMs: 0, mcpDrafts: [], mcpActive: null, mcpReason: '', mcpEvents: [], mcpLive: true, mcpMonQ: '', mcpCopied: '',
+    trReqs: [], trRec: true, trOpen: false, trHidden: false, trAsking: false, trPos: null, trSel: [], trExp: null, trCopied: false,
+    extOverride: null, hs: 'idle', hsTry: 0, guideOpen: false, browser: 'chrome', copied: '', downloaded: false,
+    extOpen: false, instance: 'https://my-gaer.dk', selIdx: 0, bridgeLog: [['PING', '12 ms'], ['GET_VERSION', '2.8.1'], ['GET_PAGE_INFO', 'outlook.office.com']],
+    newOpen: false, nf: { key: '', title: '', desc: '', area: 'bruger' }, toast: ''
+  };
+  trace(method, path, status, reqBody, resBody, ms) {
+    if (!this.state.trRec) return;
+    const id = 'r' + (++this.trSeq || (this.trSeq = 1));
+    const dur = ms ?? 40 + Math.round(Math.random() * 180);
+    const req = { id, method, path, status: null, pending: true, reqBody, resBody, ts: Date.now(), dur: 0, page: PAGE_PATHS[this.state.section] };
+    this.setState(s => ({ trReqs: [req, ...s.trReqs].slice(0, 80) }));
+    setTimeout(() => this.setState(s => ({ trReqs: s.trReqs.map(r => r.id === id ? { ...r, pending: false, status, dur } : r) })), dur);
+  }
+  storeVals(s) {
+    const SF = {
+      apple: [['appName', 'Navn', 30, 1, 'App-information'], ['subtitle', 'Undertitel', 30, 1, 'App-information'], ['promo', 'Kampagnetekst', 170, 3, 'Version'], ['description', 'Beskrivelse', 4000, 10, 'Version'], ['keywords', 'Nøgleord (kommasepareret)', 100, 2, 'Version'], ['whatsNew', 'Nyheder i denne version', 4000, 2, 'Version']],
+      google: [['appName', 'App-navn', 30, 1, 'Hovedbutiksopslag'], ['shortDesc', 'Kort beskrivelse', 80, 2, 'Hovedbutiksopslag'], ['description', 'Fuld beskrivelse', 4000, 10, 'Hovedbutiksopslag'], ['releaseNotes', 'Udgivelsesnoter', 500, 2, 'Udgivelse']]
+    };
+    const cfg = s.stCfg, loc = s.stLoc, store = s.stStore;
+    const tag = loc === 'da' ? 'Klip, filer og noter fra alle dine enheder.' : 'Clips, files and notes from all your devices.';
+    const DEF = {
+      da: { appName: cfg.name, subtitle: 'Klip og filer på farten', promo: tag + ' Log ind med dit telefonnummer og se dine klip med det samme.', description: cfg.name + ' samler dine klip og filer i én app.\n\nGem tekst og links som klip, tag billeder med kameraet og upload dem direkte, og find det hele igen fra computer, browser og Office.\n\nSådan virker det\n• Log ind med dit telefonnummer og en SMS-kode\n• Brug Face ID eller fingeraftryk næste gang med en passkey\n• Dine data ligger hos ' + cfg.name + ' i EU og deles ikke med tredjepart\n\nDu kan se, hente og slette dine data under Konto.', keywords: 'klip,noter,filer,upload,kamera,passkey', whatsNew: 'Første version af ' + cfg.name + '.', shortDesc: tag, releaseNotes: 'Første version af ' + cfg.name + '.', cap1: 'Dine klip altid ved hånden', cap2: 'Gem direkte fra kameraet', cap3: 'Filer der deles sikkert', cap4: 'Log ind uden kodeord' },
+      en: { appName: cfg.name, subtitle: 'Clips and files on the go', promo: tag + ' Sign in with your phone number and see your clips straight away.', description: cfg.name + ' brings your clips and files together in one app.\n\nSave text and links as clips, take photos and upload them directly, and find everything again from your computer, browser and Office.\n\nHow it works\n• Sign in with your phone number and a text-message code\n• Use Face ID or your fingerprint next time with a passkey\n• Your data stays with ' + cfg.name + ' in the EU and is not shared with third parties\n\nYou can view, download and delete your data under Account.', keywords: 'clips,notes,files,upload,camera,passkey', whatsNew: 'First version of ' + cfg.name + '.', shortDesc: tag, releaseNotes: 'First version of ' + cfg.name + '.', cap1: 'Your clips always at hand', cap2: 'Save straight from the camera', cap3: 'Files shared securely', cap4: 'Sign in without a password' }
+    };
+    const texts = l => ({ ...DEF[l], ...(s.stOv[l] || {}) });
+    const T = texts(loc);
+    const problems = (t, st) => SF[st].filter(([k, , lim]) => !String(t[k] || '').trim() || String(t[k]).length > lim).map(f => f[1]);
+    const LINKS = [
+      ['support', 'Support-URL', 'https://my-gaer.dk/w/support', 'both', true], ['marketing', 'Marketing-URL', 'https://my-gaer.dk/w/', 'apple', true],
+      ['privacy', 'Privatlivspolitik', 'https://my-gaer.dk/privatliv', 'both', false], ['deletion', 'Slet konto (krævet af Google Play)', 'https://my-gaer.dk/konto#slet', 'google', true],
+      ['email', 'Kontakt-e-mail', 'gdpr@my-gaer.dk', 'both', false], ['reviewLogin', 'Demo-login til review', '', 'both', true, 'Telefonnummer til Apples og Googles testere'],
+      ['ascAppId', 'ASC app-ID', '', 'apple', true, 'Fra App Store Connect'], ['playAppId', 'Play app-ID', '', 'google', true, 'Fra Play Console-URL'], ['easProjectId', 'EAS-projekt-ID', '', 'both', true, 'eas init i mobile/'],
+      ['copyright', 'Copyright', '2026 my-gaer ApS', 'apple', false]
+    ].map(([key, label, def, stores, sugg, hint]) => { const ov = s.stLinks[key]; const value = ov != null ? ov : def; return { key, label, value, stores, hint: hint || '', pending: ov != null ? !ov : (sugg || !def) }; });
+    const linksHere = LINKS.filter(l => l.stores === 'both' || l.stores === store);
+    const L = k => LINKS.find(l => l.key === k).value;
+    const MANUAL = { apple: [['privacy', 'App Privacy udfyldt'], ['age', 'Aldersvurdering udfyldt'], ['price', 'Pris og tilgængelighed (gratis · DK)'], ['testflight', 'TestFlight-build testet']], google: [['datasafety', 'Data safety udfyldt'], ['rating', 'Indholdsvurdering (IARC)'], ['audience', 'Målgruppe og indhold'], ['assetlinks', 'SHA-256 i assetlinks.json'], ['internal', 'Intern test-track med testere']] };
+    const pDa = problems(texts('da'), store), pEn = problems(texts('en'), store);
+    const pendL = linksHere.filter(l => l.pending && !['ascAppId', 'playAppId', 'easProjectId'].includes(l.key)).map(l => l.label);
+    const checks = [
+      store === 'apple' ? { label: 'App oprettet i App Store Connect', ok: !!L('ascAppId'), detail: L('ascAppId') ? 'ASC app-ID ' + L('ascAppId') : 'Udfyld ASC app-ID under Links og ID\'er', tab: 'links' } : { label: 'App oprettet i Play Console', ok: !!L('playAppId'), detail: L('playAppId') || 'Udfyld Play app-ID fra Play Console-URL\'en', tab: 'links' },
+      { label: 'EAS-projekt', ok: !!L('easProjectId'), detail: L('easProjectId') || 'Kør eas init i mobile/', tab: 'links' },
+      { label: 'Tekster · dansk', ok: !pDa.length, detail: pDa.length ? 'Tomt eller for langt: ' + pDa.join(', ') : 'Alle felter inden for grænsen', tab: 'texts' },
+      { label: 'Tekster · engelsk', ok: !pEn.length, detail: pEn.length ? 'Tomt eller for langt: ' + pEn.join(', ') : 'Alle felter inden for grænsen', tab: 'texts' },
+      { label: 'Ikon fra logo', ok: true, detail: 'Fra Indstillinger → logo, på ikonbaggrunden', tab: 'assets' },
+      { label: 'Skærmbilleder', ok: true, detail: store === 'apple' ? '4 × iPhone 6,9" · 4 × iPhone 6,5" · 4 × iPad 13" pr. sprog' : 'Featuregrafik · 4 × telefon · 4 × 7" · 4 × 10" pr. sprog', tab: 'assets' },
+      { label: 'Links bekræftet', ok: !pendL.length, warn: pendL.length > 0, detail: pendL.length ? 'Forslag — bekræft: ' + pendL.join(', ') : 'OK', tab: 'links' },
+      ...MANUAL[store].map(([k, label]) => ({ label, manual: k, ok: !!(s.stManual[store] || {})[k], detail: 'Manuelt trin — markér når det er gjort', tab: 'privacy' }))
+    ];
+    const okN = checks.filter(c => c.ok).length;
+    const flash = m => this.say(m);
+    const copy = v => { navigator.clipboard && navigator.clipboard.writeText(v).catch(() => {}); flash('Kopieret'); };
+    const onDark = hex => { const h = hex.replace('#', ''); const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16); return (r * 299 + g * 587 + b * 114) / 1000 < 150; };
+    const shots = (prefix, w, h, device) => ['cap1', 'cap2', 'cap3', 'cap4'].map((k, i) => ({ name: (i + 1) + ' · ' + ['oversigt', 'kamera', 'filer', 'login'][i], w, h, shot: true, device, cap: T[k], alt: i % 2 === 1 }));
+    const GROUPS = {
+      apple: [['App-ikon', 'PNG uden alfa, ingen afrundede hjørner', [{ name: 'App Store-ikon', w: 1024, h: 1024, kind: 'icon' }]], ['iPhone 6,9"', 'Påkrævet · 1–10 stk.', shots('ios-69', 1320, 2868, 'phone')], ['iPhone 6,5"', 'Valgfri — skaleres ellers fra 6,9"', shots('ios-65', 1284, 2778, 'phone')], ['iPad 13"', 'Påkrævet når supportsTablet = true', shots('ipad-13', 2064, 2752, 'tablet')]],
+      google: [['Ikon og featuregrafik', '32-bit PNG · featuregrafik påkrævet', [{ name: 'Play-ikon', w: 512, h: 512, kind: 'icon' }, { name: 'Featuregrafik', w: 1024, h: 500, kind: 'feature' }]], ['Telefon', 'Påkrævet · 2–8 stk.', shots('play-phone', 1080, 1920, 'phone')], ['7" tablet', 'Til tablet-opslag', shots('play-7', 1200, 1920, 'tablet')], ['10" tablet', 'Til tablet-opslag', shots('play-10', 1600, 2560, 'tablet')]]
+    };
+    const BUILD = ['App-build', 'mobile/assets/ · læses af app.config.ts', [{ name: 'icon.png', w: 1024, h: 1024, kind: 'icon', note: 'Expo icon' }, { name: 'adaptive-icon.png', w: 1024, h: 1024, kind: 'adaptive', note: 'Forgrund · 66 % sikker zone' }, { name: 'monochrome-icon.png', w: 1024, h: 1024, kind: 'mono', note: 'Android 13 temaikon' }, { name: 'splash.png', w: 1024, h: 1024, kind: 'splash', note: 'Vises på splash-baggrunden' }]];
+    const assetGroups = [...GROUPS[store], BUILD].map(([title, req, items]) => ({
+      title, req, n: items.length, all: () => flash(items.length + ' filer hentes'),
+      items: items.map(a => {
+        const ph = a.shot ? 240 : 104, pw = Math.round(a.w / a.h * ph);
+        const bg = a.shot ? (a.alt ? cfg.primarySoft : cfg.primary) : a.kind === 'adaptive' ? cfg.iconBg : a.kind === 'mono' ? '#1f2937' : a.kind === 'splash' ? cfg.splashBg : a.kind === 'feature' ? cfg.primary : cfg.iconBg;
+        return {
+          name: a.name, dims: a.w + ' × ' + a.h + ' px', hasNote: !!a.note, note: a.note || '', pw, ph, capW: Math.max(pw, 120), bg,
+          radius: a.kind === 'adaptive' ? '50%' : (a.kind === 'icon' || a.kind === 'mono') ? '22%' : a.shot ? '8px' : '10px',
+          isShot: !!a.shot, isMark: !a.shot && a.kind !== 'feature', isFeature: a.kind === 'feature', caption: a.kind === 'feature' ? cfg.name : a.cap,
+          capFg: onDark(bg) ? '#ffffff' : '#0f172a', primary: cfg.primary, screenW: a.device === 'tablet' ? 84 : 76, justify: a.shot ? 'flex-start' : 'center', pad: a.shot ? 12 : 0,
+          markSize: Math.round(ph * 0.58), filter: a.kind === 'mono' ? 'grayscale(1) brightness(2.4)' : 'none',
+          dl: () => flash(a.name + ' hentes')
+        };
+      })
+    }));
+    const PRIV = {
+      apple: [['Kryptering', 'Nej — ITSAppUsesNonExemptEncryption = false (sat i app.config.ts)'], ['Aldersvurdering', '4+ forventet. Ingen beskeder mellem brugere i Gær-base'], ['Telefonnummer', 'Indsamles · knyttet til brugeren · app-funktionalitet · ikke sporing'], ['Navn', 'Valgfrit visningsnavn · knyttet til brugeren · app-funktionalitet'], ['Bruger-ID', 'Indsamles · knyttet til brugeren · app-funktionalitet'], ['Klip, fotos og filer', 'Brugerindhold · knyttet til brugeren · app-funktionalitet'], ['Enheds-ID (push-token)', 'Indsamles · knyttet til brugeren · app-funktionalitet'], ['Brugsdata', 'Kun med samtykke · ikke knyttet til brugeren uden samtykke · analyse i egen database'], ['Tilladelser', 'Kamera og fotos (upload) · Face ID (passkey)'], ['Slet konto', 'Startes i appen under Konto (Apple 5.1.1(v))']],
+      google: [['Data safety: indsamlet', 'Telefonnummer, navn, bruger-ID, klip, fotos, filer, enheds-ID'], ['Data safety: delt', 'Nej — intet sendes til tredjepart'], ['Kryptering under overførsel', 'Ja'], ['Sletning', 'Brugeren kan slette sin konto under Konto og via Slet konto-linket'], ['Indholdsvurdering', 'IARC-spørgeskema: ingen kommunikation mellem brugere · forventet PEGI 3 / Everyone'], ['Målgruppe', '18+ — undgår Families-politikken'], ['Tilladelser', 'CAMERA · READ_MEDIA_IMAGES · RECORD_AUDIO blokeret'], ['App-adgang', 'Angiv demo-login, da appen kræver telefonnummer']]
+    };
+    const GUIDES = [
+      ['apple', 'App Store (iPhone + iPad)', [['Forbered appen', 'Gennemgå Overblik. Alt rødt skal løses først.'], ['Opret appen', 'App Store Connect → Apps → + → Ny app. Bundle ID = ' + cfg.bundleId + '. Skriv ASC app-ID ind under Links og ID\'er og i mobile/eas.json → submit.production.ios.ascAppId.'], ['Byg og upload', 'GitHub → Actions → mobile → profil production, platform ios, submit slået til. Eller lokalt:', 'cd mobile && eas build -p ios --profile production --auto-submit'], ['Grafik', 'Hent PNG\'er under Grafik og læg dem i App Store Connect, eller brug eas metadata.'], ['App Privacy og aldersvurdering', 'Udfyld efter fanen Privatliv og vurdering. Husk demo-login under App Review-information.'], ['TestFlight', 'Tilføj interne testere og test login, passkey, kamera-upload og universelle links på en rigtig enhed.'], ['Indsend', 'Vælg build → Tilføj til review → Indsend. Første review tager typisk 1–3 dage.']]],
+      ['google', 'Google Play (telefon + tablet)', [['Opret appen', 'Play Console → Opret app. Standardsprog dansk, gratis. Kopiér app-ID fra URL\'en ind under Links og ID\'er.'], ['App-signering', 'Upload første AAB i hånden. Aktivér Play App Signing og kopiér SHA-256 til Indstillinger → app_store.android_sha256 (bruges i assetlinks.json og passkeys).', 'cd mobile && eas build -p android --profile production'], ['Grafik', 'Ikon 512, featuregrafik 1024 × 500, telefon og tablets fra fanen Grafik.'], ['Hovedbutiksopslag', 'Kopiér teksterne fra fanen Tekster. Engelsk tilføjes under Administrer oversættelser.'], ['Appindhold', 'Privatlivspolitik, App-adgang (demo-login), Annoncer (nej), Indholdsvurdering, Målgruppe, Data safety, Slet konto-URL.'], ['Intern test', 'eas submit lægger build på intern test som kladde.', 'cd mobile && eas submit -p android --profile production'], ['Produktion', 'Når intern test er godkendt: forfrem til Produktion → Danmark → send til gennemgang.']]],
+      ['expo', 'Expo og credentials', [['EAS-projekt', 'Opret projektet og skriv ID\'et ind under Links og ID\'er.', 'cd mobile && eas init'], ['Miljø', 'Sæt GAER_ORIGIN, GAER_APP_NAME, GAER_BUNDLE_ID og GAER_SCHEME som EAS-miljøvariabler. De kommer fra denne side og Indstillinger.'], ['Credentials', 'Lad EAS håndtere certifikater, keystore og APNs. App Store Connect API-nøgle og Play-servicekonto uploades i eas credentials — aldrig i repoet.', 'cd mobile && eas credentials'], ['Universelle links og passkeys', 'Serveren leverer apple-app-site-association og assetlinks.json ud fra Indstillinger → app_store. Tjek at begge svarer med Content-Type application/json.'], ['OTA', 'runtimeVersion følger version. Hæv version, når native kode eller config ændres, og byg igen.']]]
+    ];
+    const g = GUIDES.find(x => x[0] === s.stGuide) || GUIDES[0];
+    const TABS = [['overview', 'Overblik'], ['assets', 'Grafik'], ['texts', 'Tekster'], ['links', 'Links og ID\'er'], ['privacy', 'Privatliv og vurdering'], ['guide', 'Vejledning']];
+    return {
+      stores: [['apple', 'App Store'], ['google', 'Google Play']].map(([k, l]) => ({ label: l, pick: () => this.setState({ stStore: k }), bg: store === k ? '#ffffff' : 'transparent', fg: store === k ? '#020817' : '#64748b', sh: store === k ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' })),
+      locales: [['da', 'DA'], ['en', 'EN']].map(([k, l]) => ({ label: l, pick: () => this.setState({ stLoc: k }), bg: loc === k ? '#0f172a' : 'transparent', fg: loc === k ? '#ffffff' : '#64748b' })),
+      consoleLabel: store === 'apple' ? 'App Store Connect' : 'Play Console',
+      consoleUrl: store === 'apple' ? (L('ascAppId') ? 'https://appstoreconnect.apple.com/apps/' + L('ascAppId') + '/distribution' : 'https://appstoreconnect.apple.com/apps') : 'https://play.google.com/console',
+      tabs: TABS.map(([k, l]) => ({ label: l, pick: () => this.setState({ stTab: k }), bd: s.stTab === k ? '#2563eb' : 'transparent', fg: s.stTab === k ? '#020817' : '#64748b', font: (s.stTab === k ? '600' : '500') + ' 14px var(--hm-font-sans)' })),
+      isOverview: s.stTab === 'overview', isAssets: s.stTab === 'assets', isTexts: s.stTab === 'texts', isLinks: s.stTab === 'links', isPrivacy: s.stTab === 'privacy', isGuide: s.stTab === 'guide',
+      cfg, tagline: tag, storeName: store === 'apple' ? 'App Store' : 'Google Play', okN, checkN: checks.length, okPct: Math.round(okN / checks.length * 100),
+      checks: checks.map(c => ({ ...c, dot: c.ok ? '#22c55e' : c.warn ? '#f59e0b' : c.manual ? '#cbd5e1' : '#ef4444', bd: c.manual ? '#e2e8f0' : 'transparent', actLabel: c.manual ? (c.ok ? '✓ Udført' : 'Markér udført') : 'Gå til →', act: () => c.manual ? this.setState(st => ({ stManual: { ...st.stManual, [store]: { ...(st.stManual[store] || {}), [c.manual]: !c.ok } } })) : this.setState({ stTab: c.tab }) })),
+      onCfg: e => { const { name, value } = e.target; this.setState(st => ({ stCfg: { ...st.stCfg, [name]: value } })); },
+      colors: [['primary', 'Primær'], ['primarySoft', 'Primær lys'], ['iconBg', 'Ikonbaggrund'], ['splashBg', 'Splash']].map(([key, label]) => ({ key, label, value: cfg[key] })),
+      assetGroups,
+      textsIntro: 'Teksterne udfyldes fra appens navn. Ret direkte i felterne — ændringer gemmes pr. sprog (' + (loc === 'da' ? 'dansk' : 'engelsk') + ').',
+      fields: SF[store].map(([key, label, limit, rows, where]) => { const v = String(T[key] || ''); const over = v.length > limit || !v.trim(); return { key, label, limit, rows, where, value: v, len: v.length, countFg: over ? '#dc2626' : v.length > limit * 0.9 ? '#d97706' : '#64748b', bd: over ? '#fca5a5' : '#e2e8f0', edited: (s.stOv[loc] || {})[key] != null, copy: () => copy(v), reset: () => this.setState(st => { const o = { ...(st.stOv[loc] || {}) }; delete o[key]; return { stOv: { ...st.stOv, [loc]: o } }; }) }; }),
+      captions: [['cap1', '1 · Oversigt'], ['cap2', '2 · Kamera'], ['cap3', '3 · Filer'], ['cap4', '4 · Log ind']].map(([key, label]) => { const v = String(T[key] || ''); return { key, label, value: v, len: v.length, countFg: v.length > 32 ? '#dc2626' : '#64748b' }; }),
+      onText: e => { const { name, value } = e.target; this.setState(st => ({ stOv: { ...st.stOv, [loc]: { ...(st.stOv[loc] || {}), [name]: value } } })); },
+      links: linksHere.map(l => ({ ...l, copy: () => copy(l.value) })),
+      onLink: e => { const { name, value } = e.target; this.setState(st => ({ stLinks: { ...st.stLinks, [name]: value } })); },
+      ids: [['Bundle ID / pakkenavn', cfg.bundleId], ['URL-scheme', 'gaer-mygaer://'], ['Domæne', 'my-gaer.dk'], ['Passkey RP ID', 'my-gaer.dk'], ['Universelle links', 'applinks:my-gaer.dk · webcredentials:my-gaer.dk'], ['EAS build-profil', 'production'], ['SKU', 'gaer-mygaer'], ['Kategori (Apple)', 'Produktivitet / Hjælpeprogrammer'], ['Kategori (Google)', 'Produktivitet']].map(([k, v]) => ({ k, v, copy: () => copy(v) })),
+      privacyTitle: store === 'apple' ? 'App Privacy, kryptering og aldersvurdering' : 'Appindhold: Data safety, vurdering og målgruppe',
+      privacy: PRIV[store].map(([q, a]) => ({ q, a })),
+      guides: GUIDES.map(([id, title]) => ({ title, pick: () => this.setState({ stGuide: id }), bd: s.stGuide === id ? '#e2e8f0' : 'transparent', bg: s.stGuide === id ? '#ffffff' : 'transparent', font: (s.stGuide === id ? '600' : '500') + ' 14px var(--hm-font-sans)' })),
+      guide: { title: g[1], steps: g[2].map(([title, body, code], i) => ({ n: i + 1, title, body, hasCode: !!code, code: code || '' })) }
+    };
+  }
+  mcpEvent(server, tool, status, ms, user) {
+    const e = { id: Math.random().toString(36).slice(2), ts: Date.now(), server, tool, status, ms, user: user || 'Mette Hansen' };
+    this.setState(s => ({ mcpEvents: [e, ...s.mcpEvents].slice(0, 40) }));
+  }
+  mcpVals(s, users) {
+    const cat = s.mcpCat;
+    const MODE = { read: ['Læs', '#dcfce7', '#166534'], write: ['Skriver', '#dbeafe', '#1e40af'], draft: ['Kladde → bekræft', '#fef3c7', '#92400e'], confirm: ['Bekræfter', '#fee2e2', '#991b1b'] };
+    const srvId = s.mcpServer;
+    const TABS = [['overview', 'Oversigt'], ['tools', 'Værktøjer'], ['drafts', 'Kladder'], ['monitor', 'Monitor'], ['connect', 'Forbind']];
+    const pend = s.mcpDrafts.filter(d => d.status === 'pending').length;
+    const base = {
+      loading: !cat, servers: [['app', 'Appen', '/mcp'], ['admin', 'Admin', '/mcp/admin']].map(([k, l, p]) => ({ label: l, path: p, pick: () => this.setState({ mcpServer: k, mcpSel: null, mcpDomain: '', mcpResult: null, mcpActive: null }), bg: srvId === k ? '#ffffff' : 'transparent', fg: srvId === k ? '#020817' : '#64748b', sh: srvId === k ? '0 1px 2px rgba(2,8,23,0.08)' : 'none' })),
+      tabs: TABS.map(([k, l]) => ({ label: k === 'drafts' && pend ? l + ' · ' + pend : l, pick: () => this.setState({ mcpTab: k }), bd: s.mcpTab === k ? '#2563eb' : 'transparent', fg: s.mcpTab === k ? '#020817' : '#64748b', font: (s.mcpTab === k ? '600' : '500') + ' 14px var(--hm-font-sans)' }))
+    };
+    if (!cat) return { ...base, isOverview: false, isTools: false, isDrafts: false, isMonitor: false, isConnect: false };
+    const srv = cat.servers[srvId];
+    const tools = cat.tools.filter(t => t.server === srvId);
+    const ORIGIN = 'https://my-gaer.dk';
+    const linkUrl = (t, args) => {
+      if (!t.link) return '';
+      const fill = x => x.replace(/\{(\w+)\}/g, (_, k) => args[k] ? args[k] : '{' + k + '}');
+      const qs = new URLSearchParams();
+      const path = fill(t.link.section);
+      qs.set('path', path);
+      (t.link.args || []).forEach(k => qs.set(k, args[k] || '{' + k + '}'));
+      if (t.link.focus) qs.set('focus', fill(t.link.focus));
+      return ORIGIN + (path.startsWith('/admin') ? '/admin/go?' : '/go?') + qs.toString().replace(/%7B/g, '{').replace(/%7D/g, '}').replace(/%2F/g, '/');
+    };
+    const q = s.mcpQ.trim().toLowerCase();
+    const shown = tools.filter(t => (s.mcpMode === 'all' || t.mode === s.mcpMode || (s.mcpMode === 'draft' && t.mode === 'confirm')) && (!s.mcpDomain || t.domain === s.mcpDomain) && (!q || (t.name + ' ' + t.description + ' ' + t.domain).toLowerCase().includes(q)));
+    const domainsHere = [...new Set(tools.map(t => t.domain))];
+    const sel = tools.find(t => t.name === s.mcpSel);
+    const args = s.mcpArgs;
+    const drafts = s.mcpDrafts;
+    const active = drafts.find(d => d.id === s.mcpActive);
+    const fmtT = ts => new Date(ts).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const SB = { ok: ['#dcfce7', '#166534'], error: ['#fee2e2', '#991b1b'], forbidden: ['#fee2e2', '#991b1b'], draft: ['#fef3c7', '#92400e'], confirmed: ['#dbeafe', '#1e40af'], pending: ['#fef3c7', '#92400e'], cancelled: ['#f1f5f9', '#475569'], expired: ['#f1f5f9', '#475569'] };
+    const SL = { pending: 'Afventer', confirmed: 'Bekræftet', cancelled: 'Annulleret', expired: 'Udløbet' };
+    const mq = s.mcpMonQ.trim().toLowerCase();
+    const clientsCode = srvId === 'app'
+      ? [['Claude Code', 'claude mcp add --transport http gaer ' + ORIGIN + '/mcp'], ['Claude Desktop', '{\n  "mcpServers": {\n    "gaer": { "command": "npx", "args": ["mcp-remote", "' + ORIGIN + '/mcp"] }\n  }\n}'], ['VS Code · .vscode/mcp.json', '{\n  "servers": {\n    "gaer": { "type": "http", "url": "' + ORIGIN + '/mcp" }\n  }\n}']]
+      : [['Claude Code', 'claude mcp add --transport http gaer-admin ' + ORIGIN + '/mcp/admin'], ['Claude Desktop', '{\n  "mcpServers": {\n    "gaer-admin": { "command": "npx", "args": ["mcp-remote", "' + ORIGIN + '/mcp/admin"] }\n  }\n}'], ['VS Code · .vscode/mcp.json', '{\n  "servers": {\n    "gaer-admin": { "type": "http", "url": "' + ORIGIN + '/mcp/admin" }\n  }\n}']];
+    const copyTo = (k, v) => { navigator.clipboard && navigator.clipboard.writeText(v).catch(() => {}); this.setState({ mcpCopied: k }); clearTimeout(this.mct); this.mct = setTimeout(() => this.setState({ mcpCopied: '' }), 1500); };
+    const pickTool = name => this.setState({ mcpTab: 'tools', mcpSel: name, mcpArgs: {}, mcpResult: null, mcpActive: null, mcpReason: '' });
+    const resultFor = t => {
+      const real = users.filter(u => !u.test);
+      const D = {
+        whoami: { user: 'Mette Hansen', role: 'admin', phone: '+45 •••• ••90', ring: 4, draftTtlMinutes: 10 },
+        user_search: { users: real.filter(u => !args.q || (u.name + u.phone).toLowerCase().includes(String(args.q).toLowerCase())).slice(0, 5).map(u => ({ id: u.id, name: u.name || '—', phone: u.phone ? u.phone.slice(0, 3) + ' •••• ••' + u.phone.slice(-2) : '—', role: u.role, passkeys: u.pk })) },
+        feature_list: { features: s.features.map(f => ({ key: f.key, ring: f.ring, uses30d: f.count })) },
+        stats_overview: { days: Number(args.days) || 30, users: real.length, pageviews: 11872, logins: 1024 },
+        clips_list: { clips: [{ id: 41, title: 'OVHcloud prisliste', source: 'extension' }, { id: 38, title: 'Mødenoter mandag', source: 'office' }] },
+        me_features: { features: s.features.filter(f => f.ring >= 3).map(f => ({ key: f.key, ring: f.ring })) }
+      };
+      const data = D[t.name] || { ok: true, args };
+      const link = linkUrl(t, args);
+      return JSON.stringify(link ? { ...data, links: [{ label: t.link.label, url: link }] } : data, null, 2);
+    };
+    const DRAFT_TEXT = {
+      feature_set_ring: a => { const f = s.features.find(x => x.key === a.key); return [`Flyt ${f ? f.title : a.key} til ring ${a.ring || '?'}.`, [`Ring ${f ? f.ring : '?'} → ${a.ring || '?'}`, `${f ? f.userIds.length : 0} brugere har brugt den de seneste 30 dage`]]; },
+      user_block: a => { const u = users.find(x => String(x.id) === String(a.userId)); return [`Spær ${u ? (u.name || u.phone) : '#' + a.userId} og log ud alle steder.`, [`${u ? u.sessions : 0} aktive sessioner afsluttes`, 'Årsag: ' + (a.reason || '—')]]; },
+      user_set_role: a => { const u = users.find(x => String(x.id) === String(a.userId)); return [`Giv ${u ? (u.name || u.phone) : '#' + a.userId} rollen ${a.role || '?'}.`, [`Rolle ${u ? u.role : '?'} → ${a.role || '?'}`, 'Ændringen gælder fra næste kald']]; },
+      user_revoke_sessions: a => { const u = users.find(x => String(x.id) === String(a.userId)); return [`Log ${u ? (u.name || u.phone) : '#' + a.userId} ud alle steder.`, [`${u ? u.sessions : 0} sessioner og MCP-klienter afsluttes`]]; }
+    };
+    const apply = d => {
+      const a = d.args;
+      if (d.tool === 'feature_set_ring' && a.ring) this.patchFeature(a.key, { ring: Number(a.ring) });
+      if (d.tool === 'user_block') this.patchUser(Number(a.userId), { blocked: true, sessions: 0 }, '/api/admin/users/' + a.userId + '/block');
+      if (d.tool === 'user_set_role' && a.role) this.patchUser(Number(a.userId), { role: a.role });
+      if (d.tool === 'user_revoke_sessions') this.patchUser(Number(a.userId), { sessions: 0 }, '/api/admin/users/' + a.userId + '/revoke-sessions');
+    };
+    return {
+      ...base, srv, isOverview: s.mcpTab === 'overview', isTools: s.mcpTab === 'tools', isDrafts: s.mcpTab === 'drafts', isMonitor: s.mcpTab === 'monitor', isConnect: s.mcpTab === 'connect',
+      heroTitle: srvId === 'app' ? 'Dine klip og filer i Claude, Copilot og ChatGPT' : 'Administrér hele instansen fra én chat',
+      heroBody: srvId === 'app' ? 'Brugeren logger ind med telefonnummer og kode som i appen. Serveren ser kun brugerens egne data. Sletning og GDPR-eksport kræver en bekræftet kladde.' : 'Statistik, brugere og roller, efterligning, features og ringe, logs, GDPR og en læse-database. Læsning svarer med det samme. Ændringer kommer tilbage som en kladde, som du bekræfter.',
+      conn: [['Endpoint', ORIGIN + srv.path, 'var(--hm-font-mono)'], ['Login', 'OAuth 2.0 PKCE · Gær-login · scope ' + srv.scope, 'inherit'], ['Hvem', srv.who, 'inherit'], ['Data', srv.tenant, 'inherit'], ['Skrivninger', srv.writes, 'inherit']].map(([k, v, font]) => ({ k, v, font })),
+      goConnect: () => this.setState({ mcpTab: 'connect' }),
+      stats: [['Værktøjer', tools.length], ['Læs', tools.filter(t => t.mode === 'read').length], [srvId === 'app' ? 'Skriver og kladder' : 'Kladder', tools.filter(t => t.mode !== 'read').length], ['Med deep link', tools.filter(t => t.link).length]].map(([label, value]) => ({ label, value })),
+      prompts: cat.prompts.filter(p => p.server === srvId).map(p => ({ q: p.q, chips: p.tools.map(n => ({ name: n, pick: () => pickTool(n) })) })),
+      domainCards: domainsHere.map(d => ({ label: cat.domains[d].label, n: tools.filter(t => t.domain === d).length, src: cat.domains[d].src.join(' · '), pick: () => this.setState({ mcpTab: 'tools', mcpDomain: d }) })),
+      q: s.mcpQ, onQ: e => this.setState({ mcpQ: e.target.value }),
+      modes: [['all', 'Alle'], ['read', 'Læs'], ...(srvId === 'app' ? [['write', 'Skriver']] : []), ['draft', 'Kladde → bekræft']].map(([k, l]) => ({ label: l, pick: () => this.setState({ mcpMode: k }), bg: s.mcpMode === k ? '#0f172a' : '#f1f5f9', fg: s.mcpMode === k ? '#ffffff' : '#334155' })),
+      countLabel: shown.length + ' af ' + tools.length,
+      domainChips: [['', 'Alle domæner'], ...domainsHere.map(d => [d, cat.domains[d].label])].map(([k, l]) => ({ label: l, pick: () => this.setState({ mcpDomain: k }), bg: s.mcpDomain === k ? '#2563eb' : '#f1f5f9', fg: s.mcpDomain === k ? '#ffffff' : '#334155' })),
+      noTools: shown.length === 0,
+      toolRows: shown.map(t => ({ name: t.name, desc: t.description, domain: cat.domains[t.domain].label, mode: MODE[t.mode][0], mBg: MODE[t.mode][1], mFg: MODE[t.mode][2], hasLink: !!t.link, bg: s.mcpSel === t.name ? '#eff6ff' : '#ffffff', pick: () => pickTool(t.name) })),
+      noSel: !sel, hasSel: !!sel,
+      sel: sel ? {
+        name: sel.name, desc: sel.description, mode: MODE[sel.mode][0], mBg: MODE[sel.mode][1], mFg: MODE[sel.mode][2], src: cat.domains[sel.domain].label + ' · ' + cat.domains[sel.domain].src.join(' · '),
+        noParams: sel.params.length === 0, params: sel.params.map(p => ({ name: p.name, label: p.name + ' · ' + p.type + (p.optional ? ' (valgfri)' : ''), value: args[p.name] || '', ph: p.desc })),
+        hasLink: !!sel.link, linkLabel: sel.link ? sel.link.label : '', url: linkUrl(sel, args), hasFocus: !!(sel.link && sel.link.focus), focus: sel.link && sel.link.focus ? sel.link.focus.replace(/\{(\w+)\}/g, (_, k) => args[k] || '{' + k + '}') : ''
+      } : {},
+      onArg: e => { const { name, value } = e.target; this.setState(st => ({ mcpArgs: { ...st.mcpArgs, [name]: value } })); },
+      copyLinkLabel: s.mcpCopied === 'link' ? 'Kopieret' : 'Kopiér link', copyLink: () => sel && copyTo('link', linkUrl(sel, args)),
+      runLabel: sel && sel.mode === 'draft' ? 'Opret kladde' : 'Kør',
+      closeSel: () => this.setState({ mcpSel: null, mcpResult: null, mcpActive: null }),
+      run: () => {
+        if (!sel) return;
+        const ms = 30 + Math.round(Math.random() * 140);
+        if (sel.mode === 'draft') {
+          const id = 'd_' + Math.random().toString(16).slice(2, 10);
+          const [summary, bullets] = (DRAFT_TEXT[sel.name] || (a => [`Kør ${sel.name} med ${Object.keys(a).length ? JSON.stringify(a) : 'ingen parametre'}.`, ['Intet ændres før kladden bekræftes']]))(args);
+          const d = { id, tool: sel.name, server: srvId, args: { ...args }, summary, bullets, status: 'pending', ts: Date.now() };
+          this.setState(st => ({ mcpDrafts: [d, ...st.mcpDrafts], mcpActive: id, mcpResult: null, mcpReason: '' }));
+          this.mcpEvent(srvId, sel.name, 'draft', ms);
+        } else {
+          this.setState({ mcpResult: resultFor(sel), mcpMs: ms, mcpActive: null });
+          this.mcpEvent(srvId, sel.name, 'ok', ms);
+        }
+        this.trace('POST', '/api/admin/mcp/tools/' + sel.name + '/invoke?server=' + srvId, 200, args, { ok: true }, ms);
+      },
+      hasResult: !!s.mcpResult && !active, result: s.mcpResult || '', resultMs: s.mcpMs,
+      hasDraft: !!active,
+      draft: active ? { id: active.id, summary: active.summary, bullets: active.bullets, pending: active.status === 'pending', statusText: active.status === 'pending' ? 'Afventer bekræftelse · udløber om 10 min' : SL[active.status] } : { bullets: [] },
+      reason: s.mcpReason, onReason: e => this.setState({ mcpReason: e.target.value }),
+      confirmOp: s.mcpReason.trim().length >= 3 ? 1 : 0.45, confirmPe: s.mcpReason.trim().length >= 3 ? 'auto' : 'none',
+      confirm: () => { if (!active) return; apply(active); this.setState(st => ({ mcpDrafts: st.mcpDrafts.map(d => d.id === active.id ? { ...d, status: 'confirmed', reason: st.mcpReason } : d) })); this.mcpEvent(active.server, 'confirm_draft', 'confirmed', 64); this.say('Kladde ' + active.id + ' er bekræftet og udført'); },
+      cancelDraft: () => { if (!active) return; this.setState(st => ({ mcpDrafts: st.mcpDrafts.map(d => d.id === active.id ? { ...d, status: 'cancelled' } : d) })); this.mcpEvent(active.server, 'cancel_draft', 'cancelled', 12); },
+      noDrafts: drafts.length === 0,
+      draftRows: drafts.map(d => ({ tool: d.tool, meta: d.id + ' · ' + fmtT(d.ts) + ' · ' + (d.server === 'app' ? '/mcp' : '/mcp/admin'), summary: d.summary, status: SL[d.status], sBg: SB[d.status][0], sFg: SB[d.status][1], pending: d.status === 'pending', review: () => this.setState({ mcpTab: 'tools', mcpServer: d.server, mcpSel: d.tool, mcpArgs: d.args, mcpActive: d.id, mcpReason: '' }) })),
+      monQ: s.mcpMonQ, onMonQ: e => this.setState({ mcpMonQ: e.target.value }),
+      toggleLive: () => this.setState(st => ({ mcpLive: !st.mcpLive })), liveLabel: s.mcpLive ? 'Live' : 'Pause', liveDot: s.mcpLive ? '#22c55e' : '#94a3b8', liveAnim: s.mcpLive ? 'tgpulse 1.6s infinite' : 'none',
+      events: s.mcpEvents.filter(e => e.server === srvId && (!mq || (e.tool + ' ' + e.user).toLowerCase().includes(mq))).map(e => ({ time: fmtT(e.ts), tool: e.tool, user: e.user, status: e.status, sBg: (SB[e.status] || SB.ok)[0], sFg: (SB[e.status] || SB.ok)[1], ms: e.ms })),
+      connectIntro: srvId === 'app' ? 'Klienten åbner Gær-login første gang: telefonnummer, kode og passkey. Bagefter står klienten under Konto → Sessioner, hvor den kan fjernes.' : 'Klienten åbner Gær-login første gang. Kun brugere med admin-rollen kan godkende scope mcp:admin, og rollen tjekkes igen ved hvert kald.',
+      clients: clientsCode.map(([title, code], i) => ({ title, code, copyLabel: s.mcpCopied === 'c' + i ? 'Kopieret' : 'Kopiér', copy: () => copyTo('c' + i, code) }))
+    };
+  }
+  componentDidMount() {
+    fetch('../../mcp/catalog.json').then(r => r.json()).then(c => this.setState({ mcpCat: c })).catch(() => {});
+    const SEED = [['admin', 'stats_overview', 'ok', 88], ['admin', 'user_search', 'ok', 41], ['admin', 'feature_set_ring', 'draft', 57], ['admin', 'confirm_draft', 'confirmed', 73], ['app', 'clips_search', 'ok', 36, 'Sara Nielsen'], ['app', 'clip_create', 'ok', 52, 'Noah Jensen'], ['app', 'me_features', 'ok', 19, 'Sara Nielsen'], ['admin', 'db_query', 'error', 5012], ['app', 'file_link', 'ok', 61, 'Line Mortensen']];
+    this.setState({ mcpEvents: SEED.map((e, i) => ({ id: 's' + i, ts: Date.now() - (i + 1) * 47000, server: e[0], tool: e[1], status: e[2], ms: e[3], user: e[4] || 'Mette Hansen' })) });
+    const LIVE = [['app', 'clips_list', 'Noah Jensen'], ['app', 'clip_get', 'Sara Nielsen'], ['app', 'whoami', 'Ahmad Rahimi'], ['admin', 'audit_log_search', 'Jonas Kristensen'], ['admin', 'user_get', 'Jonas Kristensen'], ['app', 'files_list', 'Line Mortensen']];
+    this.liveT = setInterval(() => {
+      if (!this.state.mcpLive || this.state.section !== 'mcp' || this.state.mcpTab !== 'monitor') return;
+      const [srv, tool, user] = LIVE[Math.floor(Math.random() * LIVE.length)];
+      this.mcpEvent(srv, tool, 'ok', 15 + Math.round(Math.random() * 120), user);
+    }, 3200);
+    try { if (sessionStorage.getItem('tg-tracer-hidden') === '1') this.setState({ trHidden: true }); } catch (e) {}
+    const days = this.state.range;
+    this.trace('GET', '/api/auth/me', 200, null, { id: 1, display_name: 'Mette Hansen', role: 'admin', scope: 'full', impersonator: null }, 38);
+    this.trace('GET', '/api/admin/analytics?days=' + days, 200, null, { days, totals: { pageviews: 11872, visits: 2410, visitors: 318 } }, 164);
+    this.trace('GET', '/api/admin/users?limit=50', 200, null, { total: USERS.length, grace_logins: GRACE, items: '[…' + USERS.length + ']' }, 92);
+    this.trace('GET', '/api/admin/features', 200, null, { items: '[…' + FEATURES.length + ']', catalogMissing: MISSING.map(m => m.key) }, 71);
+    if ((this.props.extension ?? 'connected') === 'missing') this.handshake(true); }
+  componentDidUpdate(prev) {
+    const now = this.props.extension ?? 'connected', was = prev.extension ?? 'connected';
+    if (now !== was) { this.setState({ extOverride: null, hs: 'idle', guideOpen: false }); if (now === 'missing') setTimeout(() => this.handshake(true), 0); }
+  }
+  componentWillUnmount() { clearTimeout(this.tt); clearTimeout(this.ht); clearInterval(this.liveT); clearTimeout(this.mct); }
+  // PING with backoff, as useBridge (1s, 2s, 3s, 5s — shortened here)
+  handshake(auto, succeed = false) {
+    clearTimeout(this.ht);
+    const delays = [400, 700, 900, 1200];
+    const step = i => {
+      this.setState({ hs: 'checking', hsTry: i + 1 });
+      this.ht = setTimeout(() => {
+        if (succeed) { this.setState({ hs: 'idle', extOverride: 'connected', guideOpen: false, extOpen: true }); this.say('Handshake etableret · Happy AI v2.8.1'); return; }
+        if (i + 1 < delays.length) return step(i + 1);
+        let seen = false; try { seen = localStorage.getItem('tg-ext-guide-seen') === '1'; } catch (e) {}
+        this.setState(st => ({ hs: 'none', guideOpen: auto ? !seen : st.guideOpen }));
+      }, delays[i]);
+    };
+    step(0);
+  }
+  say(msg) { clearTimeout(this.tt); this.setState({ toast: msg }); this.tt = setTimeout(() => this.setState({ toast: '' }), 2600); }
+  patchUser(id, p, path) { this.setState(s => ({ users: s.users.map(u => u.id === id ? { ...u, ...p } : u) })); this.trace(path ? 'POST' : 'PATCH', path || '/api/admin/users/' + id, 200, path ? null : p, { ok: true, id, ...p }); }
+  patchFeature(key, p) { this.setState(s => ({ features: s.features.map(f => f.key === key ? { ...f, ...p } : f) })); this.trace('PATCH', '/api/admin/features/' + key, 200, p, { key, ...p, event: 'features.ring-changed' }); }
+  go(section, extra = {}) {
+    this.setState({ section, sel: null, ...extra });
+    const API = { overview: '/api/admin/analytics?days=' + this.state.range, users: '/api/admin/users?limit=50', impersonation: '/api/impersonation/users', features: '/api/admin/features', stores: '/api/admin/app-store', mcp: '/api/admin/mcp/overview?server=' + this.state.mcpServer };
+    this.trace('GET', API[section], 200, null, { ok: true });
+  }
+  startImp(u) { this.setState({ imp: u.id }); this.trace('POST', '/api/impersonation/start', 200, { userId: u.id }, { session: 'imp_' + u.id, user: { id: u.id, displayName: u.name }, impersonator: { id: 1, displayName: 'Mette Hansen' } }); this.say('Efterligner ' + u.name + '. Appen på / viser nu testkontoen.'); }
+
+  userView(u) {
+    const login = u.pk > 0 ? [u.pk + (u.pk > 1 ? ' passkeys' : ' passkey'), 'green'] : u.test ? ['Kun efterligning', 'orange'] : u.grace >= GRACE ? ['Skal oprette passkey', 'orange'] : [u.grace + '/' + GRACE + ' engangskoder', 'blue'];
+    const status = u.blocked ? ['Spærret', 'red'] : ['Aktiv', 'green'];
+    const role = u.role === 'admin' ? ['Admin', 'dark'] : ['Bruger', 'gray'];
+    const name = u.name || u.phone;
+    return {
+      id: u.id, name, isTest: u.test, initials: initials(u), avBg: u.test ? '#f59e0b' : AV[u.id % AV.length],
+      sub: u.test ? 'testkonto · #' + u.id : (u.name ? u.phone + ' · ' : '') + '#' + u.id,
+      roleLabel: role[0], roleBg: pill(role[1])[0], roleFg: pill(role[1])[1],
+      loginLabel: login[0], loginBg: pill(login[1])[0], loginFg: pill(login[1])[1],
+      statusLabel: status[0], statusBg: pill(status[1])[0], statusFg: pill(status[1])[1],
+      sessions: u.sessions + (u.sessions === 1 ? ' aktiv session' : ' aktive sessioner'), last: lastLabel(u.last)
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const R = s.range;
+    const users = s.users;
+    const real = users.filter(u => !u.test);
+    const me = users.find(u => u.id === ME);
+    const impUser = users.find(u => u.id === s.imp);
+    const tests = users.filter(u => u.test);
+    const failed24 = 3;
+
+    const navItem = (key, label, icon, badge, tone) => {
+      const on = s.section === key;
+      return { label, icon: IC(icon), pick: () => this.go(key), bg: on ? 'rgba(255,255,255,0.1)' : 'transparent', fg: on ? '#ffffff' : 'rgba(255,255,255,0.72)', font: (on ? '600' : '400') + ' 13px var(--hm-font-sans)', bar: on ? '#fcbf49' : 'transparent', hasBadge: !!badge, badge: badge || '', badgeBg: tone === 'amber' ? '#f59e0b' : '#dc2626', badgeFg: tone === 'amber' ? '#0f172a' : '#ffffff' };
+    };
+    const nav = [
+      { label: 'Overblik', items: [navItem('overview', 'Statistik', 'chart-column')] },
+      { label: 'Adgang', items: [navItem('users', 'Brugere og roller', 'users'), navItem('impersonation', 'Efterligning', 'venetian-mask', s.imp ? 'Aktiv' : '', 'amber')] },
+      { label: 'Produkt', items: [navItem('features', 'Features og ringe', 'flag', s.missing.length ? String(s.missing.length) : '', 'amber'), navItem('stores', 'App Stores', 'smartphone')] },
+      { label: 'Integrationer', items: [navItem('mcp', 'MCP-servere', 'plug-zap', s.mcpDrafts.filter(d => d.status === 'pending').length ? String(s.mcpDrafts.filter(d => d.status === 'pending').length) : '', 'amber')] }
+    ];
+    const PATHS = PAGE_PATHS;
+
+    // stats
+    const chart = [], pvs = [], lgs = [];
+    for (let i = R - 1; i >= 0; i--) {
+      const wd = (TODAY.getDay() - i % 7 + 7) % 7;
+      const wk = wd === 0 || wd === 6 ? 0.55 : 1;
+      const pv = Math.round((360 + 120 * Math.sin(i * 0.7) + 60 * Math.cos(i * 1.9) + (R - i) * 1.6) * wk);
+      const lg = Math.round((34 + 10 * Math.sin(i * 1.3) + 5 * Math.cos(i * 0.4)) * wk);
+      pvs.push(pv); lgs.push(lg);
+      const d = new Date(TODAY); d.setDate(d.getDate() - i);
+      chart.push({ pvRaw: pv, lgRaw: lg, title: dayFmt.format(d) + ': ' + fmt(pv) + ' sidevisninger, ' + lg + ' logins' });
+    }
+    const maxPv = Math.max(...pvs), maxLg = Math.max(...lgs);
+    chart.forEach(c => { c.pv = Math.round(c.pvRaw / maxPv * 72); c.lg = Math.max(3, Math.round(c.lgRaw / maxLg * 22)); });
+    const from = new Date(TODAY); from.setDate(from.getDate() - (R - 1));
+    const totPv = pvs.reduce((a, b) => a + b, 0), totLg = lgs.reduce((a, b) => a + b, 0);
+    const failed = Math.round(totLg * 0.06);
+    const active = real.filter(u => u.last !== null && u.last < R && !u.blocked).length;
+    const newU = real.filter(u => u.id === 4 || u.id === 6 || u.id === 12 || (R >= 30 && u.id === 9) || (R >= 90 && (u.id === 11 || u.id === 10))).length;
+    const kpis = [
+      { label: 'Brugere', value: fmt(real.length), sub: '+' + newU + ' nye på ' + R + ' dage', subFg: '#166534' },
+      { label: 'Aktive brugere', value: fmt(active), sub: Math.round(active / real.length * 100) + ' % logget ind på ' + R + ' dage', subFg: '#64748b' },
+      { label: 'Sidevisninger', value: fmt(totPv), sub: fmt(totPv * 0.31) + ' anonyme uden samtykke', subFg: '#64748b' },
+      { label: 'Logins', value: fmt(totLg), sub: failed + ' fejlede · ' + failed24 + ' seneste døgn', subFg: '#b91c1c' }
+    ];
+    const featMax = Math.max(...s.features.map(f => f.count), 1);
+    const topFeatures = [...s.features].sort((a, b) => b.count - a.count).slice(0, 5).map(f => ({ title: f.title, ring: f.ring, ringBg: pill(RING[f.ring][1])[0], ringFg: pill(RING[f.ring][1])[1], value: fmt(f.count * R / 30), pct: Math.round(f.count / featMax * 100) }));
+    const PG = [['/', 0.24], ['/klip', 0.21], ['/filer', 0.14], ['/m', 0.12], ['/w/om', 0.08], ['/konto', 0.05]];
+    const pages = PG.map(([p, w]) => ({ label: p, value: fmt(totPv * w), pct: Math.round(w / 0.24 * 100) }));
+    const pk = Math.round((totLg - failed) * 0.78), otp = totLg - failed - pk;
+    const withPk = real.filter(u => u.pk > 0).length, mustPk = real.filter(u => u.pk === 0 && u.grace >= GRACE).length;
+    const login = {
+      pkPct: pk / totLg * 100, otpPct: otp / totLg * 100, failPct: failed / totLg * 100,
+      rows: [{ c: '#16a34a', label: 'Passkey', value: fmt(pk) }, { c: '#2563eb', label: 'Engangskode på SMS', value: fmt(otp) }, { c: '#dc2626', label: 'Fejlede', value: fmt(failed) }],
+      withPk: withPk + ' af ' + real.length, mustPk: String(mustPk)
+    };
+
+    // users
+    const FILTERS = [
+      ['all', 'Alle', u => true], ['active', 'Aktive', u => !u.blocked], ['blocked', 'Spærrede', u => u.blocked],
+      ['nopk', 'Uden passkey', u => u.pk === 0 && !u.test], ['admins', 'Admins', u => u.role === 'admin'], ['test', 'Testkonti', u => u.test]
+    ];
+    const fn = (FILTERS.find(f => f[0] === s.filter) || FILTERS[0])[2];
+    const q = s.q.trim().toLowerCase();
+    const list = users.filter(fn).filter(u => !q || (u.name + ' ' + u.phone.replace(/\s/g, '') + ' ' + u.phone).toLowerCase().includes(q.replace(/^\+?45\s?/, '')));
+    const rows = list.map(u => ({ ...this.userView(u), open: () => this.setState({ sel: u.id }), rowBg: s.sel === u.id ? '#f8fafc' : '#ffffff' }));
+    const filters = FILTERS.map(([k, label, f]) => ({ label, n: users.filter(f).length, pick: () => this.setState({ filter: k }), bg: s.filter === k ? '#0f172a' : '#ffffff', fg: s.filter === k ? '#ffffff' : '#475569', bd: s.filter === k ? '#0f172a' : '#e2e8f0' }));
+
+    // drawer
+    let sel = {};
+    const su = users.find(u => u.id === s.sel);
+    if (su) {
+      const v = this.userView(su);
+      const admins = users.filter(u => u.role === 'admin' && !u.test && !u.blocked).length;
+      const isMe = su.id === ME;
+      const act = (label, hint, icon, run, opts = {}) => ({ label, hint, icon: IC(icon), run, fg: opts.danger ? '#b91c1c' : '#020817', bd: opts.danger ? 'rgba(220,38,38,0.3)' : '#e2e8f0', op: opts.disabled ? 0.45 : 1, pe: opts.disabled ? 'none' : 'auto' });
+      const actions = [
+        su.role === 'admin'
+          ? act('Fjern admin', admins <= 1 && !su.test ? 'Der skal altid være mindst én admin' : 'Brugeren mister adgang til /admin', 'shield-off', () => { this.patchUser(su.id, { role: 'user' }); this.say('Admin-rollen er fjernet'); }, { disabled: admins <= 1 && !su.test })
+          : act('Gør til admin', 'Giver adgang til /admin', 'shield-check', () => { this.patchUser(su.id, { role: 'admin' }); this.say('Brugeren er nu admin'); }),
+        su.blocked
+          ? act('Ophæv spærring', 'Brugeren kan logge ind igen', 'lock-open', () => { this.patchUser(su.id, { blocked: false }); this.say('Spærringen er ophævet'); })
+          : act('Spær', isMe ? 'Du kan ikke spærre dig selv' : 'Logges ud alle steder og kan ikke logge ind', 'ban', () => { this.patchUser(su.id, { blocked: true, sessions: 0 }); this.say('Brugeren er spærret og logget ud'); }, { danger: true, disabled: isMe }),
+        act('Nulstil passkeys', su.pk ? 'Skal oprette ny passkey efter login med engangskode' : 'Ingen passkeys', 'key-round', () => { this.patchUser(su.id, { pk: 0, grace: GRACE, sessions: 0 }); this.say('Passkeys er nulstillet'); }, { disabled: !su.pk }),
+        act('Log ud alle steder', su.sessions ? su.sessions + ' aktive sessioner' : 'Ingen aktive sessioner', 'log-out', () => { this.patchUser(su.id, { sessions: 0 }); this.say('Brugeren er logget ud alle steder'); }, { disabled: !su.sessions }),
+        act('Se auth-log', '/admin/logs/auth?user_id=' + su.id, 'scroll-text', () => this.say('Åbner auth-loggen for #' + su.id))
+      ];
+      const lvl = s.levels.find(l => l.userId === su.id);
+      sel = {
+        ...v,
+        facts: [
+          ['Telefon', su.phone || '—'], ['Oprettet', su.created], ['Sidst logget ind', lastLabel(su.last)],
+          ['Engangskoder brugt', su.test ? '—' : su.grace + ' af ' + GRACE], ['Sessioner', String(su.sessions)], ['Feature-niveau', lvl ? 'Ring ' + lvl.ring + ' · ' + RING[lvl.ring][0] : 'Ring 4 · standard']
+        ].map(([k, vv]) => ({ k, v: vv })),
+        actions, impLabel: s.imp === su.id ? 'Stop efterligning' : 'Skift til',
+        impersonate: () => s.imp === su.id ? (this.setState({ imp: null }), this.say('Efterligning stoppet')) : this.startImp(su)
+      };
+    }
+
+    // impersonation
+    const testRows = tests.map(u => ({
+      name: u.name, initials: initials(u), handle: 'test-' + u.id + '@impersonation.invalid', roleLabel: u.role === 'admin' ? 'Admin' : 'Bruger',
+      current: s.imp === u.id, notCurrent: s.imp !== u.id, switchTo: () => this.startImp(u),
+      delOp: s.imp === u.id ? 0.35 : 1, delPe: s.imp === u.id ? 'none' : 'auto',
+      remove: () => { this.setState(st => ({ users: st.users.filter(x => x.id !== u.id), sel: null })); this.say(u.name + ' er slettet'); }
+    }));
+    const nextId = () => Math.max(...this.state.users.map(u => u.id)) + 1;
+    const mkTest = (name, role) => ({ ...U(nextId(), name, '', role, 0, 0, null, 0, '19. okt 2026'), test: true });
+
+    // features
+    const lvlRing = Number(s.lvlRing);
+    const featRows = s.features.map(f => {
+      const open = s.expanded === f.key;
+      const t = pill(RING[f.ring][1]);
+      return {
+        key: f.key, title: f.title, desc: f.desc, area: AREA[f.area] || f.area, ring: f.ring, ringStr: String(f.ring), ringBg: t[0], ringFg: t[1],
+        onRing: e => { const r = Number(e.target.value); this.patchFeature(f.key, { ring: r }); this.say(f.title + ' er nu i ring ' + r + ' · ' + RING[r][0]); },
+        obsBg: f.observe ? '#2563eb' : '#cbd5e1', obsX: f.observe ? 16 : 0, onObs: () => this.patchFeature(f.key, { observe: !f.observe }),
+        count: fmt(f.count), userCount: f.userIds.length, chev: IC(open ? 'chevron-down' : 'chevron-right'),
+        toggle: () => this.setState({ expanded: open ? null : f.key }), open: open && f.userIds.length > 0,
+        users: f.userIds.map((id, i) => { const u = users.find(x => x.id === id); return { name: u ? (u.name || u.phone) : '#' + id, n: fmt(f.count / f.userIds.length * (1.6 - i * 0.12)), last: lastLabel(u ? u.last : null) }; }),
+        canDelete: !f.builtin, del: () => { this.setState(st => ({ features: st.features.filter(x => x.key !== f.key) })); this.say(f.title + ' er slettet'); }
+      };
+    });
+    const ringLegend = [1, 2, 3, 4].map(n => ({ n, label: RING[n][0], who: RING[n][2], bg: pill(RING[n][1])[0], fg: pill(RING[n][1])[1], count: s.features.filter(f => f.ring === n).length + ' features' }));
+    const levels = s.levels.map(l => {
+      const u = users.find(x => x.id === l.userId) || {};
+      return { name: u.name || u.phone, phone: u.name ? u.phone : '', ringStr: String(l.ring),
+        onRing: e => { const r = Number(e.target.value); this.setState(st => ({ levels: st.levels.map(x => x.userId === l.userId ? { ...x, ring: r } : x) })); },
+        reset: () => this.setState(st => ({ levels: st.levels.filter(x => x.userId !== l.userId) })) };
+    });
+    const lvlOptions = real.filter(u => !s.levels.some(l => l.userId === u.id)).map(u => ({ id: String(u.id), label: (u.name || u.phone) + (u.name ? ' · ' + u.phone : '') }));
+    const nf = s.nf;
+    const nfOk = /^[a-z0-9][a-z0-9-]*$/.test(nf.key) && nf.title.trim() && !s.features.some(f => f.key === nf.key);
+
+    // browser extension (happyai-bridge)
+    const extMode = s.extOverride ?? this.props.extension ?? 'connected';
+    const LATEST = '2.8.1';
+    const extVersion = extMode === 'outdated' ? '2.6.0' : LATEST;
+    const SELS = ['+45 27 90 44 01', 'Line Mortensen', 'ukendt@firma.dk'];
+    const selText = SELS[s.selIdx % SELS.length];
+    const norm = t => t.replace(/\s/g, '').toLowerCase();
+    const match = users.find(u => !u.test && (norm(u.phone) === norm(selText) || (u.name && u.name.toLowerCase() === selText.toLowerCase())));
+    const logLine = (verb, detail) => this.setState(st => ({ bridgeLog: [[verb, detail], ...st.bridgeLog].slice(0, 5) }));
+    const INSTANCES = [{ label: 'my-gaer', url: 'https://my-gaer.dk' }, { label: 'my-gaer · staging', url: 'https://staging.my-gaer.dk' }, { label: 'Happy Mates', url: 'https://ai.happymates.dk' }];
+    const canImpPanel = extMode === 'connected' && !!impUser;
+    const ext = {
+      present: extMode !== 'missing', missing: extMode === 'missing', outdated: extMode === 'outdated', version: extVersion, latest: LATEST,
+      title: extMode === 'missing' ? 'Happy AI-udvidelsen er ikke installeret' : 'Happy AI-udvidelsen · v' + extVersion,
+      dot: extMode === 'connected' ? '#10b981' : extMode === 'outdated' ? '#f59e0b' : '#94a3b8',
+      btnBd: s.extOpen ? '#2563eb' : '#e2e8f0', btnRing: s.extOpen ? '0 0 0 2px rgba(37,99,235,0.25)' : 'none',
+      logoFilter: extMode === 'missing' ? 'grayscale(1) opacity(0.6)' : 'none',
+      pill: extMode === 'connected' ? 'Forbundet · v' + extVersion : extMode === 'outdated' ? 'Forældet · v' + extVersion : 'Ikke installeret',
+      pillBg: pill(extMode === 'connected' ? 'green' : extMode === 'outdated' ? 'orange' : 'gray')[0], pillFg: pill(extMode === 'connected' ? 'green' : extMode === 'outdated' ? 'orange' : 'gray')[1],
+      tabTitle: 'Indbakke · Mette Hansen · Outlook', tabHost: 'outlook.office.com/mail',
+      selection: '„' + selText + '“', hasMatch: !!match, matchName: match ? (match.name || match.phone) : '',
+      openMatch: () => { logLine('GET_SELECTION', match.name || match.phone); this.setState({ extOpen: false, section: 'users', sel: match.id }); },
+      readSel: () => { const n = s.selIdx + 1; this.setState({ selIdx: n }); logLine('GET_SELECTION', SELS[n % SELS.length]); },
+      actions: [
+        { label: 'Åbn sidepanelet', hint: 'Appen på / i Chrome- eller Edge-sidepanelet', icon: IC('panel-right-open'), run: () => { logLine('OPEN_SIDE_PANEL', 'ok'); this.say('Sidepanelet er åbnet med ' + s.instance.replace('https://', '')); }, op: 1, pe: 'auto' },
+        { label: impUser ? 'Vis sidepanelet som ' + impUser.name : 'Vis sidepanelet som testkonto', hint: canImpPanel ? 'Sidepanelet følger din efterligning' : extMode === 'outdated' ? 'Kræver version ' + LATEST : 'Start en efterligning først', icon: IC('venetian-mask'), run: () => { logLine('SET_INSTANCE', '?as=' + impUser.id); this.say('Sidepanelet viser nu appen som ' + impUser.name); }, op: canImpPanel ? 1 : 0.45, pe: canImpPanel ? 'auto' : 'none' },
+        { label: s.trHidden ? 'Vis API-tracer' : 'Åbn API-tracer', hint: 'Live log over kald til /api', icon: IC('zap'), run: () => this.setState({ trHidden: false, trOpen: true, extOpen: false }), op: 1, pe: 'auto' },
+        { label: 'Udvidelsens indstillinger', hint: 'Endpoint, sprog og debug', icon: IC('settings'), run: () => { logLine('OPEN_OPTIONS', 'ok'); this.say('Indstillinger åbnet i en ny fane'); }, op: 1, pe: 'auto' }
+      ],
+      instances: INSTANCES.map(i => { const on = i.url === s.instance; return { ...i, bd: on ? '#2563eb' : '#e2e8f0', bg: on ? 'rgba(37,99,235,0.05)' : '#ffffff', ring: on ? '#2563eb' : '#cbd5e1', dot: on ? '#2563eb' : 'transparent', pick: () => { if (on) return; this.setState({ instance: i.url }); logLine('SET_INSTANCE', i.url.replace('https://', '')); this.say('Sidepanelet peger nu på ' + i.label); } }; }),
+      log: s.bridgeLog.map(([verb, detail]) => ({ verb, detail, mark: '✓', c: '#16a34a' }))
+    };
+
+    const BR = { chrome: { label: 'Chrome', url: 'chrome://extensions' }, edge: { label: 'Edge', url: 'edge://extensions' } };
+    const br = BR[s.browser];
+    const copy = (k, v) => { navigator.clipboard && navigator.clipboard.writeText(v).catch(() => {}); this.setState({ copied: k }); clearTimeout(this.ct); this.ct = setTimeout(() => this.setState({ copied: '' }), 1500); };
+    const GS = [
+      { title: 'Åbn Happy AI i Chrome Web Store', body: s.browser === 'chrome' ? 'Udvidelsen ligger i Chrome Web Store.' : 'Edge kan installere fra Chrome Web Store. Første gang spørger Edge, om du vil tillade udvidelser fra andre butikker — vælg Tillad.', dl: true },
+      { title: s.browser === 'chrome' ? 'Klik „Føj til Chrome“' : 'Klik „Hent“', body: 'Godkend tilladelserne. Udvidelsen læser kun en side, når du beder om det, og spørger pr. domæne.' },
+      { title: 'Fastgør udvidelsen', body: 'Klik på puslespilsbrikken ved adresselinjen og sæt en nål ved Happy AI.' },
+      { title: 'Peg på denne instans', body: 'Højreklik på ikonet → Indstillinger, og sæt endpoint til instansens adresse.', code: 'https://my-gaer.dk' },
+      { title: 'Åbn sidepanelet og log ind', body: 'Log ind med dit telefonnummer i sidepanelet. Kom så tilbage og prøv handshake igen.' }
+    ];
+    const guideSteps = GS.map((g, i) => ({
+      n: i + 1, title: g.title, body: g.body, numBg: i === 0 && s.downloaded ? '#16a34a' : '#f1f5f9', numFg: i === 0 && s.downloaded ? '#ffffff' : '#020817',
+      hasCode: !!g.code, code: g.code || '', copyLabel: s.copied === 'url' ? 'Kopieret' : 'Kopiér', copy: () => copy('url', g.code),
+      hasDownload: !!g.dl, downloadLabel: s.downloaded ? 'Åbn Chrome Web Store igen' : 'Åbn Chrome Web Store', download: () => { window.open(STORE_URL, '_blank', 'noopener'); this.setState({ downloaded: true }); }
+    }));
+    const HS = {
+      checking: { title: 'Leder efter udvidelsen …', detail: 'PING · forsøg ' + s.hsTry + ' af 4', bg: '#f8fafc', bd: '#e2e8f0', fg: '#334155', dot: '#2563eb', anim: 'tgpulse 1s infinite' },
+      none: { title: 'Ingen handshake med udvidelsen', detail: 'happyai-bridge · PING svarede ikke efter 4 forsøg', bg: 'rgba(249,115,22,0.08)', bd: 'rgba(249,115,22,0.3)', fg: '#9a3412', dot: '#f97316', anim: 'none' },
+      idle: { title: 'Ikke tjekket endnu', detail: 'happyai-bridge', bg: '#f8fafc', bd: '#e2e8f0', fg: '#334155', dot: '#94a3b8', anim: 'none' }
+    };
+    const hs = { ...HS[s.hs] || HS.idle, btn: s.hs === 'checking' ? 'Leder …' : 'Prøv handshake igen', btnOp: s.hs === 'checking' ? 0.6 : 1, btnPe: s.hs === 'checking' ? 'none' : 'auto' };
+    const closeGuide = () => { try { localStorage.setItem('tg-ext-guide-seen', '1'); } catch (e) {} this.setState({ guideOpen: false }); };
+
+    // API tracer
+    const reqs = s.trReqs;
+    const trPending = reqs.filter(r => r.pending).length;
+    const trErrors = reqs.filter(r => !r.pending && r.status >= 400).length;
+    const selected = reqs.filter(r => s.trSel.includes(r.id));
+    const allSel = reqs.length > 0 && selected.length === reqs.length;
+    const BOX = IC('square'), BOXON = IC('square-check');
+    const pos = s.trPos;
+    const tr = {
+      shown: !s.trHidden, open: s.trOpen, asking: s.trAsking,
+      left: pos ? pos.x + 'px' : '16px', top: pos ? pos.y + 'px' : 'auto', bottom: pos ? 'auto' : '80px',
+      bd: s.trOpen ? 'rgba(16,185,129,0.4)' : '#e2e8f0', bg: s.trOpen ? 'rgba(236,253,245,0.95)' : 'rgba(255,255,255,0.9)', fg: s.trOpen ? '#047857' : '#64748b',
+      dot: s.trRec ? '#10b981' : '#cbd5e1', anim: s.trRec ? 'tgpulse 1.6s infinite' : 'none',
+      hasCount: s.trRec && reqs.length > 0, count: trPending ? trPending + '⇄' : String(reqs.length),
+      countBg: trErrors ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)', countFg: trErrors ? '#dc2626' : '#047857',
+      down: e => { if (e.button !== 0 && e.pointerType === 'mouse') return; const r = e.currentTarget.getBoundingClientRect(); this.drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, ox: r.left, oy: r.top, w: r.width, h: r.height, moved: false }; e.currentTarget.setPointerCapture(e.pointerId); },
+      move: e => { const d = this.drag; if (!d || d.id !== e.pointerId) return; const dx = e.clientX - d.sx, dy = e.clientY - d.sy; if (!d.moved && Math.hypot(dx, dy) < 4) return; d.moved = true; this.setState({ trPos: { x: Math.min(Math.max(d.ox + dx, 8), window.innerWidth - d.w - 8), y: Math.min(Math.max(d.oy + dy, 8), window.innerHeight - d.h - 8) } }); },
+      up: e => { const d = this.drag; if (!d || d.id !== e.pointerId) return; this.drag = null; if (!d.moved) this.setState(st => ({ trOpen: !st.trOpen })); },
+      stop: e => e.stopPropagation(),
+      askHide: e => { e.stopPropagation(); this.setState({ trAsking: true }); },
+      cancelHide: () => this.setState({ trAsking: false }),
+      hideRefresh: () => this.setState({ trHidden: true, trAsking: false, trOpen: false }),
+      hideSession: () => { try { sessionStorage.setItem('tg-tracer-hidden', '1'); } catch (e) {} this.setState({ trHidden: true, trAsking: false, trOpen: false }); },
+      close: () => this.setState({ trOpen: false }), clear: () => this.setState({ trReqs: [], trSel: [] }),
+      hasPending: trPending > 0, pending: trPending, hasErrors: trErrors > 0, errors: trErrors,
+      ctx: [['Side', PAGE_PATHS[s.section]], ['Bruger', me.name + ' · #1 · admin'], ['Efterligner', impUser ? impUser.name + ' · #' + impUser.id : '—'], ['Udvidelse', extMode === 'missing' ? 'ingen handshake' : 'happyai-bridge · v' + extVersion], ['API', 'https://my-gaer.dk/api']].map(([k, v]) => ({ k, v })),
+      toggleRec: () => this.setState(st => ({ trRec: !st.trRec })), recLabel: s.trRec ? 'Recording' : 'Paused',
+      recBg: s.trRec ? 'rgba(16,185,129,0.15)' : '#f1f5f9', recFg: s.trRec ? '#047857' : '#64748b',
+      total: reqs.length, hasRows: reqs.length > 0, empty: reqs.length === 0,
+      emptyHint: s.trRec ? 'API calls will appear here as they are made' : 'Enable the tracer to start capturing API calls',
+      selAll: () => this.setState({ trSel: allSel ? [] : reqs.map(r => r.id) }), allLabel: allSel ? 'Deselect all' : 'Select all', allBox: allSel ? BOXON : BOX, allBoxC: allSel ? '#2563eb' : '#94a3b8',
+      hasSel: selected.length > 0, selN: selected.length, copyLabel: s.trCopied ? 'Copied!' : 'Copy YAML',
+      copyYaml: () => { navigator.clipboard && navigator.clipboard.writeText(toYaml(selected)).catch(() => {}); this.setState({ trCopied: true }); setTimeout(() => this.setState({ trCopied: false }), 2000); },
+      download: () => { const blob = new Blob([toYaml(selected)], { type: 'text/yaml;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'tracer-export-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.yaml'; a.click(); URL.revokeObjectURL(a.href); },
+      rows: reqs.map(r => {
+        const m = METHOD[r.method] || METHOD.GET, on = s.trSel.includes(r.id), open = s.trExp === r.id;
+        return {
+          method: r.method, path: r.path, status: r.pending ? '…' : String(r.status), sC: statusC(r.status), dur: r.pending ? '' : r.dur < 1000 ? r.dur + 'ms' : (r.dur / 1000).toFixed(1) + 's',
+          time: new Date(r.ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          mBg: m[0], mFg: m[1], mBd: m[2], bg: on ? 'rgba(37,99,235,0.06)' : r.pending ? 'rgba(37,99,235,0.03)' : '#ffffff',
+          box: on ? BOXON : BOX, boxC: on ? '#2563eb' : '#cbd5e1', toggleSel: () => this.setState(st => ({ trSel: on ? st.trSel.filter(x => x !== r.id) : [...st.trSel, r.id] })),
+          chev: IC(open ? 'chevron-down' : 'chevron-right'), toggle: () => this.setState({ trExp: open ? null : r.id }), open,
+          url: 'https://my-gaer.dk' + r.path, pageUrl: r.page, hasReq: !!r.reqBody, reqBody: JSON.stringify(r.reqBody, null, 2), resBody: r.pending ? '…' : JSON.stringify(r.resBody, null, 2)
+        };
+      })
+    };
+
+    return {
+      tr,
+      ext, extOpen: s.extOpen,
+      toggleExt: () => extMode === 'missing' ? (this.setState({ guideOpen: true, extOpen: false }), s.hs !== 'checking' && this.handshake(false)) : this.setState(st => ({ extOpen: !st.extOpen })),
+      guideOpen: s.guideOpen, closeGuide, guideSteps, hs, browserUrl: br.url,
+      browsers: Object.entries(BR).map(([k, b]) => ({ label: b.label, pick: () => this.setState({ browser: k }), bg: s.browser === k ? '#ffffff' : 'transparent', fg: s.browser === k ? '#020817' : '#64748b', sh: s.browser === k ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' })),
+      retryHs: () => this.handshake(false, s.downloaded),
+      logo: this.props.logo ?? 'a', nav, path: PATHS[s.section],
+      isOverview: s.section === 'overview', isUsers: s.section === 'users', isImp: s.section === 'impersonation', isFeatures: s.section === 'features', isMcp: s.section === 'mcp', isStores: s.section === 'stores',
+      mcp: this.mcpVals(s, users), st: this.storeVals(s),
+      showRange: s.section === 'overview',
+      ranges: [7, 30, 90].map(r => ({ label: r + ' dage', pick: () => this.setState({ range: r }), bg: s.range === r ? '#ffffff' : 'transparent', fg: s.range === r ? '#020817' : '#64748b', sh: s.range === r ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' })),
+      imp: { on: !!impUser, name: impUser ? impUser.name : '', role: impUser && impUser.role === 'admin' ? 'admin' : 'bruger' },
+      stopImp: () => { this.trace('POST', '/api/impersonation/stop', 200, { returnSession: true }, { user: { id: 1, displayName: me.name } }); this.setState({ imp: null }); this.say('Efterligning stoppet. Du er tilbage som ' + me.name + '.'); },
+      kpis, chart, chartGap: R > 60 ? 1 : R > 20 ? 3 : 8, chartFrom: dayFmt.format(from), topFeatures, pages, login,
+      goFeatures: () => this.go('features'), goUsersNoPk: () => this.go('users', { filter: 'nopk' }),
+      q: s.q, onQ: e => this.setState({ q: e.target.value }), filters, rows, noRows: rows.length === 0,
+      rowsCount: rows.length + ' af ' + users.length + ' brugere',
+      hasSel: !!su, sel, closeSel: () => this.setState({ sel: null }),
+      impName: s.impName, impRole: s.impRole, onImpName: e => this.setState({ impName: e.target.value }), onImpRole: e => this.setState({ impRole: e.target.value }),
+      addOp: s.impName.trim() ? 1 : 0.45, addPe: s.impName.trim() ? 'auto' : 'none',
+      addTest: () => { const u = mkTest(s.impName.trim(), s.impRole); this.setState(st => ({ users: [...st.users, u], impName: '' })); this.say(u.name + ' er oprettet'); },
+      addPresets: () => {
+        const add = [['Test Bruger', 'user'], ['Test Admin', 'admin']].filter(([, r]) => !tests.some(t => t.role === r));
+        if (!add.length) { this.say('Du har allerede én testkonto pr. rolle'); return; }
+        let id = nextId();
+        const made = add.map(([n, r]) => ({ ...U(id++, n, '', r, 0, 0, null, 0, '19. okt 2026'), test: true }));
+        this.setState(st => ({ users: [...st.users, ...made] })); this.say(made.map(m => m.name).join(' og ') + ' er oprettet');
+      },
+      tests: testRows, noTests: testRows.length === 0,
+      features: featRows, ringLegend, missingN: s.missing.length, impOp: s.missing.length ? 1 : 0.45, impPe: s.missing.length ? 'auto' : 'none',
+      importMissing: () => { const n = s.missing.length; this.setState(st => ({ features: [...st.features, ...st.missing.map(m => ({ ...m, builtin: true }))], missing: [] })); this.say(n + ' features importeret i ring 1'); },
+      levels, lvlOptions, lvlUser: s.lvlUser, lvlRing: s.lvlRing,
+      onLvlUser: e => this.setState({ lvlUser: e.target.value }), onLvlRing: e => this.setState({ lvlRing: e.target.value }),
+      lvlOp: s.lvlUser ? 1 : 0.45, lvlPe: s.lvlUser ? 'auto' : 'none',
+      setLvl: () => { this.setState(st => ({ levels: [...st.levels, { userId: Number(st.lvlUser), ring: lvlRing }], lvlUser: '' })); },
+      newOpen: s.newOpen, openNew: () => this.setState({ newOpen: true }), closeNew: () => this.setState({ newOpen: false }),
+      nf, onNf: e => { const { name, value } = e.target; this.setState(st => ({ nf: { ...st.nf, [name]: name === 'key' ? value.toLowerCase() : value } })); },
+      nfOp: nfOk ? 1 : 0.45, nfPe: nfOk ? 'auto' : 'none',
+      createNew: () => { this.setState(st => ({ features: [...st.features, F(nf.key, nf.title.trim(), nf.desc.trim(), 1, nf.area, 0, [], false, false)], newOpen: false, nf: { key: '', title: '', desc: '', area: 'bruger' } })); this.say(nf.title.trim() + ' er oprettet i ring 1'); },
+      hasToast: !!s.toast, toast: s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

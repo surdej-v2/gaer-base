@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/happy-mates-design-system-019e2c51-c6f5-79d5-8af1-484a4845eab4/colors_and_type.css">
+  <script src="_ds/happy-mates-design-system-019e2c51-c6f5-79d5-8af1-484a4845eab4/_ds_bundle.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; font-family: var(--hm-font-sans); color: #020817; background: #cbd5e1; -webkit-font-smoothing: antialiased; }
+    a { color: var(--hm-primary); text-decoration: none; } a:hover { color: var(--hm-primary-90); text-decoration: underline; }
+    input:focus { outline: none; border-color: #2563eb !important; box-shadow: 0 0 0 1px #2563eb; }
+  </style>
+</helmet>
+<div data-screen-label="Happy AI sidepanel · App Stores" style="min-height:100vh; padding:24px; box-sizing:border-box; display:flex;">
+  <div style="flex:1; display:flex; flex-direction:column; border-radius:12px; overflow:hidden; background:#ffffff; box-shadow:var(--hm-shadow-2xl); min-height:760px;">
+    <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:#f1f5f9; border-bottom:1px solid #e2e8f0;">
+      <div style="display:flex; gap:6px;"><span style="width:11px; height:11px; border-radius:9999px; background:#cbd5e1;"></span><span style="width:11px; height:11px; border-radius:9999px; background:#cbd5e1;"></span><span style="width:11px; height:11px; border-radius:9999px; background:#cbd5e1;"></span></div>
+      <div style="flex:1; min-width:0; height:30px; border-radius:9999px; background:#ffffff; border:1px solid #e2e8f0; display:flex; align-items:center; gap:8px; padding:0 14px; font:13px var(--hm-font-mono); color:#475569; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;"><span style="width:12px; height:12px; flex:none; background:#64748b; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/lock.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/lock.svg) center/contain no-repeat;"></span>{{ tabUrl }}</div>
+      <img src="assets/happy-mates-logo.svg" alt="Happy AI" style="width:22px; height:22px; border-radius:9999px; box-shadow:0 0 0 2px #2563eb;">
+    </div>
+    <div style="flex:1; display:flex; min-height:0;">
+      <div style="flex:1; min-width:0; background:#f8fafc; display:flex; align-items:center; justify-content:center; padding:40px;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; max-width:420px;">
+          <div style="width:56px; height:56px; border-radius:16px; border:1px dashed #94a3b8; display:flex; align-items:center; justify-content:center;"><span style="width:24px; height:24px; background:#94a3b8; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/app-window.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/app-window.svg) center/contain no-repeat;"></span></div>
+          <div style="font-size:18px; font-weight:600; color:#334155;">{{ tabTitle }}</div>
+          <div style="font-size:14px; color:#64748b;">Den aktive fane. Sidepanelet læser adressen for at guide dig.</div>
+        </div>
+      </div>
+
+      <aside style="width:400px; flex:none; border-left:1px solid #e2e8f0; display:flex; flex-direction:column; background:#ffffff;">
+        <div style="padding:12px 16px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:10px;">
+          <img src="assets/happy-mates-logo.svg" alt="" style="width:22px; height:22px;">
+          <span style="font-size:13px; font-weight:800; letter-spacing:0.04em; background:var(--hm-brand-gradient); background-size:200% auto; -webkit-background-clip:text; background-clip:text; color:transparent; animation:hm-rainbow 3s ease infinite;">HAPPY AI</span>
+          <span style="margin-left:auto; width:26px; height:26px; border-radius:9999px; background:var(--hm-brand-gradient); color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">MH</span>
+        </div>
+        <div style="padding:8px 16px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:6px; font:12px var(--hm-font-mono); color:#64748b; flex-wrap:wrap;">
+          <span>/extension/tools/</span><button onClick="{{ toPortal }}" style="border:0; background:transparent; padding:0; cursor:pointer; font:600 12px var(--hm-font-mono); color:{{ crumbPortal }};">app-stores</button>
+          <sc-if value="{{ inGuide }}" hint-placeholder-val="{{ false }}"><span>/</span><span style="font-weight:600; color:#020817;">{{ g.path }}</span></sc-if>
+        </div>
+
+        <div style="flex:1; overflow:auto; padding:20px 18px 24px; display:flex; flex-direction:column; gap:20px;">
+          <sc-if value="{{ inPortal }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; flex-direction:column; gap:18px;">
+              <dc-import name="ToergaerMark" variant="a" size="34" hint-size="160px,34px"></dc-import>
+              <p style="margin:0; font-size:14px; line-height:1.55; color:#475569; text-wrap:pretty;">Før din app kan komme i App Store og Google Play, skal din virksomhed have en udviklerkonto begge steder og en Expo-organisation, der bygger appen. Sidepanelet guider dig og tjekker til sidst, at nøglerne til automatisk build og upload virker.</p>
+              <div style="display:flex; flex-direction:column; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; font-size:13px;">
+                <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid #e2e8f0;"><span style="color:#64748b; width:92px;">Konto</span><span style="font-weight:600;">Mette Hansen</span><span style="margin-left:auto; color:#64748b;">id.happymates.ai</span></div>
+                <div style="display:flex; align-items:center; gap:10px; padding:12px 14px;"><span style="color:#64748b; width:92px;">App</span><span style="font:600 13px var(--hm-font-mono);">my-gaer</span><span style="margin-left:auto; color:#64748b; font-family:var(--hm-font-mono); font-size:12px;">dk.mygaer.app</span></div>
+              </div>
+              <div style="padding:12px 14px; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0; font-size:12px; line-height:1.5; color:#475569; text-wrap:pretty;">Du skal bruge virksomhedens D-U-N-S-nummer til begge butikker. Har I det ikke, tager det op til fem hverdage at få — start derfor med Apple, som kan slå det op for dig.</div>
+              <sc-for list="{{ cards }}" as="c" hint-placeholder-count="2">
+                <div style="position:relative; isolation:isolate;">
+                  <div style="position:absolute; inset:-3px; border-radius:16px; background:linear-gradient(90deg,#f97316,#f59e0b); filter:blur(10px); opacity:{{ c.glowOp }}; z-index:-1;"></div>
+                  <div style="background:#ffffff; border:1px solid {{ c.bd }}; border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:12px;">
+                    <div style="display:flex; align-items:center; gap:10px;"><span style="width:18px; height:18px; flex:none; background:#020817; -webkit-mask:url({{ c.icon }}) center/contain no-repeat; mask:url({{ c.icon }}) center/contain no-repeat;"></span><span style="font-size:16px; font-weight:700;">{{ c.title }}</span><span style="margin-left:auto; font-size:12px; font-weight:700; color:#64748b; font-variant-numeric:tabular-nums;">{{ c.progress }}</span></div>
+                    <div style="height:6px; border-radius:9999px; background:#f1f5f9; overflow:hidden;"><div style="height:100%; width:{{ c.pct }}%; background:{{ c.bar }}; border-radius:9999px;"></div></div>
+                    <p style="margin:0; font-size:13px; line-height:1.55; color:#64748b; text-wrap:pretty;">{{ c.body }}</p>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;"><sc-for list="{{ c.facts }}" as="x" hint-placeholder-count="2"><span style="padding:2px 8px; border-radius:6px; background:#f1f5f9; font-size:12px; color:#334155;">{{ x }}</span></sc-for></div>
+                    <button onClick="{{ c.start }}" style="cursor:pointer; height:38px; border-radius:9999px; border:{{ c.btnBd }}; background:{{ c.btnBg }}; color:{{ c.btnFg }}; font:600 14px var(--hm-font-sans);">{{ c.label }}</button>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <div style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#64748b;">Klar til upload</div>
+                <sc-for list="{{ readiness }}" as="r" hint-placeholder-count="2">
+                  <div style="padding:12px 14px; border-radius:12px; border:1px solid #e2e8f0; display:flex; align-items:center; gap:8px; font-size:13px;"><span style="font-weight:600;">{{ r.store }}</span><span style="margin-left:auto; font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px; background:{{ r.bg }}; color:{{ r.fg }};">{{ r.tag }}</span></div>
+                </sc-for>
+              </div>
+              <div style="display:flex; gap:16px; font-size:13px; flex-wrap:wrap;"><a href="ToerGaer Admin.dc.html">App Stores i /admin</a><a href="https://developer.apple.com/support/compare-memberships/" target="_blank">Apples medlemskaber</a></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ inGuide }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; flex-direction:column; gap:18px;">
+              <div style="display:flex; gap:6px;"><sc-for list="{{ bars }}" as="b" hint-placeholder-count="4"><div style="flex:1; height:4px; border-radius:9999px; background:{{ b.bg }};"></div></sc-for></div>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <div style="font-size:12px; font-weight:700; color:#f97316; font-variant-numeric:tabular-nums;">{{ stepNo }}</div>
+                <h2 style="margin:0; font-size:22px; line-height:1.2; letter-spacing:-0.02em; font-weight:700; text-wrap:balance;">{{ cur.title }}</h2>
+                <p style="margin:0; font-size:14px; line-height:1.55; color:#64748b; text-wrap:pretty;">{{ cur.body }}</p>
+              </div>
+              <sc-if value="{{ onPage }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px; background:rgba(22,163,74,0.08); font-size:12px; font-weight:600; color:#166534;"><span style="width:14px; height:14px; flex:none; background:#16a34a; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/scan-eye.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/scan-eye.svg) center/contain no-repeat;"></span>{{ cur.onPage }}</div>
+              </sc-if>
+              <ol style="margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:10px;">
+                <sc-for list="{{ items }}" as="i" hint-placeholder-count="4">
+                  <li style="display:flex; gap:10px; font-size:14px; line-height:1.5;"><span style="width:22px; height:22px; flex:none; border-radius:9999px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">{{ i.n }}</span><span>{{ i.text }}</span></li>
+                </sc-for>
+              </ol>
+              <sc-if value="{{ hasNote }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:10px 12px; border-radius:10px; background:rgba(249,115,22,0.08); border:1px solid rgba(249,115,22,0.3); font-size:12px; line-height:1.5; color:#9a3412; text-wrap:pretty;">{{ cur.note }}</div>
+              </sc-if>
+              <button onClick="{{ openPage }}" style="cursor:pointer; align-self:flex-start; display:inline-flex; align-items:center; gap:8px; min-height:36px; padding:8px 14px; box-sizing:border-box; border-radius:8px; border:1px solid #e2e8f0; background:#ffffff; color:#020817; font:500 13px var(--hm-font-sans);">{{ cur.open }}<span style="width:13px; height:13px; background:currentColor; -webkit-mask:url(https://unpkg.com/lucide-static@0.562.0/icons/external-link.svg) center/contain no-repeat; mask:url(https://unpkg.com/lucide-static@0.562.0/icons/external-link.svg) center/contain no-repeat;"></span></button>
+              <sc-for list="{{ fields }}" as="f" hint-placeholder-count="1">
+                <label style="display:flex; flex-direction:column; gap:6px; font-size:13px; font-weight:500;">{{ f.label }}<input name="{{ f.name }}" value="{{ f.value }}" onChange="{{ onField }}" placeholder="{{ f.ph }}" style="height:38px; padding:0 10px; border:1px solid #e2e8f0; border-radius:8px; font:14px var(--hm-font-mono);"><span style="font-size:12px; font-weight:400; color:#64748b; text-wrap:pretty;">{{ f.hint }}</span></label>
+              </sc-for>
+              <sc-if value="{{ isVerify }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; flex-direction:column; gap:14px;">
+                  <sc-if value="{{ showChecks }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex; flex-direction:column; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden;">
+                      <sc-for list="{{ checks }}" as="k" hint-placeholder-count="5">
+                        <div style="display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-bottom:1px solid #e2e8f0; font-size:13px; line-height:1.45; color:{{ k.fg }};">
+                          <span style="width:18px; height:18px; flex:none; border-radius:9999px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; background:{{ k.dotBg }}; color:#ffffff;">{{ k.mark }}</span>
+                          <span style="display:flex; flex-direction:column; gap:2px; min-width:0;"><span style="font-weight:600;">{{ k.label }}</span><span style="font-family:var(--hm-font-mono); font-size:11px; color:#64748b; overflow-wrap:anywhere;">{{ k.detail }}</span></span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ verified }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:14px; border-radius:12px; background:rgba(22,163,74,0.08); border:1px solid rgba(22,163,74,0.25); display:flex; flex-direction:column; gap:4px; font-size:13px; line-height:1.5;">
+                      <span style="font-weight:700; color:#166534;">{{ g.savedTitle }}</span><span style="color:#166534;">{{ g.savedBody }}</span>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ inGuide }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:12px 18px; border-top:1px solid #e2e8f0; display:flex; gap:10px;">
+            <button onClick="{{ back }}" style="cursor:pointer; height:38px; padding:0 16px; border-radius:8px; border:1px solid #e2e8f0; background:#ffffff; font:500 13px var(--hm-font-sans); color:#020817;">Tilbage</button>
+            <button onClick="{{ next }}" style="cursor:pointer; margin-left:auto; height:38px; padding:0 20px; border-radius:8px; border:0; background:#2563eb; color:#f8fafc; font:500 13px var(--hm-font-sans); opacity:{{ nextOp }}; pointer-events:{{ nextPE }};">{{ nextLabel }}</button>
+          </div>
+        </sc-if>
+      </aside>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const IC = n => 'https://unpkg.com/lucide-static@0.562.0/icons/' + n + '.svg';
+const GUIDES = {
+  apple: {
+    path: 'apple-developer', card: 'App Store · Apple Developer', icon: 'apple', facts: ['99 USD om året', 'D-U-N-S påkrævet', 'Behandling: 1–2 dage'],
+    cardBody: 'Apple-konto med totrinsgodkendelse, D-U-N-S-nummer, tilmelding som organisation og en API-nøgle til automatisk upload.',
+    cardDone: 'Team og API-nøgle verificeret.',
+    savedTitle: 'Nøglerne er gemt i udvidelsen', savedBody: 'Team ID, Issuer ID og Key ID er gemt krypteret på denne enhed og sendt til /admin → App Stores. .p8-filen uploader du selv i eas credentials — den forlader aldrig din computer via Happy Mates.',
+    steps: [
+      { title: 'Apple-konto med totrinsgodkendelse', body: 'Tilmeldingen skal ske med en Apple-konto, der tilhører en person med ret til at binde virksomheden juridisk. Brug gerne en fælles adresse som apps@firma.dk.',
+        items: ['Opret eller log ind på account.apple.com.', 'Slå totrinsgodkendelse til under Log ind og sikkerhed.', 'Brug dit rigtige navn — Apple tjekker det mod virksomhedens oplysninger.'],
+        url: 'account.apple.com', title2: 'Apple-konto', open: 'Åbn Apple-konto', onPage: 'Du er på Apple-konto',
+        fields: [['appleId', 'Apple-konto (e-mail)', 'apps@firma.dk', 'Den konto, der bliver Account Holder.']] },
+      { title: 'Find virksomhedens D-U-N-S-nummer', body: 'Apple kræver et D-U-N-S-nummer for organisationer. Det er gratis. Apple kan slå det op, og mangler I et, kan I bestille det dér.',
+        items: ['Åbn Apples D-U-N-S-opslag.', 'Søg på virksomhedens juridiske navn og adresse — præcis som i CVR.', 'Findes I ikke, så bestil et nummer. Det tager op til fem hverdage.'],
+        url: 'developer.apple.com/enroll/duns-lookup', title2: 'Apple Developer · D-U-N-S Number', open: 'Åbn D-U-N-S-opslag', onPage: 'Du er på Apples D-U-N-S-opslag',
+        fields: [['duns', 'D-U-N-S-nummer', '123456789', '9 cifre.']],
+        note: 'Virksomhedens navn i App Store bliver det juridiske navn fra D-U-N-S. Ret det dér, hvis det er forkert.' },
+      { title: 'Tilmeld Apple Developer Program', body: 'Tilmeld jer som organisation. Apple ringer eller skriver ofte for at bekræfte, at du må handle på virksomhedens vegne.',
+        items: ['Åbn tilmeldingen og log ind med Apple-kontoen fra trin 1.', 'Vælg Organisation, og indtast juridisk navn, D-U-N-S og virksomhedens website.', 'Betal medlemskabet (99 USD om året, i lokal valuta).', 'Vent på mailen „Welcome to the Apple Developer Program“.'],
+        url: 'developer.apple.com/programs/enroll', title2: 'Apple Developer Program · Enroll', open: 'Åbn tilmeldingen', onPage: 'Du er på tilmeldingen til Apple Developer Program', fields: [] },
+      { title: 'Team ID og API-nøgle', body: 'Med en App Store Connect API-nøgle kan EAS bygge og uploade appen uden at nogen logger ind. Sidepanelet tjekker nøglen.',
+        items: ['Kopiér Team ID fra Membership details på developer.apple.com/account.', 'Åbn App Store Connect → Brugere og adgang → Integrationer → App Store Connect API.', 'Opret en nøgle med rollen App Manager, og hent .p8-filen. Den kan kun hentes én gang.', 'Kopiér Issuer ID og Key ID ind her.'],
+        url: 'appstoreconnect.apple.com/access/integrations/api', title2: 'App Store Connect · Integrationer', open: 'Åbn App Store Connect API', onPage: 'Du er på App Store Connect API',
+        fields: [['teamId', 'Team ID', 'A1B2C3D4E5', '10 tegn, store bogstaver og tal.'], ['issuerId', 'Issuer ID', '57246542-96fe-1a63-e053-0824d011072a', 'UUID øverst på siden.'], ['keyId', 'Key ID', '2X9R4HXF34', '10 tegn.']],
+        verify: true }
+    ],
+    checks: f => [['Apple-konto', f.appleId || '—'], ['D-U-N-S', (f.duns || '—') + ' · ' + 'Firma ApS'], ['Medlemskab aktivt', 'Apple Developer Program · Organisation · udløber om 365 dage'], ['Team ID', f.teamId || '—'], ['API-nøgle virker', 'Key ' + (f.keyId || '—') + ' · rolle App Manager'], ['App-ID kan oprettes', 'dk.mygaer.app · Associated Domains · Push Notifications']]
+  },
+  google: {
+    path: 'play-console', card: 'Google Play Console', icon: 'play', facts: ['25 USD én gang', 'D-U-N-S påkrævet', 'Verificering: op til 7 dage'],
+    cardBody: 'Google-konto, udviklerkonto som organisation, identitetsbekræftelse og en servicekonto til automatisk upload.',
+    cardDone: 'Udviklerkonto og servicekonto verificeret.',
+    savedTitle: 'Servicekontoen er gemt i udvidelsen', savedBody: 'Developer ID og servicekontoens e-mail er gemt krypteret på denne enhed og sendt til /admin → App Stores. JSON-nøglen uploader du selv i eas credentials.',
+    steps: [
+      { title: 'Google-konto til virksomheden', body: 'Brug en konto, som virksomheden ejer — ikke en privat Gmail. Kontoen kan ikke skiftes ud bagefter.',
+        items: ['Opret eller log ind på en Google-konto, fx apps@firma.dk.', 'Slå 2-trinsbekræftelse til under Sikkerhed.'],
+        url: 'myaccount.google.com/security', title2: 'Google-konto · Sikkerhed', open: 'Åbn Google-konto', onPage: 'Du er på Google-kontoens sikkerhedsside',
+        fields: [['googleId', 'Google-konto (e-mail)', 'apps@firma.dk', 'Ejeren af udviklerkontoen.']] },
+      { title: 'Opret udviklerkonto som organisation', body: 'Vælg organisation. Så slipper I for kravet om lukket test med 12 testere i 14 dage, som gælder nye personlige konti.',
+        items: ['Åbn Play Console-tilmeldingen og vælg „En organisation eller virksomhed“.', 'Indtast D-U-N-S-nummeret og organisationens oplysninger.', 'Vælg det udviklernavn, der vises i Google Play.', 'Betal gebyret på 25 USD.'],
+        url: 'play.google.com/console/signup', title2: 'Google Play Console · Tilmelding', open: 'Åbn Play Console-tilmelding', onPage: 'Du er på Play Console-tilmeldingen',
+        fields: [['duns', 'D-U-N-S-nummer', '123456789', 'Samme nummer som hos Apple.']] },
+      { title: 'Bekræft identitet og organisation', body: 'Google bekræfter både dig og virksomheden. Det kan tage op til en uge, og du kan ikke udgive før.',
+        items: ['Følg vejledningen under Kontooplysninger i Play Console.', 'Upload dokumentation, hvis Google beder om det.', 'Bekræft kontakt-e-mail og telefonnummer.', 'Kopiér developer ID fra adressen: play.google.com/console/u/0/developers/<developer ID>.'],
+        url: 'play.google.com/console/developers', title2: 'Google Play Console · Kontooplysninger', open: 'Åbn Play Console', onPage: 'Du er i Play Console',
+        fields: [['devId', 'Developer ID', '1234567890123456789', 'Tallet efter /developers/ i adressen.']] },
+      { title: 'Servicekonto til automatisk upload', body: 'EAS uploader appen med en servicekonto. Sidepanelet tjekker, at den har de rigtige rettigheder.',
+        items: ['Opret et projekt i Google Cloud Console og slå Google Play Android Developer API til.', 'Opret en servicekonto og en JSON-nøgle.', 'I Play Console → Brugere og tilladelser: invitér servicekontoens e-mail med tilladelsen Udgiv apps.', 'Indsæt servicekontoens e-mail her.'],
+        url: 'console.cloud.google.com/iam-admin/serviceaccounts', title2: 'Google Cloud · Servicekonti', open: 'Åbn servicekonti', onPage: 'Du er på Google Cloud-servicekonti',
+        fields: [['saEmail', 'Servicekonto (e-mail)', 'eas-submit@my-gaer.iam.gserviceaccount.com', 'Slutter på .iam.gserviceaccount.com.']],
+        verify: true }
+    ],
+    checks: f => [['Udviklerkonto', 'Developer ID ' + (f.devId || '—') + ' · Organisation'], ['Identitet bekræftet', 'Status: verified'], ['Android Developer API slået til', 'androidpublisher.googleapis.com'], ['Servicekonto inviteret', (f.saEmail || '—') + ' · Udgiv apps'], ['Kan oprette app', 'dk.mygaer.app · ingen app med pakkenavnet endnu']]
+  }
+};
+GUIDES.expo = {
+  path: 'expo', card: 'Expo · EAS', icon: 'layers', facts: ['Gratis plan til at starte', 'Bygger iOS og Android i skyen', 'Robot-token til CI'],
+  cardBody: 'Expo-konto, en organisation til virksomheden, EAS-projektet til mobile/ og et robot-token, så GitHub Actions kan bygge og uploade.',
+  cardDone: 'Organisation, projekt og EXPO_TOKEN verificeret.',
+  savedTitle: 'EXPO_TOKEN er gemt i din fork', savedBody: 'Tokenet er gemt som GitHub Actions-secret EXPO_TOKEN med det GitHub-token, du gav ved opsætningen af ToerGaer. Projekt-ID er sendt til /admin → App Stores. Tokenet gemmes ikke i udvidelsen.',
+  steps: [
+    { title: 'Opret en Expo-konto', body: 'Expo bygger appen til iOS og Android i skyen (EAS Build) og sender den til butikkerne (EAS Submit). Kontoen er din personlige; virksomheden får en organisation i næste trin.',
+      items: ['Opret en konto på expo.dev med din arbejdsmail.', 'Bekræft e-mailadressen.', 'Slå totrinsgodkendelse til under Account settings → Security.'],
+      url: 'expo.dev/signup', title2: 'Expo · Sign up', open: 'Åbn Expo-oprettelse', onPage: 'Du er på Expo-oprettelsen',
+      fields: [['expoUser', 'Dit Expo-brugernavn', 'mette-hansen', 'Små bogstaver, tal, bindestreg og understreg.']] },
+    { title: 'Opret en organisation', body: 'Læg appen i en organisation, ikke på din personlige konto. Så kan kolleger og robot-tokens arbejde med den, og den følger virksomheden, hvis du stopper.',
+      items: ['Vælg Create organization i kontomenuen øverst til venstre.', 'Brug virksomhedens navn som slug, fx my-gaer.', 'Invitér en kollega som Admin, så I er to.'],
+      url: 'expo.dev/create-organization', title2: 'Expo · Create organization', open: 'Åbn Create organization', onPage: 'Du er ved at oprette en Expo-organisation',
+      fields: [['expoOrg', 'Organisationens slug', 'my-gaer', 'Bliver owner i mobile/app.config.ts.']] },
+    { title: 'Opret EAS-projektet', body: 'Projektet binder mobile/ i din fork til Expo. Opret det på expo.dev, eller kør eas init i mobile/ — begge giver et projekt-ID.',
+      items: ['Åbn organisationens Projects og vælg Create a project.', 'Kald det my-gaer (samme som slug i app.config.ts).', 'Kopiér Project ID fra projektets oversigt.', 'Eller i terminalen: cd mobile && npx eas-cli init --id <Project ID>.'],
+      url: 'expo.dev/accounts/my-gaer/projects', title2: 'Expo · Projects', open: 'Åbn organisationens projekter', onPage: 'Du er på organisationens projekter',
+      fields: [['easProjectId', 'EAS Project ID', '3f1c2a7e-9b4d-4e61-8a2f-5c0d9e7b1a42', 'UUID. Skrives i app.config.ts under extra.eas.projectId.']] },
+    { title: 'Robot-token til GitHub Actions', body: 'Et robot-token lader workflowet mobile.yml bygge og uploade uden en personlig login. Sidepanelet tjekker det og gemmer det som secret i din fork.',
+      items: ['Åbn organisationens Settings → Access tokens.', 'Vælg Add robot, kald den github-actions, og giv den rollen Developer.', 'Opret et token til robotten og kopiér det. Det vises kun én gang.', 'Indsæt det her.'],
+      url: 'expo.dev/accounts/my-gaer/settings/access-tokens', title2: 'Expo · Access tokens', open: 'Åbn Access tokens', onPage: 'Du er på organisationens access tokens',
+      fields: [['expoToken', 'Robot-token', 'expo_…', 'Bruges kun til at gemme EXPO_TOKEN i din fork.']],
+      verify: true }
+  ],
+  checks: f => [['Tokenet er gyldigt', 'robot: github-actions · rolle Developer'], ['Organisation', (f.expoOrg || '—') + ' · ' + (f.expoUser || '—') + ' er Owner'], ['Projekt findes', '@' + (f.expoOrg || '—') + '/my-gaer · ' + (f.easProjectId || '—')], ['Matcher app.config.ts', 'owner ' + (f.expoOrg || '—') + ' · slug my-gaer · bundle dk.mygaer.app'], ['EXPO_TOKEN gemt i fork', 'octocat/my-gaer · Actions secrets'], ['Credentials', 'iOS og Android sættes op med eas credentials efter Apple- og Google-guiden']]
+};
+const VALID = {
+  expoUser: v => /^[a-z0-9_-]{2,}$/i.test(v), expoOrg: v => /^[a-z0-9-]{2,}$/.test(v), easProjectId: v => /^[0-9a-f-]{36}$/i.test(v), expoToken: v => v.length >= 20,
+  appleId: v => /@/.test(v), duns: v => /^\d{9}$/.test(v.replace(/\D/g, '')), teamId: v => /^[A-Z0-9]{10}$/.test(v), issuerId: v => /^[0-9a-f-]{36}$/i.test(v), keyId: v => /^[A-Z0-9]{10}$/.test(v),
+  googleId: v => /@/.test(v), devId: v => /^\d{10,20}$/.test(v), saEmail: v => /\.iam\.gserviceaccount\.com$/.test(v)
+};
+class Component extends DCLogic {
+  state = { view: 'portal', guide: 'apple', step: 0, run: -1, max: { apple: 0, google: 0, expo: 0 }, done: { apple: false, google: false, expo: false }, url: 'my-gaer.dk/admin/app-stores', title: 'my-gaer · App Stores', f: {} };
+  componentWillUnmount() { clearInterval(this.timer); }
+  open(k) { clearInterval(this.timer); const { done, max } = this.state; this.setState({ view: 'guide', guide: k, step: done[k] ? 0 : Math.min(max[k], 3), run: -1, done: done[k] ? { ...done, [k]: false } : done }); }
+  renderVals() {
+    const { view, guide, step, run, max, done, url, title, f } = this.state;
+    const g = GUIDES[guide], cur = g.steps[step], last = step === g.steps.length - 1;
+    const checks = g.checks(f);
+    const verified = run >= checks.length;
+    const fieldsOk = cur.fields.every(([k]) => VALID[k] && VALID[k](String(f[k] || '').trim()));
+    const ok = verified || (fieldsOk && run < 0);
+    const card = k => { const G = GUIDES[k], d = done[k], m = max[k]; return {
+      title: G.card, icon: IC(G.icon), facts: G.facts, body: d ? G.cardDone : G.cardBody, progress: (d ? 4 : m) + ' / 4', pct: d ? 100 : Math.round(m / 4 * 100),
+      bar: d ? '#16a34a' : 'linear-gradient(90deg,#f97316,#f59e0b)', glowOp: d ? 0 : 0.25, bd: d ? '#e2e8f0' : 'rgba(37,99,235,0.2)',
+      label: d ? 'Kør igen' : m > 0 ? 'Fortsæt' : 'Start', start: () => this.open(k),
+      btnBg: d ? '#ffffff' : '#2563eb', btnFg: d ? '#020817' : '#f8fafc', btnBd: d ? '1px solid #e2e8f0' : '0' }; };
+    return {
+      tabUrl: url, tabTitle: title, inPortal: view === 'portal', inGuide: view === 'guide', g,
+      crumbPortal: view === 'portal' ? '#020817' : '#2563eb',
+      toPortal: () => { clearInterval(this.timer); this.setState({ view: 'portal' }); },
+      cards: [card('apple'), card('google'), card('expo')],
+      readiness: [['apple', 'App Store'], ['google', 'Google Play'], ['expo', 'Expo · EAS Build']].map(([k, store]) => ({ store, tag: done[k] ? 'Klar til eas submit' : max[k] > 0 ? 'I gang' : 'Ikke startet', bg: done[k] ? 'rgba(22,163,74,0.12)' : max[k] > 0 ? 'rgba(249,115,22,0.12)' : '#f1f5f9', fg: done[k] ? '#166534' : max[k] > 0 ? '#9a3412' : '#475569' })),
+      bars: g.steps.map((_, i) => ({ bg: i < step || (last && verified) ? '#16a34a' : i === step ? '#f97316' : '#e2e8f0' })),
+      stepNo: (step + 1) + ' / ' + g.steps.length, cur: { title: cur.title, body: cur.body, open: cur.open, onPage: cur.onPage, note: cur.note || '' },
+      hasNote: !!cur.note, items: cur.items.map((text, i) => ({ n: i + 1, text })),
+      onPage: url === cur.url, openPage: () => this.setState({ url: cur.url, title: cur.title2 }),
+      fields: cur.fields.map(([name, label, ph, hint]) => ({ name, label, ph, hint, value: f[name] || '' })),
+      onField: e => { const { name, value } = e.target; this.setState(s => ({ f: { ...s.f, [name]: value }, run: -1 })); },
+      isVerify: !!cur.verify, showChecks: run >= 0, verified,
+      checks: checks.map(([label, detail], i) => { const d = i < run, a = i === run; return { label, detail, mark: d ? '✓' : a ? '•' : '', dotBg: d ? '#16a34a' : a ? '#f97316' : '#e2e8f0', fg: d || a ? '#020817' : '#94a3b8' }; }),
+      back: () => step === 0 ? this.setState({ view: 'portal' }) : this.setState({ step: step - 1, run: -1 }),
+      nextLabel: last ? (verified ? 'Tilbage til App Stores' : guide === 'apple' ? 'Tjek API-nøglen' : guide === 'google' ? 'Tjek servicekontoen' : 'Tjek og gem EXPO_TOKEN') : 'Fortsæt',
+      nextOp: ok ? 1 : 0.45, nextPE: ok ? 'auto' : 'none',
+      next: () => {
+        if (!last) { this.setState(s => ({ step: s.step + 1, max: { ...s.max, [guide]: Math.max(s.max[guide], s.step + 1) } })); return; }
+        if (verified) { this.setState(s => ({ view: 'portal', url: 'my-gaer.dk/admin/app-stores', title: 'my-gaer · App Stores', done: { ...s.done, [guide]: true }, max: { ...s.max, [guide]: 4 } })); return; }
+        this.setState({ run: 0 });
+        clearInterval(this.timer);
+        this.timer = setInterval(() => this.setState(s => { if (s.run >= checks.length) { clearInterval(this.timer); return null; } return { run: s.run + 1 }; }), 600);
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

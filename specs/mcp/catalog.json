@@ -1,0 +1,1227 @@
+{
+ "version": 1,
+ "servers": {
+  "app": {
+   "id": "app",
+   "label": "Appen",
+   "path": "/mcp",
+   "scope": "mcp",
+   "who": "Alle brugere med en fuld session",
+   "name": "gaer",
+   "tenant": "Kun egne data",
+   "writes": "Egne data direkte · sletning og eksport som kladde"
+  },
+  "admin": {
+   "id": "admin",
+   "label": "Admin",
+   "path": "/mcp/admin",
+   "scope": "mcp:admin",
+   "who": "Kun admin-rollen · ikke testkonti · ikke under efterligning",
+   "name": "gaer-admin",
+   "tenant": "Hele instansen",
+   "writes": "Kladde → confirm_draft · udløber efter 10 min"
+  }
+ },
+ "domains": {
+  "me": {
+   "label": "Mig",
+   "src": [
+    "server/app/routes/me.py"
+   ]
+  },
+  "clips": {
+   "label": "Klip",
+   "src": [
+    "server/app/routes/clips.py"
+   ]
+  },
+  "files": {
+   "label": "Filer",
+   "src": [
+    "server/app/routes/files.py",
+    "server/app/storage.py"
+   ]
+  },
+  "privacy": {
+   "label": "Privatliv",
+   "src": [
+    "server/app/routes/me.py"
+   ]
+  },
+  "core": {
+   "label": "Kladder og session",
+   "src": [
+    "server/app/mcp/drafts.py"
+   ]
+  },
+  "nav": {
+   "label": "Navigation",
+   "src": [
+    "server/app/mcp/app_map.py",
+    "web/src/admin/sections.ts"
+   ]
+  },
+  "stats": {
+   "label": "Statistik",
+   "src": [
+    "server/app/routes/admin.py"
+   ]
+  },
+  "users": {
+   "label": "Brugere og roller",
+   "src": [
+    "server/app/routes/admin.py",
+    "server/app/sessions.py"
+   ]
+  },
+  "impersonation": {
+   "label": "Efterligning",
+   "src": [
+    "server/app/routes/impersonation.py"
+   ]
+  },
+  "features": {
+   "label": "Features og ringe",
+   "src": [
+    "server/app/routes/features.py"
+   ]
+  },
+  "logs": {
+   "label": "Logs",
+   "src": [
+    "server/app/logs.py",
+    "server/app/routes/admin.py"
+   ]
+  },
+  "gdpr": {
+   "label": "GDPR",
+   "src": [
+    "server/app/routes/admin.py"
+   ]
+  },
+  "db": {
+   "label": "Database",
+   "src": [
+    "server/app/mcp/db_tools.py"
+   ]
+  },
+  "settings": {
+   "label": "Indstillinger",
+   "src": [
+    "server/app/settings_store.py"
+   ]
+  }
+ },
+ "tools": [
+  {
+   "server": "app",
+   "domain": "me",
+   "name": "whoami",
+   "mode": "read",
+   "description": "The signed-in user: display name, masked phone, role, feature ring level and session.",
+   "params": [],
+   "link": {
+    "section": "/konto",
+    "args": [],
+    "focus": "account-profile",
+    "label": "Konto"
+   }
+  },
+  {
+   "server": "app",
+   "domain": "me",
+   "name": "me_sessions",
+   "mode": "read",
+   "description": "Your active sessions and devices, including MCP clients.",
+   "params": [],
+   "link": {
+    "section": "/konto",
+    "args": [],
+    "focus": "account-sessions",
+    "label": "Sessioner"
+   }
+  },
+  {
+   "server": "app",
+   "domain": "me",
+   "name": "me_features",
+   "mode": "read",
+   "description": "Features you can see right now and their ring (1 Internt – 4 Stabilt).",
+   "params": []
+  },
+  {
+   "server": "app",
+   "domain": "me",
+   "name": "me_set_ring",
+   "mode": "write",
+   "description": "Sets your own feature level (ring 1–4). You can only make it more cautious than your group limit.",
+   "params": [
+    {
+     "name": "ring",
+     "type": "int",
+     "desc": "1–4"
+    }
+   ],
+   "link": {
+    "section": "/konto",
+    "args": [],
+    "focus": "account-ring",
+    "label": "Dit niveau"
+   }
+  },
+  {
+   "server": "app",
+   "domain": "clips",
+   "name": "clips_list",
+   "mode": "read",
+   "description": "Your clips, newest first. Filter by source (web, extension, office, mobile).",
+   "params": [
+    {
+     "name": "source",
+     "type": "string",
+     "desc": "web | extension | office | mobile",
+     "optional": true
+    },
+    {
+     "name": "limit",
+     "type": "int",
+     "desc": "max 100",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/klip",
+    "args": [
+     "source"
+    ],
+    "focus": null,
+    "label": "Klip"
+   }
+  },
+  {
+   "server": "app",
+   "domain": "clips",
+   "name": "clips_search",
+   "mode": "read",
+   "description": "Full-text search in your clips (title, body, url).",
+   "params": [
+    {
+     "name": "q",
+     "type": "string",
+     "desc": "search text"
+    },
+    {
+     "name": "limit",
+     "type": "int",
+     "desc": "max 50",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/klip",
+    "args": [
+     "q"
+    ],
+    "focus": "clips-search",
+    "label": "Søg i klip"
+   }
+  },
+  {
+   "server": "app",
+   "domain": "clips",
+   "name": "clip_get",
+   "mode": "read",
+   "description": "One clip with body, source page and timestamps.",
+   "params": [
+    {
+     "name": "clipId",
+     "type": "int",
+     "desc": "clip id"
+    }
+   ],
+   "link": {
+    "section": "/klip/{clipId}",
+    "args": [],
+    "focus": "clip-body",
+    "label": "Klip"
+   }
+  },
+  {
+   "server": "app",
+   "domain": "clips",
+   "name": "clip_create",
+   "mode": "write",
+   "description": "Saves text or a link as a new clip (source \"mcp\").",
+   "params": [
+    {
+     "name": "title",
+     "type": "string",
+     "desc": "max 200"
+    },
+    {
+     "name": "body",
+     "type": "string",
+     "desc": "max 20 000"
+    },
+    {
+     "name": "url",
+     "type": "string",
+     "desc": "source url",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/klip/{clipId}",
+    "args": [],
+    "focus": "clip-body",
+    "label": "Nyt klip"
+   }
+  },
+  {
+   "server": "app",
+   "domain": "clips",
+   "name": "clip_update",
+   "mode": "write",
+   "description": "Changes the title or body of one of your clips.",
+   "params": [
+    {
+     "name": "clipId",
+     "type": "int",
+     "desc": "clip id"
+    },
+    {
+     "name": "title",
+     "type": "string",
+     "desc": "",
+     "optional": true
+    },
+    {
+     "name": "body",
+     "type": "string",
+     "desc": "",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/klip/{clipId}",
+    "args": [],
+    "focus": "clip-body",
+    "label": "Klip"
+   }
+  },
+  {
+   "server": "app",
+   "domain": "clips",
+   "name": "clip_delete",
+   "mode": "draft",
+   "description": "Deletes one of your clips. Returns a draft — nothing is deleted before confirm_draft.",
+   "params": [
+    {
+     "name": "clipId",
+     "type": "int",
+     "desc": "clip id"
+    }
+   ],
+   "link": {
+    "section": "/klip/{clipId}",
+    "args": [],
+    "focus": "clip-delete",
+    "label": "Slet klip"
+   }
+  },
+  {
+   "server": "app",
+   "domain": "files",
+   "name": "files_list",
+   "mode": "read",
+   "description": "Your files in Object Storage with size and upload time.",
+   "params": [
+    {
+     "name": "limit",
+     "type": "int",
+     "desc": "max 100",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/filer",
+    "args": [],
+    "focus": null,
+    "label": "Filer"
+   }
+  },
+  {
+   "server": "app",
+   "domain": "files",
+   "name": "file_link",
+   "mode": "read",
+   "description": "A download link for one of your files. Expires after DOWNLOAD_LINK_SECONDS (300).",
+   "params": [
+    {
+     "name": "fileId",
+     "type": "int",
+     "desc": "file id"
+    }
+   ],
+   "link": {
+    "section": "/filer",
+    "args": [
+     "fileId"
+    ],
+    "focus": "file-row-{fileId}",
+    "label": "Fil"
+   }
+  },
+  {
+   "server": "app",
+   "domain": "privacy",
+   "name": "privacy_export",
+   "mode": "draft",
+   "description": "Requests a GDPR export of everything stored about you. Returns a draft.",
+   "params": [],
+   "link": {
+    "section": "/privatliv",
+    "args": [],
+    "focus": "privacy-export",
+    "label": "Privatliv"
+   }
+  },
+  {
+   "server": "app",
+   "domain": "core",
+   "name": "confirm_draft",
+   "mode": "confirm",
+   "description": "Runs one of your pending drafts. Fails if it expired, was used, or the data changed.",
+   "params": [
+    {
+     "name": "draftId",
+     "type": "string",
+     "desc": "e.g. d_7f3a91c2"
+    },
+    {
+     "name": "reason",
+     "type": "string",
+     "desc": "stored in the audit log"
+    }
+   ]
+  },
+  {
+   "server": "app",
+   "domain": "core",
+   "name": "cancel_draft",
+   "mode": "read",
+   "description": "Cancels one of your pending drafts. Nothing changes.",
+   "params": [
+    {
+     "name": "draftId",
+     "type": "string",
+     "desc": "draft id"
+    }
+   ]
+  },
+  {
+   "server": "admin",
+   "domain": "core",
+   "name": "whoami",
+   "mode": "read",
+   "description": "Caller, admin role, session, and the draft TTL.",
+   "params": []
+  },
+  {
+   "server": "admin",
+   "domain": "core",
+   "name": "list_drafts",
+   "mode": "read",
+   "description": "Your pending, confirmed, expired and cancelled drafts.",
+   "params": [
+    {
+     "name": "status",
+     "type": "string",
+     "desc": "pending | confirmed | cancelled | expired | failed",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/admin/mcp",
+    "args": [
+     "tab"
+    ],
+    "focus": "mcp-drafts",
+    "label": "Kladder"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "core",
+   "name": "confirm_draft",
+   "mode": "confirm",
+   "description": "Executes a pending draft once. Fails if it expired, was used, or the state changed. The reason goes to the audit log.",
+   "params": [
+    {
+     "name": "draftId",
+     "type": "string",
+     "desc": "draft id"
+    },
+    {
+     "name": "reason",
+     "type": "string",
+     "desc": "min 3 chars"
+    }
+   ]
+  },
+  {
+   "server": "admin",
+   "domain": "core",
+   "name": "cancel_draft",
+   "mode": "read",
+   "description": "Cancels a pending draft. Nothing it described is changed.",
+   "params": [
+    {
+     "name": "draftId",
+     "type": "string",
+     "desc": "draft id"
+    }
+   ]
+  },
+  {
+   "server": "admin",
+   "domain": "nav",
+   "name": "nav_sections",
+   "mode": "read",
+   "description": "Every /admin section and app route with its path, purpose and the API it calls.",
+   "params": []
+  },
+  {
+   "server": "admin",
+   "domain": "nav",
+   "name": "nav_resolve",
+   "mode": "read",
+   "description": "Finds the screen, endpoint and source file for a question like \"where do I block a user?\".",
+   "params": [
+    {
+     "name": "q",
+     "type": "string",
+     "desc": "what you are looking for"
+    }
+   ]
+  },
+  {
+   "server": "admin",
+   "domain": "nav",
+   "name": "ui_deeplink",
+   "mode": "read",
+   "description": "Builds a link to any /admin screen that opens it and highlights one element.",
+   "params": [
+    {
+     "name": "path",
+     "type": "string",
+     "desc": "e.g. /admin/users"
+    },
+    {
+     "name": "focus",
+     "type": "string",
+     "desc": "anchor id",
+     "optional": true
+    }
+   ]
+  },
+  {
+   "server": "admin",
+   "domain": "stats",
+   "name": "stats_overview",
+   "mode": "read",
+   "description": "Users, active users, page views, visits and logins for the period.",
+   "params": [
+    {
+     "name": "days",
+     "type": "int",
+     "desc": "7 | 30 | 90 | 365",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/admin",
+    "args": [
+     "days"
+    ],
+    "focus": "stats-kpis",
+    "label": "Statistik"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "stats",
+   "name": "stats_breakdown",
+   "mode": "read",
+   "description": "Top pages, sources, devices, browsers, entry pages and flows. Visitors only counted with consent.",
+   "params": [
+    {
+     "name": "days",
+     "type": "int",
+     "desc": "",
+     "optional": true
+    },
+    {
+     "name": "by",
+     "type": "string",
+     "desc": "pages | sources | devices | browsers | entries | flows"
+    }
+   ],
+   "link": {
+    "section": "/admin/analytics",
+    "args": [
+     "days"
+    ],
+    "focus": "analytics-{by}",
+    "label": "Analytics"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "stats",
+   "name": "stats_logins",
+   "mode": "read",
+   "description": "Logins per day by method (passkey, one-time code) and failed attempts.",
+   "params": [
+    {
+     "name": "days",
+     "type": "int",
+     "desc": "",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/admin",
+    "args": [
+     "days"
+    ],
+    "focus": "stats-login",
+    "label": "Login"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "users",
+   "name": "user_search",
+   "mode": "read",
+   "description": "Find users by name or phone. Phone numbers are matched in full but returned masked.",
+   "params": [
+    {
+     "name": "q",
+     "type": "string",
+     "desc": "name or phone"
+    },
+    {
+     "name": "filter",
+     "type": "string",
+     "desc": "all | active | blocked | nopk | admins | test",
+     "optional": true
+    },
+    {
+     "name": "limit",
+     "type": "int",
+     "desc": "max 100",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/admin/users",
+    "args": [
+     "q",
+     "filter"
+    ],
+    "focus": null,
+    "label": "Brugere"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "users",
+   "name": "user_get",
+   "mode": "read",
+   "description": "One user: role, passkeys, grace logins used, sessions, files, feature level.",
+   "params": [
+    {
+     "name": "userId",
+     "type": "int",
+     "desc": "user id"
+    }
+   ],
+   "link": {
+    "section": "/admin/users",
+    "args": [
+     "userId"
+    ],
+    "focus": "user-drawer",
+    "label": "Bruger"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "users",
+   "name": "user_set_role",
+   "mode": "draft",
+   "description": "Makes a user admin or removes the admin role. The last admin cannot be removed. Returns a draft.",
+   "params": [
+    {
+     "name": "userId",
+     "type": "int",
+     "desc": "user id"
+    },
+    {
+     "name": "role",
+     "type": "string",
+     "desc": "user | admin"
+    }
+   ],
+   "link": {
+    "section": "/admin/users",
+    "args": [
+     "userId"
+    ],
+    "focus": "user-role",
+    "label": "Rolle"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "users",
+   "name": "user_block",
+   "mode": "draft",
+   "description": "Blocks a user and ends all their sessions. You cannot block yourself. Returns a draft.",
+   "params": [
+    {
+     "name": "userId",
+     "type": "int",
+     "desc": "user id"
+    },
+    {
+     "name": "reason",
+     "type": "string",
+     "desc": "min 5 chars"
+    }
+   ],
+   "link": {
+    "section": "/admin/users",
+    "args": [
+     "userId"
+    ],
+    "focus": "user-block",
+    "label": "Spær"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "users",
+   "name": "user_unblock",
+   "mode": "draft",
+   "description": "Lifts a block. Returns a draft.",
+   "params": [
+    {
+     "name": "userId",
+     "type": "int",
+     "desc": "user id"
+    }
+   ],
+   "link": {
+    "section": "/admin/users",
+    "args": [
+     "userId"
+    ],
+    "focus": "user-block",
+    "label": "Ophæv spærring"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "users",
+   "name": "user_reset_passkeys",
+   "mode": "draft",
+   "description": "Removes all passkeys and signs the user out; next login needs a code and a new passkey. Returns a draft.",
+   "params": [
+    {
+     "name": "userId",
+     "type": "int",
+     "desc": "user id"
+    }
+   ],
+   "link": {
+    "section": "/admin/users",
+    "args": [
+     "userId"
+    ],
+    "focus": "user-passkeys",
+    "label": "Nulstil passkeys"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "users",
+   "name": "user_revoke_sessions",
+   "mode": "draft",
+   "description": "Signs a user out everywhere, including MCP clients. Returns a draft.",
+   "params": [
+    {
+     "name": "userId",
+     "type": "int",
+     "desc": "user id"
+    }
+   ],
+   "link": {
+    "section": "/admin/users",
+    "args": [
+     "userId"
+    ],
+    "focus": "user-sessions",
+    "label": "Log ud alle steder"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "impersonation",
+   "name": "test_accounts_list",
+   "mode": "read",
+   "description": "Your own test accounts. Nobody else can see or use them.",
+   "params": [],
+   "link": {
+    "section": "/admin/impersonation",
+    "args": [],
+    "focus": "imp-accounts",
+    "label": "Testkonti"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "impersonation",
+   "name": "test_account_create",
+   "mode": "draft",
+   "description": "Creates a test account (cannot sign in on its own) with role user or admin. Returns a draft.",
+   "params": [
+    {
+     "name": "displayName",
+     "type": "string",
+     "desc": "max 80"
+    },
+    {
+     "name": "role",
+     "type": "string",
+     "desc": "user | admin"
+    }
+   ],
+   "link": {
+    "section": "/admin/impersonation",
+    "args": [],
+    "focus": "imp-create",
+    "label": "Opret testkonto"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "impersonation",
+   "name": "impersonate_start",
+   "mode": "draft",
+   "description": "Prepares impersonation of one of your test accounts and returns the link that starts it in the browser. No session token is handed out over MCP. Real users cannot be impersonated.",
+   "params": [
+    {
+     "name": "userId",
+     "type": "int",
+     "desc": "test account id"
+    },
+    {
+     "name": "reason",
+     "type": "string",
+     "desc": "min 5 chars"
+    }
+   ],
+   "link": {
+    "section": "/admin/impersonation",
+    "args": [
+     "userId"
+    ],
+    "focus": "imp-switch-{userId}",
+    "label": "Skift til"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "features",
+   "name": "feature_list",
+   "mode": "read",
+   "description": "All features with ring, area, observation flag and 30-day usage. Includes catalog keys missing in the database.",
+   "params": [
+    {
+     "name": "ring",
+     "type": "int",
+     "desc": "1–4",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/admin/features",
+    "args": [],
+    "focus": null,
+    "label": "Features og ringe"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "features",
+   "name": "feature_usage",
+   "mode": "read",
+   "description": "Who used a feature in the last 30 days, with counts.",
+   "params": [
+    {
+     "name": "key",
+     "type": "string",
+     "desc": "feature key"
+    }
+   ],
+   "link": {
+    "section": "/admin/features",
+    "args": [
+     "key"
+    ],
+    "focus": "feature-usage-{key}",
+    "label": "Brug"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "features",
+   "name": "feature_set_ring",
+   "mode": "draft",
+   "description": "Moves a feature to another ring (1 Internt, 2 Beta, 3 Preview, 4 Stabilt). Returns a draft with how many users gain or lose it.",
+   "params": [
+    {
+     "name": "key",
+     "type": "string",
+     "desc": "feature key"
+    },
+    {
+     "name": "ring",
+     "type": "int",
+     "desc": "1–4"
+    }
+   ],
+   "link": {
+    "section": "/admin/features",
+    "args": [
+     "key"
+    ],
+    "focus": "feature-ring-{key}",
+    "label": "Ring"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "features",
+   "name": "feature_set_observe",
+   "mode": "draft",
+   "description": "Turns implicit 1–5 rating prompts on or off for a feature. Returns a draft.",
+   "params": [
+    {
+     "name": "key",
+     "type": "string",
+     "desc": "feature key"
+    },
+    {
+     "name": "observe",
+     "type": "bool",
+     "desc": "on/off"
+    }
+   ],
+   "link": {
+    "section": "/admin/features",
+    "args": [
+     "key"
+    ],
+    "focus": "feature-observe-{key}",
+    "label": "Observation"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "features",
+   "name": "feature_import",
+   "mode": "draft",
+   "description": "Creates catalog keys that are missing in the database, in their suggested ring. Never overwrites a ring set in /admin. Returns a draft.",
+   "params": [],
+   "link": {
+    "section": "/admin/features",
+    "args": [],
+    "focus": "feature-import",
+    "label": "Importér fra koden"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "features",
+   "name": "user_ring_set",
+   "mode": "draft",
+   "description": "Sets or resets a user's feature level. Returns a draft.",
+   "params": [
+    {
+     "name": "userId",
+     "type": "int",
+     "desc": "user id"
+    },
+    {
+     "name": "ring",
+     "type": "int",
+     "desc": "1–4, or omit to reset",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/admin/features",
+    "args": [],
+    "focus": "feature-levels",
+    "label": "Brugernes niveau"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "logs",
+   "name": "auth_log_search",
+   "mode": "read",
+   "description": "Login events filtered by user, masked phone hash, device, IP and time range. Max 500 rows.",
+   "params": [
+    {
+     "name": "userId",
+     "type": "int",
+     "desc": "",
+     "optional": true
+    },
+    {
+     "name": "event",
+     "type": "string",
+     "desc": "e.g. otp.verify, passkey.login, session.revoked",
+     "optional": true
+    },
+    {
+     "name": "from",
+     "type": "date",
+     "desc": "",
+     "optional": true
+    },
+    {
+     "name": "to",
+     "type": "date",
+     "desc": "",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/admin/logs/auth",
+    "args": [
+     "userId"
+    ],
+    "focus": null,
+    "label": "Auth-log"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "logs",
+   "name": "audit_log_search",
+   "mode": "read",
+   "description": "Who changed what and when, with before/after values. Includes every MCP draft confirmation.",
+   "params": [
+    {
+     "name": "actorId",
+     "type": "int",
+     "desc": "",
+     "optional": true
+    },
+    {
+     "name": "action",
+     "type": "string",
+     "desc": "e.g. admin.user.block",
+     "optional": true
+    },
+    {
+     "name": "from",
+     "type": "date",
+     "desc": "",
+     "optional": true
+    },
+    {
+     "name": "to",
+     "type": "date",
+     "desc": "",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/admin/logs/audit",
+    "args": [
+     "actorId"
+    ],
+    "focus": null,
+    "label": "Audit-log"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "gdpr",
+   "name": "gdpr_list",
+   "mode": "read",
+   "description": "GDPR requests with status and deadline. Overdue requests first.",
+   "params": [
+    {
+     "name": "status",
+     "type": "string",
+     "desc": "received | in_progress | done | rejected",
+     "optional": true
+    }
+   ],
+   "link": {
+    "section": "/admin/gdpr",
+    "args": [],
+    "focus": null,
+    "label": "GDPR-forespørgsler"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "gdpr",
+   "name": "gdpr_export",
+   "mode": "draft",
+   "description": "Builds the full export for one user (build_user_export). Returns a draft; the file is a short-lived download link.",
+   "params": [
+    {
+     "name": "userId",
+     "type": "int",
+     "desc": "user id"
+    }
+   ],
+   "link": {
+    "section": "/admin/gdpr",
+    "args": [
+     "userId"
+    ],
+    "focus": "gdpr-export",
+    "label": "Indsigt"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "db",
+   "name": "db_query",
+   "mode": "read",
+   "description": "One SELECT / WITH / EXPLAIN statement in a READ ONLY transaction, 5 s timeout, max 500 rows, as the read-only role. Phone numbers, code hashes, tokens and passkey keys are masked.",
+   "params": [
+    {
+     "name": "sql",
+     "type": "string",
+     "desc": "one statement"
+    }
+   ]
+  },
+  {
+   "server": "admin",
+   "domain": "db",
+   "name": "db_schema",
+   "mode": "read",
+   "description": "Tables, columns and row counts from the container's Postgres database, plus applied migrations.",
+   "params": []
+  },
+  {
+   "server": "admin",
+   "domain": "settings",
+   "name": "settings_get",
+   "mode": "read",
+   "description": "Name, logo, SMS sender, GDPR mail, cookie texts, retention periods and version.",
+   "params": [],
+   "link": {
+    "section": "/admin/settings",
+    "args": [],
+    "focus": null,
+    "label": "Indstillinger"
+   }
+  },
+  {
+   "server": "admin",
+   "domain": "settings",
+   "name": "settings_set",
+   "mode": "draft",
+   "description": "Changes one setting. Returns a draft with before/after.",
+   "params": [
+    {
+     "name": "key",
+     "type": "string",
+     "desc": "setting key"
+    },
+    {
+     "name": "value",
+     "type": "string",
+     "desc": "new value"
+    }
+   ],
+   "link": {
+    "section": "/admin/settings",
+    "args": [],
+    "focus": "setting-{key}",
+    "label": "Indstilling"
+   }
+  }
+ ],
+ "prompts": [
+  {
+   "server": "app",
+   "q": "Find mine klip om OVHcloud fra i sidste uge og lav en kort opsummering",
+   "tools": [
+    "clips_search",
+    "clip_get"
+   ]
+  },
+  {
+   "server": "app",
+   "q": "Gem denne tekst som et klip med titlen \"Mødenoter\"",
+   "tools": [
+    "clip_create"
+   ]
+  },
+  {
+   "server": "app",
+   "q": "Hvilke features kan jeg se, og hvad er mit niveau?",
+   "tools": [
+    "me_features",
+    "whoami"
+   ]
+  },
+  {
+   "server": "admin",
+   "q": "Hvor mange brugere har ikke oprettet en passkey endnu?",
+   "tools": [
+    "user_search",
+    "stats_logins"
+   ]
+  },
+  {
+   "server": "admin",
+   "q": "Flyt browserudvidelsen til ring 3 og fortæl hvor mange der får den",
+   "tools": [
+    "feature_set_ring",
+    "confirm_draft"
+   ]
+  },
+  {
+   "server": "admin",
+   "q": "Spær +45 27 90 44 01 — mistet telefon",
+   "tools": [
+    "user_search",
+    "user_block",
+    "confirm_draft"
+   ]
+  },
+  {
+   "server": "admin",
+   "q": "Opret en testkonto som Bruger og giv mig linket til at skifte",
+   "tools": [
+    "test_account_create",
+    "impersonate_start"
+   ]
+  }
+ ]
+}

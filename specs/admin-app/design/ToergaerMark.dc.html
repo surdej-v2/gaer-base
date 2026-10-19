@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/happy-mates-design-system-019e2c51-c6f5-79d5-8af1-484a4845eab4/colors_and_type.css">
+  <script src="_ds/happy-mates-design-system-019e2c51-c6f5-79d5-8af1-484a4845eab4/_ds_bundle.js"></script>
+</helmet>
+<div style="display:inline-flex; align-items:center; gap:{{ gap }}px; font-family:var(--hm-font-sans);">
+  <sc-if value="{{ standalone }}" hint-placeholder-val="{{ true }}">
+    <sc-if value="{{ isA }}" hint-placeholder-val="{{ true }}">
+      <svg viewBox="0 0 100 100" width="{{ size }}" height="{{ size }}" style="display:block; flex:none;">
+        <defs><linearGradient id="tgGradA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E63946"></stop><stop offset="0.25" stop-color="#F77F00"></stop><stop offset="0.5" stop-color="#FCBF49"></stop><stop offset="0.75" stop-color="#06D6A0"></stop><stop offset="1" stop-color="#118AB2"></stop></linearGradient></defs>
+        <circle cx="44" cy="56" r="38" fill="url(#tgGradA)"></circle>
+        <circle cx="44" cy="56" r="25" fill="#ffffff"></circle>
+        <circle cx="38" cy="50" r="3.6" fill="#020817"></circle>
+        <circle cx="50" cy="47" r="3.6" fill="#020817"></circle>
+        <path d="M 35 62 Q 44 70 53 62" stroke="#020817" stroke-width="3.6" fill="none" stroke-linecap="round"></path>
+        <circle cx="86" cy="22" r="7" fill="#F77F00"></circle>
+        <circle cx="73" cy="9" r="4.5" fill="#FCBF49"></circle>
+        <circle cx="94" cy="7" r="3" fill="#E63946"></circle>
+      </svg>
+    </sc-if>
+    <sc-if value="{{ isB }}" hint-placeholder-val="{{ false }}">
+      <svg viewBox="0 0 100 100" width="{{ size }}" height="{{ size }}" style="display:block; flex:none;">
+        <defs><linearGradient id="tgGradB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E63946"></stop><stop offset="0.25" stop-color="#F77F00"></stop><stop offset="0.5" stop-color="#FCBF49"></stop><stop offset="0.75" stop-color="#06D6A0"></stop><stop offset="1" stop-color="#118AB2"></stop></linearGradient></defs>
+        <path d="M 12 20 L 19 12 L 26 20 L 33 12 L 40 20 L 47 12 L 54 20 L 61 12 L 68 20 L 75 12 L 82 20 L 88 13 L 88 84 Q 88 94 78 94 L 22 94 Q 12 94 12 84 Z" fill="url(#tgGradB)"></path>
+        <circle cx="50" cy="58" r="23" fill="#ffffff"></circle>
+        <circle cx="44" cy="53" r="3.4" fill="#020817"></circle>
+        <circle cx="56" cy="50" r="3.4" fill="#020817"></circle>
+        <path d="M 41 64 Q 50 72 59 64" stroke="#020817" stroke-width="3.4" fill="none" stroke-linecap="round"></path>
+      </svg>
+    </sc-if>
+    <sc-if value="{{ isC }}" hint-placeholder-val="{{ false }}">
+      <svg viewBox="0 0 100 100" width="{{ size }}" height="{{ size }}" style="display:block; flex:none;">
+        <defs><linearGradient id="tgGradC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E63946"></stop><stop offset="0.25" stop-color="#F77F00"></stop><stop offset="0.5" stop-color="#FCBF49"></stop><stop offset="0.75" stop-color="#06D6A0"></stop><stop offset="1" stop-color="#118AB2"></stop></linearGradient></defs>
+        <circle cx="50" cy="50" r="38" fill="url(#tgGradC)"></circle>
+        <line x1="14" y1="90" x2="86" y2="10" stroke="{{ slash }}" stroke-width="8" stroke-linecap="round"></line>
+        <circle cx="50" cy="50" r="25" fill="#ffffff"></circle>
+        <circle cx="44" cy="45" r="3.6" fill="#020817"></circle>
+        <circle cx="56" cy="42" r="3.6" fill="#020817"></circle>
+        <path d="M 41 57 Q 50 65 59 57" stroke="#020817" stroke-width="3.6" fill="none" stroke-linecap="round"></path>
+      </svg>
+    </sc-if>
+  </sc-if>
+  <sc-if value="{{ plainWord }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; flex-direction:column; gap:2px; line-height:1;">
+      <span style="font-size:{{ fs }}px; font-weight:800; letter-spacing:0.04em; background:var(--hm-brand-gradient); background-size:200% auto; -webkit-background-clip:text; background-clip:text; color:transparent; animation:hm-rainbow 3s ease infinite;">TØRGÆR</span>
+      <sc-if value="{{ byline }}" hint-placeholder-val="{{ true }}"><span style="font-size:{{ bfs }}px; font-weight:600; color:{{ bylineColor }}; letter-spacing:0.01em;">by Happy Mates</span></sc-if>
+    </div>
+  </sc-if>
+  <sc-if value="{{ cWord }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:4px; line-height:1;">
+      <div style="display:flex; align-items:center; gap:1px; font-size:{{ cfs }}px; font-weight:800; letter-spacing:0.04em;">
+        <span style="background:var(--hm-brand-gradient); background-size:400% auto; -webkit-background-clip:text; background-clip:text; color:transparent; animation:hm-rainbow 3s ease infinite;">T</span>
+        <svg viewBox="0 0 100 100" width="{{ ofs }}" height="{{ ofs }}" style="display:block; flex:none;">
+          <defs><linearGradient id="tgGradC2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E63946"></stop><stop offset="0.25" stop-color="#F77F00"></stop><stop offset="0.5" stop-color="#FCBF49"></stop><stop offset="0.75" stop-color="#06D6A0"></stop><stop offset="1" stop-color="#118AB2"></stop></linearGradient></defs>
+          <circle cx="50" cy="50" r="38" fill="url(#tgGradC2)"></circle>
+          <line x1="14" y1="90" x2="86" y2="10" stroke="{{ slash }}" stroke-width="9" stroke-linecap="round"></line>
+          <circle cx="50" cy="50" r="24" fill="#ffffff"></circle>
+          <circle cx="44" cy="45" r="4" fill="#020817"></circle>
+          <circle cx="56" cy="42" r="4" fill="#020817"></circle>
+          <path d="M 41 57 Q 50 65 59 57" stroke="#020817" stroke-width="4" fill="none" stroke-linecap="round"></path>
+        </svg>
+        <span style="background:var(--hm-brand-gradient); background-size:200% auto; -webkit-background-clip:text; background-clip:text; color:transparent; animation:hm-rainbow 3s ease infinite;">RGÆR</span>
+      </div>
+      <sc-if value="{{ byline }}" hint-placeholder-val="{{ true }}"><span style="font-size:{{ bfs }}px; font-weight:600; color:{{ bylineColor }}; letter-spacing:0.01em;">by Happy Mates</span></sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:320,&quot;height&quot;:120},&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;],&quot;default&quot;:&quot;a&quot;,&quot;tsType&quot;:&quot;'a'|'b'|'c'&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:40,&quot;tsType&quot;:&quot;number&quot;},&quot;wordmark&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;byline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;dark&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const v = this.props.variant ?? 'a';
+    const size = Number(this.props.size ?? 40);
+    const wm = this.props.wordmark ?? true;
+    const dark = this.props.dark ?? false;
+    const fs = Math.round(size * 0.5);
+    const cfs = Math.round(size * 0.62);
+    return {
+      isA: v === 'a', isB: v === 'b', isC: v === 'c', size,
+      standalone: !(v === 'c' && wm), plainWord: wm && v !== 'c', cWord: wm && v === 'c',
+      fs, cfs, ofs: Math.round(cfs * 1.05), gap: Math.round(size * 0.28),
+      byline: wm && (this.props.byline ?? true),
+      bylineColor: dark ? '#cbd5e1' : '#64748b', slash: dark ? '#ffffff' : '#020817',
+      bfs: Math.max(10, Math.round(size * 0.26))
+    };
+  }
+}
+</script>
+</body>
+</html>

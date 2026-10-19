@@ -1,0 +1,279 @@
+/* =====================================================================
+   Happy Mates — design tokens
+   Source: happy-mates/web → src/index.css (HSL values converted to hex)
+   Brand gradient sampled from happy-mates-logo.svg
+   ===================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* ── Neutrals ─────────────────────────────────────────────────────── */
+  --hm-background:        #ffffff;
+  --hm-foreground:        #020817;     /* near-black navy */
+  --hm-card:              #ffffff;
+  --hm-popover:           #ffffff;
+  --hm-muted:             #f1f5f9;     /* slate-100 */
+  --hm-muted-foreground:  #64748b;     /* slate-500 */
+  --hm-accent:            #f1f5f9;
+  --hm-accent-foreground: #0f172a;
+  --hm-border:            #e2e8f0;     /* slate-200 */
+  --hm-input:             #e2e8f0;
+  --hm-secondary:         #f1f5f9;
+  --hm-secondary-foreground: #0f172a;
+
+  /* ── Primary / focus ──────────────────────────────────────────────── */
+  --hm-primary:           #2563eb;     /* hsl(221 83% 53%) */
+  --hm-primary-90:        #1e58d3;
+  --hm-primary-foreground:#f8fafc;
+  --hm-ring:              #2563eb;
+
+  /* ── Semantic ─────────────────────────────────────────────────────── */
+  --hm-destructive:       #ef4444;
+  --hm-destructive-fg:    #f8fafc;
+  --hm-success:           #22c55e;     /* "See more" green */
+  --hm-success-600:       #16a34a;
+
+  /* ── Brand rainbow (vertical gradient on logo, animated horizontally
+        across the wordmark) ─────────────────────────────────────────── */
+  --hm-brand-red:         #e63946;
+  --hm-brand-orange:      #f77f00;
+  --hm-brand-yellow:      #fcbf49;
+  --hm-brand-green:       #06d6a0;
+  --hm-brand-blue:        #118ab2;
+  --hm-brand-gradient:
+    linear-gradient(90deg,
+      var(--hm-brand-red)    0%,
+      var(--hm-brand-orange) 25%,
+      var(--hm-brand-yellow) 50%,
+      var(--hm-brand-green)  75%,
+      var(--hm-brand-blue)   100%);
+  --hm-brand-gradient-tri:
+    linear-gradient(90deg, #ef4444 0%, #eab308 50%, #3b82f6 100%);
+
+  /* ── Hub accent gradients ─────────────────────────────────────────── */
+  --hm-hub-plans:         linear-gradient(90deg, #f97316, #f59e0b);     /* orange→amber */
+  --hm-hub-sourdough:     linear-gradient(90deg, #f59e0b, #eab308);     /* amber→yellow */
+  --hm-hub-ops:           linear-gradient(90deg, #6366f1, #a855f7);     /* indigo→purple */
+  --hm-hub-daily:         linear-gradient(90deg, #14b8a6, #10b981);     /* teal→emerald */
+  --hm-hub-young:         linear-gradient(90deg, #3b82f6, #14b8a6);     /* blue→teal */
+  --hm-hub-companies:     linear-gradient(90deg, #f97316, #ef4444);     /* orange→red */
+
+  /* ── Mate Kiosk palette (brutalist sub-brand) ─────────────────────── */
+  --hm-kiosk-red:         #e4002b;
+  --hm-kiosk-yellow:      #ffc72c;
+  --hm-kiosk-cream:       #fff8e7;
+  --hm-kiosk-black:       #000000;
+  --hm-kiosk-bg:          #1a0a0a;
+  --hm-kiosk-cyan:        #00e0ff;
+
+  /* ── Type ─────────────────────────────────────────────────────────── */
+  --hm-font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+                  "Segoe UI", Roboto, sans-serif;
+  --hm-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+                  Consolas, monospace;
+
+  /* Type scale — px shown for reference, expressed in rem */
+  --hm-text-xs:    0.75rem;   /* 12 */
+  --hm-text-sm:    0.875rem;  /* 14 */
+  --hm-text-base:  1rem;      /* 16 */
+  --hm-text-lg:    1.125rem;  /* 18 */
+  --hm-text-xl:    1.25rem;   /* 20 */
+  --hm-text-2xl:   1.5rem;    /* 24 */
+  --hm-text-3xl:   1.875rem;  /* 30 */
+  --hm-text-4xl:   2.25rem;   /* 36 */
+  --hm-text-5xl:   3rem;      /* 48 */
+  --hm-text-6xl:   3.75rem;   /* 60 */
+  --hm-text-7xl:   4.5rem;    /* 72 */
+  --hm-text-8xl:   6rem;      /* 96 */
+
+  --hm-tracking-tight:  -0.025em;
+  --hm-tracking-wide:    0.025em;
+  --hm-tracking-wider:   0.05em;
+  --hm-tracking-widest:  0.1em;
+
+  /* ── Radii ────────────────────────────────────────────────────────── */
+  --hm-radius-sm:   0.25rem;  /*  4 px */
+  --hm-radius-md:   0.5rem;   /*  8 px — the canonical button radius */
+  --hm-radius-lg:   0.75rem;  /* 12 px */
+  --hm-radius-xl:   1rem;     /* 16 px — cards */
+  --hm-radius-2xl:  1rem;     /* 16 px alias used by Tailwind */
+  --hm-radius-3xl:  1.5rem;   /* 24 px — kiosk shell, glass cards */
+  --hm-radius-full: 9999px;   /* pills */
+
+  /* ── Spacing (Tailwind defaults, narrowed to what's actually used) ── */
+  --hm-space-1: 0.25rem;
+  --hm-space-2: 0.5rem;
+  --hm-space-3: 0.75rem;
+  --hm-space-4: 1rem;
+  --hm-space-6: 1.5rem;
+  --hm-space-8: 2rem;
+  --hm-space-12: 3rem;
+  --hm-space-16: 4rem;
+  --hm-space-20: 5rem;
+  --hm-space-24: 6rem;
+
+  /* ── Shadows ──────────────────────────────────────────────────────── */
+  --hm-shadow-sm:   0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --hm-shadow:      0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --hm-shadow-md:   0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --hm-shadow-lg:   0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --hm-shadow-xl:   0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --hm-shadow-2xl:  0 25px 50px -12px rgb(0 0 0 / 0.25);
+  /* Kiosk brutalist offset shadow */
+  --hm-shadow-kiosk: 4px 4px 0 0 #000;
+  --hm-shadow-kiosk-lg: 6px 8px 0 0 #000;
+  /* Hover glow on purple CTA */
+  --hm-shadow-glow-purple: 0 25px 50px -12px rgb(168 85 247 / 0.25);
+
+  /* ── Motion ───────────────────────────────────────────────────────── */
+  --hm-ease:           cubic-bezier(0.4, 0, 0.2, 1);   /* tailwind default */
+  --hm-duration-fast:  150ms;
+  --hm-duration:       300ms;
+  --hm-duration-slow:  500ms;
+}
+
+/* =====================================================================
+   Semantic helpers — drop-in classes
+   ===================================================================== */
+html, body {
+  font-family: var(--hm-font-sans);
+  color: var(--hm-foreground);
+  background: var(--hm-background);
+  -webkit-font-smoothing: antialiased;
+}
+
+.hm-h1 {
+  font-weight: 700;
+  font-size: clamp(2.5rem, 5vw + 1rem, var(--hm-text-8xl));
+  line-height: 1.05;
+  letter-spacing: var(--hm-tracking-tight);
+  text-wrap: balance;
+}
+.hm-h2 {
+  font-weight: 700;
+  font-size: clamp(2rem, 3vw + 1rem, var(--hm-text-5xl));
+  line-height: 1.1;
+  letter-spacing: var(--hm-tracking-tight);
+  text-wrap: balance;
+}
+.hm-h3 {
+  font-weight: 700;
+  font-size: var(--hm-text-3xl);
+  line-height: 1.2;
+}
+.hm-h4 {
+  font-weight: 600;
+  font-size: var(--hm-text-xl);
+  line-height: 1.3;
+}
+.hm-lead {
+  font-size: var(--hm-text-xl);
+  line-height: 1.6;
+  color: var(--hm-muted-foreground);
+  text-wrap: pretty;
+}
+.hm-body {
+  font-size: var(--hm-text-base);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+.hm-small {
+  font-size: var(--hm-text-sm);
+  line-height: 1.5;
+}
+.hm-eyebrow {
+  font-size: var(--hm-text-xs);
+  font-weight: 700;
+  letter-spacing: var(--hm-tracking-widest);
+  text-transform: uppercase;
+  color: var(--hm-muted-foreground);
+}
+.hm-wordmark {
+  font-weight: 800;
+  letter-spacing: var(--hm-tracking-wide);
+  background: var(--hm-brand-gradient);
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: hm-rainbow 3s ease infinite;
+}
+.hm-gradient-text {
+  background: var(--hm-brand-gradient-tri);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@keyframes hm-rainbow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes hm-bounce {
+  0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+  50%      { transform: translateY(0);    animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+
+/* =====================================================================
+   Building blocks — match the shadcn button variants 1:1
+   ===================================================================== */
+.hm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hm-space-2);
+  height: 2.25rem;             /* 36 — default size */
+  padding: 0 var(--hm-space-4);
+  border-radius: var(--hm-radius-md);
+  font-size: var(--hm-text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--hm-duration-fast) var(--hm-ease),
+              color var(--hm-duration-fast) var(--hm-ease),
+              opacity var(--hm-duration-fast) var(--hm-ease);
+  border: 1px solid transparent;
+}
+.hm-btn:focus-visible { outline: none; box-shadow: 0 0 0 1px var(--hm-ring); }
+.hm-btn[disabled]     { opacity: .5; pointer-events: none; }
+
+.hm-btn-primary   { background: var(--hm-primary); color: var(--hm-primary-foreground); box-shadow: var(--hm-shadow-sm); }
+.hm-btn-primary:hover { background: var(--hm-primary-90); }
+
+.hm-btn-outline   { background: var(--hm-background); border-color: var(--hm-input); box-shadow: var(--hm-shadow-sm); }
+.hm-btn-outline:hover { background: var(--hm-accent); color: var(--hm-accent-foreground); }
+
+.hm-btn-ghost     { background: transparent; }
+.hm-btn-ghost:hover { background: var(--hm-accent); color: var(--hm-accent-foreground); }
+
+.hm-btn-success   { background: var(--hm-success); color: white; }
+.hm-btn-success:hover { background: var(--hm-success-600); }
+
+.hm-btn-lg   { height: 2.5rem; padding: 0 2rem; }
+.hm-btn-sm   { height: 2rem; padding: 0 0.75rem; font-size: var(--hm-text-xs); }
+.hm-btn-pill { border-radius: var(--hm-radius-full); padding-left: 1.5rem; padding-right: 1.5rem; }
+
+.hm-card {
+  background: var(--hm-card);
+  border: 1px solid var(--hm-border);
+  border-radius: var(--hm-radius-xl);
+  padding: var(--hm-space-8);
+  box-shadow: var(--hm-shadow-sm);
+}
+.hm-card-glow {
+  position: relative;
+  isolation: isolate;
+}
+.hm-card-glow::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: var(--hm-hub-young);
+  filter: blur(12px);
+  opacity: 0.25;
+  z-index: -1;
+  transition: opacity var(--hm-duration) var(--hm-ease);
+}
+.hm-card-glow:hover::before { opacity: 0.4; }
