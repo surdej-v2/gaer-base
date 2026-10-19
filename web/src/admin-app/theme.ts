@@ -58,4 +58,20 @@ export function lastLabel(iso: string | null | undefined): string {
   return days <= 0 ? "I dag" : days === 1 ? "I går" : `For ${days} dage siden`;
 }
 
-export const disabled = (off: boolean): CSSProperties => (off ? { opacity: 0.45, pointerEvents: "none" } : {});
+const MONTHS = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+
+/** "3. mar 2026" */
+export function dateLabel(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return `${d.getDate()}. ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** +4522411890 → +45 22 41 18 90. Other numbers are shown as stored. */
+export function phoneLabel(phone: string | null | undefined): string {
+  if (!phone) return "";
+  const m = /^\+45(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(phone);
+  return m ? `+45 ${m[1]} ${m[2]} ${m[3]} ${m[4]}` : phone;
+}
+
+export const disabled =(off: boolean): CSSProperties => (off ? { opacity: 0.45, pointerEvents: "none" } : {});

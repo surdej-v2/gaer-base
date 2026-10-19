@@ -8,6 +8,8 @@ import { AuthProvider, useAuth } from "../auth";
 import AdminShell from "./AdminShell";
 import { AdminProvider } from "./context";
 import { ToastProvider } from "./ui";
+import Stats from "./pages/Stats";
+import Users from "./pages/Users";
 import AuthLog from "./pages/AuthLog";
 import AuditLog from "./pages/AuditLog";
 import Analytics from "./pages/Analytics";
@@ -55,7 +57,8 @@ createRoot(document.getElementById("root")!).render(
             <AdminProvider>
               <Routes>
                 <Route element={<AdminShell />}>
-                  <Route index element={legacy(<Analytics />)} />
+                  <Route index element={<Stats />} />
+                  <Route path="users" element={<Users />} />
                   <Route path="analytics" element={legacy(<Analytics />)} />
                   <Route path="heatmaps" element={legacy(<Heatmaps />)} />
                   <Route path="logs/auth" element={legacy(<AuthLog />)} />

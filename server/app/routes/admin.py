@@ -277,8 +277,37 @@ async def analytics(days: int = 30):
         consent = await db.fetch_one(conn, f"""
             select count(*) filter (where statistics) as accepted, count(*) filter (where not statistics) as declined
             from consents where {since}""", (days,))
+        users, logins, logins_per_day = await _user_and_login_stats(conn, days)
     return {"days": days, "totals": totals, "per_day": per_day, "pages": pages, "sources": sources,
-            "devices": devices, "browsers": browsers, "flows": flows, "entries": entries, "consent": consent}
+            "devices": devices, "browsers": browsers, "flows": flows, "entries": entries, "consent": consent,
+            "users": users, "logins": logins, "logins_per_day": logins_per_day}
+
+
+# A successful login is a passkey login or a login with a one-time code (grace login).
+LOGIN_OK = "result = 'ok' and event in ('passkey.login', 'grace.used')"
+LOGIN_FAILED = "result = 'fail' and event in ('passkey.login', 'otp.failed', 'otp.verified')"
+
+
+async def _user_and_login_stats(conn, days: int) -> tuple[dict, dict, list[dict]]:
+    """Key numbers for /admin → Statistik."""
+    users = await db.fetch_one(conn, """
+        select count(*) as total,
+               count(*) filter (where u.created_at > now() - make_interval(days => %(d)s)) as new,
+               count(*) filter (where u.last_login_at > now() - make_interval(days => %(d)s) and u.blocked_at is null) as active,
+               count(*) filter (where exists (select 1 from passkeys p where p.user_id = u.id)) as with_passkey,
+               count(*) filter (where not exists (select 1 from passkeys p where p.user_id = u.id)
+                                  and u.grace_logins_used >= %(g)s) as must_passkey
+        from users u""", {"d": days, "g": config.settings.grace_logins})
+    logins = await db.fetch_one(conn, f"""
+        select count(*) filter (where {LOGIN_OK} and event = 'passkey.login') as passkey,
+               count(*) filter (where {LOGIN_OK} and event = 'grace.used') as otp,
+               count(*) filter (where {LOGIN_FAILED}) as failed,
+               count(*) filter (where {LOGIN_FAILED} and ts > now() - interval '1 day') as failed_24h
+        from auth_log where ts > now() - make_interval(days => %s)""", (days,))
+    per_day = await db.fetch_all(conn, f"""
+        select date_trunc('day', ts)::date as day, count(*) as logins from auth_log
+        where {LOGIN_OK} and ts > now() - make_interval(days => %s) group by 1 order by 1""", (days,))
+    return users, logins, per_day
 
 
 @router.get("/heatmaps/pages")
