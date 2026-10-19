@@ -1,5 +1,5 @@
 // Shell of the /admin app: dark side menu, sticky top bar and the impersonation banner.
-import type { CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ArrowLeft, ExternalLink, VenetianMask, X } from "lucide-react";
 import { api, errorText } from "../api";
@@ -11,6 +11,10 @@ import { initials, MONO, SANS } from "./theme";
 import { useToast } from "./ui";
 import TracerOverlay from "./tracer/TracerOverlay";
 import TracerPanel from "./tracer/TracerPanel";
+import ExtensionButton from "./extension/ExtensionButton";
+import ExtensionPopover from "./extension/ExtensionPopover";
+import InstallGuide from "./extension/InstallGuide";
+import { handshake, useHappyAi } from "./extension/happyAiStore";
 
 export default function AdminShell() {
   const { user, config } = useAuth();
@@ -19,6 +23,9 @@ export default function AdminShell() {
   const say = useToast();
   const instance = config?.app_name ?? window.location.hostname;
   const me = user?.display_name || user?.phone || "";
+  const ext = useHappyAi();
+
+  useEffect(() => handshake(true), []);
 
   const badge = (b?: NavBadge): { text: string; amber: boolean } | null => {
     if (b === "impersonation" && impersonating) return { text: "Aktiv", amber: true };
@@ -122,6 +129,7 @@ export default function AdminShell() {
             {health ? (health.ok ? `API ${health.ms} ms · Postgres ok` : "API svarer ikke") : "API …"}
           </span>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+            <ExtensionButton />
             <a href="/" target="_blank" rel="noopener" style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px", borderRadius: 8,
               border: "1px solid #e2e8f0", background: "#ffffff", color: "#020817", font: `500 13px ${SANS}`, textDecoration: "none" }}>
               Åbn appen<ExternalLink size={13} strokeWidth={2} />
@@ -138,12 +146,14 @@ export default function AdminShell() {
         </main>
       </div>
 
+      <ExtensionPopover />
+      <InstallGuide />
       <TracerOverlay />
       <TracerPanel context={[
         ["Side", `/admin${pathname === "/" ? "" : pathname}`],
         ["Bruger", `${me} · #${user?.id} · admin`],
         ["Efterligner", impersonating ? `${impersonating.display_name} · #${impersonating.id}` : "—"],
-        ["Udvidelse", "—"],
+        ["Udvidelse", ext.status === "missing" ? "ingen handshake" : ext.status === "unknown" ? "…" : `happyai-bridge · v${ext.version ?? "?"}`],
         ["API", `${window.location.origin}/api`],
       ]} />
     </div>
