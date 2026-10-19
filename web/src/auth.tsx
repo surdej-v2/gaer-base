@@ -19,6 +19,7 @@ export type PublicConfig = {
   consent_text: string;
   consent_accept: string;
   consent_decline: string;
+  first_user: boolean;
 };
 
 type AuthState = {

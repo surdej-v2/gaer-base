@@ -60,7 +60,7 @@ function RequestCard({ r, onChange }: { r: Request; onChange: () => Promise<void
         <div className="row">
           {r.kind === "access" && r.user_id && (
             <button className="btn btn-primary btn-sm" onClick={() => { download(`/api/admin/gdpr/${r.id}/export`); setTimeout(onChange, 1500); }}>
-              Hent samlet eksport
+              Hent samlet eksport (.zip)
             </button>
           )}
           {r.kind === "erasure" && r.user_id && open && (

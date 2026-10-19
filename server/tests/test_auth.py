@@ -15,7 +15,8 @@ async def test_three_grace_logins_then_passkey_required(make_client, owner_conn)
     for expected_left in (2, 1, 0):
         client = make_client()
         body = await otp_login(client, "12345678")
-        assert body == {"status": "logged_in", "grace_left": expected_left, "offer_passkey": True}
+        assert body == {"status": "logged_in", "grace_left": expected_left, "offer_passkey": True,
+                        "became_admin": expected_left == 2}
         assert (await client.get("/api/me/sessions")).status_code == 200
 
     client = make_client()
@@ -110,3 +111,63 @@ async def test_state_changes_require_csrf_header(client):
 
 async def test_invalid_phone(client):
     assert (await client.post("/api/auth/otp/start", json={"phone": "abc"})).status_code == 400
+
+
+async def test_public_config_says_when_first_login_becomes_admin(make_client):
+    first = make_client()
+    assert (await first.get("/api/public/config")).json()["first_user"] is True
+    assert (await otp_login(first, "11111111"))["became_admin"] is True
+    second = make_client()
+    assert (await second.get("/api/public/config")).json()["first_user"] is False
+    assert (await otp_login(second, "22222222"))["became_admin"] is False
+
+
+# ── BOOTSTRAP_ADMIN_PHONE ───────────────────────────────────────────────────
+
+import dataclasses  # noqa: E402
+
+import pytest  # noqa: E402
+
+from app import config  # noqa: E402
+from app.security import InvalidPhone, bootstrap_admin_phone  # noqa: E402
+
+
+@pytest.fixture
+def bootstrap(monkeypatch):
+    def set_phone(value):
+        monkeypatch.setattr(config, "settings", dataclasses.replace(config.settings, bootstrap_admin_phone=value))
+    return set_phone
+
+
+async def test_bootstrap_phone_is_the_only_first_admin(make_client, bootstrap, owner_conn):
+    bootstrap("+45 99 88 77 66")
+    early = make_client()
+    assert (await early.get("/api/public/config")).json()["first_user"] is False  # fresh instance not advertised
+    assert "bliver administrator" not in (await early.get("/w/")).text
+    assert (await otp_login(early, "11111111"))["became_admin"] is False
+
+    owner = make_client()
+    assert (await otp_login(owner, "99887766"))["became_admin"] is True
+    roles = dict(owner_conn.execute("select phone, role from users").fetchall())
+    assert roles == {"+4511111111": "user", "+4599887766": "admin"}
+    detail = owner_conn.execute("select detail from audit_log where action = 'admin.first_user'").fetchone()[0]
+    assert detail["via"] == "bootstrap_admin_phone"
+
+
+async def test_bootstrap_phone_existing_user_is_promoted_once(make_client, bootstrap, owner_conn):
+    await otp_login(make_client(), "11111111")            # becomes admin the old way
+    bootstrap("99887766")
+    await otp_login(make_client(), "99887766")            # an admin exists: stays a normal user
+    assert owner_conn.execute("select role from users where phone = '+4599887766'").fetchone()[0] == "user"
+
+    owner_conn.execute("update users set role = 'user' where phone = '+4511111111'")  # no admin left
+    assert (await otp_login(make_client(), "99887766"))["became_admin"] is True
+    assert owner_conn.execute("select role from users where phone = '+4599887766'").fetchone()[0] == "admin"
+    change = owner_conn.execute("select before, after, detail from audit_log where action = 'role.changed'").fetchone()
+    assert change[:2] == ({"role": "user"}, {"role": "admin"}) and change[2]["reason"] == "bootstrap_admin_phone"
+
+
+def test_invalid_bootstrap_phone_is_rejected(bootstrap):
+    bootstrap("not-a-number")
+    with pytest.raises(InvalidPhone):
+        bootstrap_admin_phone()

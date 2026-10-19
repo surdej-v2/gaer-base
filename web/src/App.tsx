@@ -12,6 +12,8 @@ import Privacy from "./pages/Privacy";
 import ExtensionLayout from "./extension/ExtensionLayout";
 import ExtensionPage from "./extension/ExtensionPage";
 import ExtensionAccount from "./extension/ExtensionAccount";
+import ExtensionChat from "./extension/ExtensionChat";
+import { Chat } from "./ai";
 import ClipsPage, { ClipsList, useClips } from "./clips";
 import OfficeShell from "./office/OfficeShell";
 import { DocumentTool, OutlookTool, ToolLayout, WordTool } from "./office/Tools";
@@ -110,6 +112,7 @@ export default function App() {
         </Route>
         <Route path="/extension" element={<RequireUser login="/extension/login"><ExtensionLayout /></RequireUser>}>
           <Route index element={<ExtensionPage />} />
+          <Route path="chat" element={<ExtensionChat />} />
           <Route path="klip" element={<ExtensionClips />} />
           <Route path="konto" element={<ExtensionAccount />} />
         </Route>
@@ -119,6 +122,7 @@ export default function App() {
         <Route path="/m" element={<RequireUser login="/m/login"><MobileLayout /></RequireUser>}>
           <Route index element={<MobileHome />} />
           <Route path="klip" element={<MobileClips />} />
+          <Route path="chat" element={<Chat surface="mobile" contextHint="Spørg om hvad som helst." />} />
           <Route path="filer" element={<MobileFiles />} />
           <Route path="profil" element={<Account />} />
         </Route>

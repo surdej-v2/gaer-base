@@ -27,6 +27,15 @@ page, a mail or a selection, inserted into Word/Outlook.
   `result`. Commands are in `office/handlers.ts` and run one at a time.
 - New command: add it to `handlers.ts` for the right host and call `exec("TYPE", payload)` from the tool.
 
+## AI chat (optional)
+- Off unless `AI_API_KEY` is set. `server/app/ai.py` calls an OpenAI-compatible endpoint (default OVHcloud AI
+  Endpoints, `AI_MODEL`), streams it back as SSE events `delta`, `tool_calls`, `done`, `error`.
+- Stateless: the client (`web/src/ai.tsx` `<Chat>`) keeps the conversation and sends it each time. Prompts and
+  answers are never stored — only `ai_usage` (tokens), checked against the monthly limit per user (`/admin/ai`).
+- Tools are client tools per surface (`TOOLS` in `ai.py`). The browser runs them — in Office through `exec()` —
+  and sends the result back. To add one: declare it in `TOOLS[surface]`, handle it in the surface's `ToolRunner`.
+- Context: the extension sends the page (only on allowed domains), Word the document text, Outlook the mail.
+
 ## Embedding and cookies
 - `main.py` `EMBEDDABLE` + `csp_for()` allow `/extension`, `/office-addin`, `/login`, `/assets`, `/api`
   to be framed by extensions and Office hosts; everything else is `frame-ancestors 'self'`.

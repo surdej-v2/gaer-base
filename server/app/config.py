@@ -32,6 +32,10 @@ class Settings:
     rp_name: str = field(default_factory=lambda: _env("RP_NAME", "Gær"))
     origin: str = field(default_factory=lambda: _env("ORIGIN", "http://localhost:5173"))
 
+    # Optional: the only phone number that may become the first admin. Without it, whoever logs in first
+    # on a new instance becomes admin. Set it in production so nobody else can claim a fresh instance.
+    bootstrap_admin_phone: str | None = field(default_factory=lambda: _env("BOOTSTRAP_ADMIN_PHONE"))
+
     # Login policy
     default_country_code: str = field(default_factory=lambda: _env("DEFAULT_COUNTRY_CODE", "+45"))
     grace_logins: int = field(default_factory=lambda: _int("GRACE_LOGINS", 3))
@@ -67,6 +71,14 @@ class Settings:
 
     # Static frontend (built Vite output)
     static_dir: str = field(default_factory=lambda: _env("STATIC_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "web", "dist")))
+
+    # Optional AI chat. OpenAI-compatible endpoint; default OVHcloud AI Endpoints (processed in Europe).
+    # The chat is hidden everywhere unless AI_API_KEY is set.
+    ai_base_url: str = field(default_factory=lambda: _env("AI_BASE_URL", "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1"))
+    ai_api_key: str | None = field(default_factory=lambda: _env("AI_API_KEY"))
+    ai_model: str = field(default_factory=lambda: _env("AI_MODEL", "Meta-Llama-3_3-70B-Instruct"))
+    ai_max_output_tokens: int = field(default_factory=lambda: _int("AI_MAX_OUTPUT_TOKENS", 1500))
+    ai_max_context_chars: int = field(default_factory=lambda: _int("AI_MAX_CONTEXT_CHARS", 24000))
 
     # Browser extension source, zipped by /api/extension/download
     extension_dir: str = field(default_factory=lambda: _env("EXTENSION_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "extension")))

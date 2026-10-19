@@ -10,7 +10,8 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import config, db, retention
-from app.routes import admin, app_store, auth, clips, features, files, impersonation, me, office, public, web
+from app.routes import admin, ai, app_store, auth, clips, features, files, impersonation, me, office, public, web
+from app.security import bootstrap_admin_phone
 from app.sessions import optional_principal
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -43,6 +44,10 @@ def csp_for(path: str) -> str:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    bootstrap = bootstrap_admin_phone()  # raises on an invalid BOOTSTRAP_ADMIN_PHONE
+    if config.settings.is_production and not bootstrap:
+        logging.getLogger("gaer").warning(
+            "BOOTSTRAP_ADMIN_PHONE is not set: the first person to log in on a new instance becomes admin")
     await db.open_pools()
     task = asyncio.create_task(retention.maintenance_loop()) if retention.enabled() else None
     yield
@@ -78,8 +83,8 @@ def create_app() -> FastAPI:
             await conn.execute("select 1")
         return {"ok": True, "version": config.settings.version}
 
-    for r in (auth.router, me.router, files.router, clips.router, public.router, admin.router, app_store.router, features.router, features.admin_router,
-              impersonation.router, office.router,
+    for r in (auth.router, ai.router, me.router, files.router, clips.router, public.router, admin.router, app_store.router,
+              features.router, features.admin_router, impersonation.router, office.router,
               web.router, files.memory_router):
         app.include_router(r)
 

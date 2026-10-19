@@ -24,6 +24,7 @@ import Consent from "./pages/Consent";
 import AdminFiles from "./pages/AdminFiles";
 import Web from "./pages/Web";
 import Integrations from "./pages/Integrations";
+import AiAdmin from "./pages/AiAdmin";
 import Settings from "./pages/Settings";
 import "../styles.css";
 import "./admin.css";
@@ -74,6 +75,7 @@ createRoot(document.getElementById("root")!).render(
                   <Route path="logs/audit" element={legacy(<AuditLog />)} />
                   <Route path="web" element={legacy(<Web />)} />
                   <Route path="files" element={legacy(<AdminFiles />)} />
+                  <Route path="ai" element={legacy(<AiAdmin />)} />
                   <Route path="integrations" element={legacy(<Integrations />)} />
                   <Route path="gdpr" element={legacy(<Gdpr />)} />
                   <Route path="retention" element={legacy(<Retention />)} />

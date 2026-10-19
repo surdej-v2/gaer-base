@@ -1,6 +1,6 @@
 // The user drawer on /admin/users (screen 03): facts and actions for one user.
 import { useNavigate } from "react-router-dom";
-import { Ban, KeyRound, LockOpen, LogOut, ScrollText, ShieldCheck, ShieldOff, type LucideIcon } from "lucide-react";
+import { Ban, KeyRound, LockOpen, LogOut, Phone, ScrollText, ShieldCheck, ShieldOff, type LucideIcon } from "lucide-react";
 import { api, errorText } from "../../api";
 import { useAuth } from "../../auth";
 import { useAdmin } from "../context";
@@ -48,6 +48,11 @@ export default function UserDrawer({ user: u, users, grace, onClose, onChanged }
       run: run(() => api.post(`/api/admin/users/${u.id}/reset-passkeys`), "Passkeys er nulstillet") },
     { label: "Log ud alle steder", hint: u.active_sessions ? `${u.active_sessions} aktive sessioner` : "Ingen aktive sessioner", icon: LogOut,
       disabled: !u.active_sessions, run: run(() => api.post(`/api/admin/users/${u.id}/revoke-sessions`), "Brugeren er logget ud alle steder") },
+    { label: "Ret telefonnummer", hint: "Rettelse efter GDPR. Brugeren logges ud alle steder", icon: Phone, disabled: test,
+      run: () => {
+        const phone = prompt(`Nyt telefonnummer for ${phoneLabel(u.phone)}`, "");
+        if (phone) void run(() => api.patch(`/api/admin/users/${u.id}/phone`, { phone }), "Telefonnummeret er rettet")();
+      } },
     { label: "Se auth-log", hint: `/admin/logs/auth?user_id=${u.id}`, icon: ScrollText, run: () => navigate(`/logs/auth?user_id=${u.id}`) },
   ];
 

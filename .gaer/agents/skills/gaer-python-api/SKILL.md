@@ -23,7 +23,7 @@ Stack: FastAPI, psycopg 3 (async pool, raw SQL, dict rows), py_webauthn, boto3 f
 - Errors: `HTTPException(status, "Dansk besked til brugeren")`. If you must log a failure before raising,
   `await conn.commit()` first, or the rollback removes the log line.
 - Write `audit()` for every change (see `gaer-audit`).
-- Personal data: add it to `build_user_export` and erasure.
+- Personal data: add it to `build_user_export` and `erase_user` in `app/gdpr.py`.
 
 ## Tests
 `server/tests/` against a real Postgres with the production role layout. Use the `make_client` / `client`

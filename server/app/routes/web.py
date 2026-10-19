@@ -16,15 +16,35 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
 from app import config, db, settings_store
+from app.routes.auth import admin_open_to_anyone
 
 router = APIRouter(tags=["web"])
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "web_static")
 LANGS = ("da", "en")
 TEXT = {
-    "da": {"login": "Log ind", "privacy": "Privatliv", "other": "English", "missing": "Siden findes ikke"},
-    "en": {"login": "Log in", "privacy": "Privacy", "other": "Dansk", "missing": "Page not found"},
+    "da": {"login": "Log ind", "privacy": "Privatliv", "other": "English", "missing": "Siden findes ikke",
+           "card_title": "Log ind", "card_text": "Brug dit telefonnummer. Du får en engangskode på SMS.",
+           "first": "Instansen er ny og har ingen brugere endnu. Den første, der logger ind, bliver administrator."},
+    "en": {"login": "Log in", "privacy": "Privacy", "other": "Dansk", "missing": "Page not found",
+           "card_title": "Log in", "card_text": "Use your phone number. We'll text you a one-time code.",
+           "first": "This instance is new and has no users yet. The first person to log in becomes the administrator."},
 }
+PLACEHOLDER = {
+    "da": "# Velkommen\n\nHer kommer jeres website. Indholdet redigeres i /admin/web.",
+    "en": "# Welcome\n\nYour website goes here. Edit the content in /admin/web.",
+}
+
+
+def _login_card(lang: str, first_user: bool) -> str:
+    t = TEXT[lang]
+    notice = f'<p class="first">{t["first"]}</p>' if first_user else ""
+    return f"""<section class="login-card">
+  <h2>{t['card_title']}</h2>
+  <p>{t['card_text']}</p>
+  {notice}
+  <a class="button" href="/login">{t['login']}</a>
+</section>"""
 ALLOWED_TAGS = {"h1", "h2", "h3", "h4", "p", "a", "ul", "ol", "li", "strong", "em", "code", "pre", "blockquote",
                 "img", "hr", "br", "table", "thead", "tbody", "tr", "th", "td"}
 
@@ -43,7 +63,8 @@ def _lang(request: Request) -> tuple[str, bool]:
     return (c if c in LANGS else "da"), False
 
 
-def _page_html(*, lang: str, page: dict | None, nav: list[dict], values: dict, slug: str) -> str:
+def _page_html(*, lang: str, page: dict | None, nav: list[dict], values: dict, slug: str,
+               first_user: bool = False) -> str:
     t = TEXT[lang]
     other = "en" if lang == "da" else "da"
     name = escape(values["app_name"])
@@ -55,7 +76,15 @@ def _page_html(*, lang: str, page: dict | None, nav: list[dict], values: dict, s
     links = "".join(
         f'<a href="/w/{escape(p["slug"])}"{" class=active" if p["slug"] == slug else ""}>{escape(p["title"])}</a>'
         for p in nav if p["slug"])
-    body = render_markdown(page["body"]) if page else f"<h1>{t['missing']}</h1>"
+    if page:
+        body = render_markdown(page["body"])
+    elif slug == "":
+        body = render_markdown(PLACEHOLDER[lang])  # no front page written yet
+        title = escape(values["app_name"])
+    else:
+        body = f"<h1>{t['missing']}</h1>"
+    if slug == "":
+        body += _login_card(lang, first_user)
     return f"""<!doctype html>
 <html lang="{lang}">
 <head>
@@ -105,8 +134,10 @@ async def w_page(slug: str, request: Request):
                                   (slug, lang))
         nav = await db.fetch_all(conn, """select slug, title from web_pages where lang = %s and published
                                           and nav_order is not null order by nav_order, title""", (lang,))
-    html = _page_html(lang=lang, page=page, nav=nav, values=values, slug=slug)
-    response = HTMLResponse(html, status_code=200 if page else 404, headers={"Cache-Control": "no-cache"})
+        first_user = await admin_open_to_anyone(conn)
+    html = _page_html(lang=lang, page=page, nav=nav, values=values, slug=slug, first_user=first_user)
+    found = page is not None or slug == ""
+    response = HTMLResponse(html, status_code=200 if found else 404, headers={"Cache-Control": "no-cache"})
     if explicit:
         response.set_cookie("w_lang", lang, max_age=365 * 86400, samesite="lax", secure=config.settings.secure_cookies)
     return response

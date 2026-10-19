@@ -106,3 +106,14 @@ async def test_impersonation_cookie_without_admin_session_is_ignored(make_client
     await otp_login(user, "22222222")
     user.cookies.set("gaer_imp", r.cookies["gaer_imp"])
     assert (await _me(user))["user"]["phone"] == "+4522222222"
+
+
+async def test_test_account_never_gets_a_phone_or_deletes_itself(make_client):
+    admin = await _admin(make_client)
+    test = (await admin.post("/api/impersonation/users", json={"display_name": "T", "role": "user"})).json()
+    await admin.post("/api/impersonation/start", json={"user_id": test["id"]})
+    assert (await admin.post("/api/me/phone/start", json={"phone": "44444444"})).status_code == 403
+    assert (await admin.post("/api/me/delete", json={"confirm_phone": test["handle"]})).status_code == 403
+    r = await admin.patch(f"/api/admin/users/{test['id']}/phone", json={"phone": "44444444"})
+    assert r.status_code == 409
+    assert (await _me(admin, **ADMIN_APP))["user"]["role"] == "admin"

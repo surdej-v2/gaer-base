@@ -69,7 +69,7 @@ server/app/
   routes/features.py          NY · /api/features/*, /api/admin/features/*
   routes/app_store.py         NY · /api/admin/app-store
   mcp/                        NY · se specs/mcp/SPEC.md
-  migrations/0003_*.sql …     NY · én fil pr. område (se nedenfor)
+  migrations/0005_*.sql …     NY · én fil pr. område (se nedenfor)
 mobile/                       NY · se specs/mobile/SPEC.md
 ```
 
@@ -186,11 +186,11 @@ med brugerens GitHub-token fra ToerGaer-onboardingen og aldrig gemmes i udvidels
 ## Backend (nye tabeller, alle via migrationer)
 | Migration | Tabeller |
 |---|---|
-| `0003_impersonation.sql` | `users.impersonation_only`, `users.impersonation_owner_id`, `sessions.impersonator_id` |
-| `0004_features.sql` | `features`, `feature_rings` (bruger-niveau), `feature_usage` (append-only) |
-| `0005_app_store.sql` | `app_store` (én række: tekster pr. sprog, links, manuelle trin, ID'er) |
-| `0006_mcp.sql` | se `specs/mcp/SPEC.md` |
-| `0007_devices.sql` | se `specs/mobile/SPEC.md` |
+| `0005_impersonation.sql` | `users.impersonation_only`, `users.impersonation_owner_id`, `sessions.impersonator_id` |
+| `0006_features.sql` | `features`, `feature_rings` (bruger-niveau), `feature_usage` (append-only) |
+| `0007_app_store.sql` | `app_store` (én række: tekster pr. sprog, links, manuelle trin, ID'er) |
+| `0008_mcp.sql` | se `specs/mcp/SPEC.md` |
+| `0009_devices.sql` | se `specs/mobile/SPEC.md` |
 
 Efterligning (fra happy-groups `admin/impersonation/routes.ts`): `GET/POST /api/impersonation/users`,
 `POST /api/impersonation/users/presets`, `DELETE /api/impersonation/users/{id}`, `POST /api/impersonation/start`,

@@ -1,6 +1,6 @@
 // Side menu of the /admin app. Paths are relative to the router basename "/admin".
 import {
-  Archive, ChartColumn, Cookie, FileSearch, Flag, FolderOpen, Globe, LogIn, MousePointerClick, Puzzle, ScrollText,
+  Archive, Bot, ChartColumn, Cookie, FileSearch, Flag, FolderOpen, Globe, LogIn, MousePointerClick, Puzzle, ScrollText,
   Settings, Smartphone, TrendingUp, Users, VenetianMask, type LucideIcon,
 } from "lucide-react";
 
@@ -37,7 +37,10 @@ export const NAV: NavGroup[] = [
   },
   {
     label: "Integrationer",
-    items: [{ path: "/integrations", label: "Udvidelse og Office", icon: Puzzle }],
+    items: [
+      { path: "/ai", label: "AI", icon: Bot },
+      { path: "/integrations", label: "Udvidelse og Office", icon: Puzzle },
+    ],
   },
   {
     label: "System",

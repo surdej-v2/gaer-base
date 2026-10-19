@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { api, errorText } from "../api";
 import { useAuth } from "../auth";
+import { useAiStatus } from "../ai";
 import { ClipsList, useClips, type Clip } from "../clips";
 import { Alert, fmtBytes, fmtDate, useLoad } from "../ui";
 
@@ -29,6 +30,7 @@ function usePwa() {
 export function MobileLayout() {
   usePwa();
   const { config } = useAuth();
+  const { status: ai } = useAiStatus();
   return (
     <div className="embed-shell mobile">
       <header className="embed-header">
@@ -38,6 +40,7 @@ export function MobileLayout() {
       <main className="embed-main"><Outlet /></main>
       <nav className="tabbar">
         <NavLink to="/m" end>Hjem</NavLink>
+        {ai?.enabled && <NavLink to="/m/chat">AI</NavLink>}
         <NavLink to="/m/klip">Klip</NavLink>
         <NavLink to="/m/filer">Filer</NavLink>
         <NavLink to="/m/profil">Profil</NavLink>

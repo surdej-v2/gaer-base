@@ -83,10 +83,10 @@ def clean_database():
     """Each test starts empty, but with the schema in place."""
     with psycopg.connect(OWNER_URL, autocommit=True) as conn:
         conn.execute("""truncate users, otp_codes, passkeys, sessions, webauthn_challenges, auth_log, audit_log,
-                        files, settings, gdpr_requests, consents, analytics_events, clips, bridge_consents,
+                        files, settings, gdpr_requests, consents, analytics_events, clips, bridge_consents, ai_usage,
                         features, feature_rings, feature_usage, app_store
                         restart identity cascade""")
-        # The features seeded by migration 0004 (truncate cascades to them via features.created_by).
+        # The features seeded by migration 0006 (truncate cascades to them via features.created_by).
         from app.features_catalog import CATALOG
         for c in CATALOG:
             conn.execute("insert into features (key, title, description, area, ring, builtin) values (%s, %s, %s, %s, 4, true)",

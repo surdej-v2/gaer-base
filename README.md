@@ -10,7 +10,7 @@ herfra ind i sin fork.
 
 | | |
 | --- | --- |
-| **Login** | Telefonnummer → engangskode på SMS (gemt som hash, udløber, kan bruges én gang, spærring efter for mange forsøg). Tre grace logins, derefter passkey. Ny enhed: kode + ny passkey, tæller ikke som grace login. Første bruger bliver admin. |
+| **Login** | Telefonnummer → engangskode på SMS (gemt som hash, udløber, kan bruges én gang, spærring efter for mange forsøg). Tre grace logins, derefter passkey. Ny enhed: kode + ny passkey, tæller ikke som grace login. Første bruger bliver admin — eller, med `BOOTSTRAP_ADMIN_PHONE`, kun det nummer (anbefalet i produktion). |
 | **Logning** | Auth-log og audit-log i Postgres. Kun tilføjelse: app-brugeren har ikke UPDATE/DELETE, og en trigger stopper UPDATE. Sletning kun fra /admin med en separat databasebruger, og sletningen logges. |
 | **/admin** | Brugere og roller · auth-log · audit-log (CSV) · analytics · heatmaps · GDPR-forespørgsler · sletning af logdata · samtykke og cookies · filer · website · udvidelse og Office · indstillinger. Alt i /admin skrives i audit-loggen. |
 | **Analytics og heatmaps** | Opsamles af Python-serveren og gemmes i en partitioneret tabel i containerens egen database. Ingen tredjepart. Kun anonyme sidevisninger uden samtykke. |
@@ -19,7 +19,39 @@ herfra ind i sin fork.
 | **/m** | Mobil-app (PWA) med bundmenu, kamera-upload og klip. |
 | **/extension** | Browserudvidelse (Chrome/Edge sidepanel), der kan læse den aktuelle side og gemme den som klip — med samtykke pr. domæne. |
 | **/office-addin** | Office-tilføjelser til Word, Excel, PowerPoint og Outlook. Én router finder værten og viser det rigtige værktøj: indsæt klip, gem markering eller mail som klip, svar med klip. |
+| **AI-chat (valgfri)** | Chat i browserudvidelsen (med siden som kontekst), Word og Outlook (med dokumentet/mailen som kontekst; AI'en kan indsætte tekst, sætte emne, åbne svar) og /m. Bruger OVHcloud AI Endpoints, så teksten behandles i Europa. Slås til med `AI_API_KEY`. Samtaler gemmes ikke; kun forbrug, med en månedlig kvote pr. bruger i /admin/ai. |
 | **AI-udvikling** | Skills og slash commands til Claude Code og GitHub Copilot: `/gaer-boot`, `/gaer-init`, `/gaer-dev`, `/gaer-db`, `/gaer-mix`, `/gaer-new-feature`, `/gaer-pr`, `/gaer-pr-review`, `/gaer-release`, `/gaer-recover`, `/gaer-whatsup`. |
+
+## Ruter
+
+Én server og ét domæne. Stien afgør, hvilken flade der svarer. Alle deler login, database og API.
+
+| Rute | Hvem | Hvad |
+| --- | --- | --- |
+| `/` | logget ind | Appens forside. Anonyme sendes til `/w/`. |
+| `/w/…` | alle | Offentligt website (Markdown fra `/admin/web`, dansk/engelsk). Forsiden har altid et login-kort; på en ny instans står der, at den første, der logger ind, bliver administrator. |
+| `/login` | anonyme | Telefonnummer → engangskode → passkey. Viser, når man bliver den første admin. |
+| `/klip`, `/filer`, `/konto`, `/privatliv` | logget ind | Klip, filer, konto og passkeys, privatliv og GDPR. |
+| `/admin/…` | admin | Administration. Alt logges. |
+| `/m/…` | logget ind | Mobil-app (PWA) med bundmenu, AI, klip, filer og profil. |
+| `/extension/…` | i browserudvidelsen | Sidepanelet: aktuel side, klip og AI med siden som kontekst. |
+| `/office-addin` | Office | Router for Word, Excel, PowerPoint og Outlook → værktøjerne under `/extension/tools/…`. |
+| `/api/…` | | JSON-API. |
+| `/health` | udrulning | Sundhedstjek. |
+
+## GDPR
+
+| Ret | Hvordan |
+| --- | --- |
+| **Samtykke** | Cookie-banner i appen og på `/w`. Uden samtykke kun anonyme sidevisninger; med samtykke et tilfældigt id til besøg, forløb og heatmaps. Kan ændres på `/privatliv`. Tekster og overblik i `/admin/consent`. |
+| **Indsigt** | Brugeren henter selv en zip på `/privatliv` (data.json + egne filer). Admin kan gøre det samme fra en anmodning i `/admin/gdpr`. Eksporten logges. |
+| **Rettelse** | Navn på `/konto`. Telefonnummer på `/konto` med kode til det nye nummer, eller af admin i `/admin/users` (“Ret nummer”). |
+| **Sletning** | Brugeren sletter selv sin konto på `/privatliv`, eller admin sletter fra en anmodning. Brugeren, filer, klip, passkeys, sessioner, AI-forbrug, samtykker, statistik og log-data om brugeren slettes. Tilbage bliver kun en notits uden persondata (`gdpr.erasure`, `log.purged`). Den sidste admin kan ikke slettes. |
+| **Anmodninger** | Indsigt, rettelse og sletning kan sendes fra `/privatliv`, også uden login. `/admin/gdpr` viser frist (30 dage) og status. |
+| **Opbevaring** | Logs slettes automatisk efter perioderne i `/admin/retention`. |
+| **Backups** | Managed PostgreSQL tager automatiske backups. Slettede data forsvinder fra dem, når backuppen udløber (se OVHcloud-planens opbevaringstid). Gendannes en backup, skal sletninger efter backup-tidspunktet gentages, før databasen tages i brug: `python -m app.reapply_erasures --from-url "$GAMMEL_DATABASE_URL" --since <backup-tidspunkt>` (se `/gaer-recover`). |
+
+Alle tabeller med persondata skal med i `server/app/gdpr.py` — både i eksporten og i sletningen.
 
 ## Kom i gang lokalt
 
