@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR-etiketter (demo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/qrcode.js" defer></script>
+<script src="assets/demo.js" defer></script>
+<script src="assets/qr.js" defer></script>
+</head>
+<body class="print-page">
+<div class="print-bar">
+  <a href="./">← Om butikken</a>
+  <span>Demo-etiketter. I den rigtige butik laves de i /admin/shop/print.</span>
+  <button class="btn" onclick="window.print()">Udskriv</button>
+</div>
+<div class="shop-labels" data-labels></div>
+</body>
+</html>

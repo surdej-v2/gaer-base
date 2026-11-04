@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gær butik</title>
+<meta name="description" content="Selvbetjent salg: hver vare har en QR-kode, kunden scanner og betaler med MobilePay. Bygget på Gær.">
+<meta property="og:title" content="Gær butik"><meta property="og:description" content="Selvbetjent salg med QR-kode og MobilePay.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/qrcode.js" defer></script>
+<script src="assets/demo.js" defer></script>
+<script src="assets/qr.js" defer></script>
+</head>
+<body>
+<header class="top"><div class="inner">
+  <a class="brand" href="./"><span class="dot"></span>Gær butik</a>
+  <nav>
+    <a href="#saadan">Sådan virker det</a>
+    <a href="#proev">Prøv selv</a>
+    <a href="#admin">Til sælgeren</a>
+    <a href="#udvikler">Kom i gang</a>
+  </nav>
+</div></header>
+
+<div class="hero"><div class="inner">
+  <div>
+    <div class="eyebrow">Selvbetjening · QR · MobilePay</div>
+    <h1>Sæt en QR-kode på varen. Kunden betaler selv.</h1>
+    <p class="lead">Til gårdbutikken, kiosken uden personale, klubhuset eller standen ved vejen.
+      Kunden scanner koden med telefonen, vælger antal og betaler med MobilePay. Ingen app, ingen login,
+      ingen kasse. Du ser salget og lageret med det samme.</p>
+    <div class="actions">
+      <a class="btn mp" href="demo.html#/vare/honning">Prøv som kunde</a>
+      <a class="btn outline" href="etiketter.html">Se QR-etiketterne</a>
+    </div>
+  </div>
+  <div class="phone"><img src="img/demo-vare.png" alt="Varesiden på en telefon: Honning, 450 g, 75 kr., antal og knappen Betal med MobilePay"></div>
+</div></div>
+
+<section id="saadan"><div class="inner">
+  <div class="eyebrow">Sådan virker det</div>
+  <h2>Tre trin for kunden</h2>
+  <p class="section-lead">QR-koden åbner en side for netop den vare. Betalingen sker i MobilePay, og kunden kommer
+    tilbage til en kvittering med ordrenummer.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="shot"><img src="img/demo-vare.png" alt="Varesiden med antal og samlet pris"></div>
+      <h3>Scan og vælg antal</h3>
+      <p>Kameraet på telefonen åbner varesiden. Prisen og det samlede beløb står tydeligt.</p>
+    </div>
+    <div class="step">
+      <div class="shot"><img src="img/demo-betal.png" alt="Betalingen godkendes"></div>
+      <h3>Betal med MobilePay</h3>
+      <p>Kunden godkender beløbet i MobilePay. Først når betalingen er godkendt, trækkes pengene.</p>
+    </div>
+    <div class="step">
+      <div class="shot"><img src="img/demo-kvittering.png" alt="Kvittering: Betalt, ordre nummer 1"></div>
+      <h3>Tag varen</h3>
+      <p>Kvitteringen viser <strong>Betalt</strong>, ordrenummer, vare og beløb. Lageret tælles ned af sig selv.</p>
+    </div>
+  </div>
+</div></section>
+
+<section id="proev" class="alt"><div class="inner try">
+  <div>
+    <div class="eyebrow">Prøv selv</div>
+    <h2>Scan en kode med din telefon</h2>
+    <p class="section-lead">Det er de samme etiketter, butikken udskriver. Her åbner de en demo i browseren:
+      ingen rigtige penge, og intet bliver gemt andre steder end på din telefon.</p>
+    <div class="actions">
+      <a class="btn" href="demo.html">Åbn demo-butikken</a>
+      <a class="btn outline" href="etiketter.html">Udskriv etiketter</a>
+    </div>
+  </div>
+  <div class="shop-labels" data-labels></div>
+</div></section>
+
+<section id="admin"><div class="inner">
+  <div class="eyebrow">Til dig, der sælger</div>
+  <h2>Varer, QR-etiketter og ordrer ét sted</h2>
+  <p class="section-lead">I administrationen på <code>/admin/shop</code> opretter du varer med pris og lager,
+    udskriver etiketter og følger salget. Du logger ind med telefonnummer og passkey.</p>
+  <div class="admin-shots">
+    <figure class="wide"><img src="img/admin-varer.png" alt="Liste over varer med pris, lager, solgt og omsætning" loading="lazy">
+      <figcaption><strong>Varer.</strong> Pris, lager (eller ubegrænset), antal solgt og omsætning. Skjul en vare, og koden holder op med at sælge.</figcaption></figure>
+    <figure><img src="img/qr-ark.png" alt="Ark med QR-etiketter til print" loading="lazy">
+      <figcaption><strong>QR-etiketter.</strong> Ét ark med navn, pris og kode. Vælg størrelse og antal kopier, og udskriv.</figcaption></figure>
+    <figure><img src="img/admin-ordrer.png" alt="Ordrer med dagens omsætning og knappen Udlevér" loading="lazy">
+      <figcaption><strong>Ordrer.</strong> Dagens og månedens salg, hvad der mangler udlevering, og "Tjek betaling" hvis en kunde lukkede browseren.</figcaption></figure>
+  </div>
+</div></section>
+
+<section class="alt"><div class="inner">
+  <div class="eyebrow">Indbygget</div>
+  <h2>Det er der tænkt på</h2>
+  <div class="features">
+    <div class="feature"><h3>Ingen app eller login for kunden</h3><p>En QR-kode og MobilePay. Det er det hele.</p></div>
+    <div class="feature"><h3>Ingen persondata</h3><p>Ordrer gemmer vare, antal og beløb. Ikke navn, telefonnummer eller konto.</p></div>
+    <div class="feature"><h3>Pengene trækkes én gang</h3><p>Betalingen hæves først, når MobilePay har godkendt den, og aldrig to gange.</p></div>
+    <div class="feature"><h3>Lager tælles ned</h3><p>Udsolgte varer kan ikke købes, og kunden ser, hvor mange der er tilbage.</p></div>
+    <div class="feature"><h3>Alt bliver logget</h3><p>Hver ændring af varer og ordrer står i audit-loggen, med hvem og hvornår.</p></div>
+    <div class="feature"><h3>Din egen server</h3><p>Én container med egen database i Europa (OVHcloud). Intet sendes til andre end MobilePay.</p></div>
+  </div>
+</div></section>
+
+<section id="udvikler"><div class="inner">
+  <div class="eyebrow">Kom i gang</div>
+  <h2>Til udvikleren</h2>
+  <div class="dev">
+    <div>
+      <p class="section-lead" style="margin-bottom:16px">Butikken er bygget ind i <strong>Gær</strong> (Python/FastAPI, Vite/React,
+        Postgres) på branchen <code>shop</code> i <code>surdej-v2/gaer-base</code>.</p>
+      <ul>
+        <li><code>/w/butik/&lt;kode&gt;</code> er det, QR-koden åbner. <code>/w/butik</code> viser alle varer.</li>
+        <li><code>POST /api/public/shop/checkout</code> opretter ordren og starter betalingen.</li>
+        <li><code>/w/butik/ordre/&lt;token&gt;</code> er kvitteringen. Den spørger MobilePay om status og hæver beløbet.</li>
+        <li><code>/admin/shop</code> og <code>/admin/shop/print</code> til varer, ordrer og etiketter.</li>
+        <li>Vipps MobilePay ePayment API: opret, status, capture. Lokalt giver
+          <code>PAYMENT_PROVIDER=console</code> en testbetalingsside, som serveren afviser i produktion.</li>
+      </ul>
+    </div>
+    <div>
+<pre><code># Lokalt
+git checkout shop
+docker compose up -d
+(cd server &amp;&amp; python -m app.migrate)
+cd server &amp;&amp; uvicorn app.main:app --reload \
+  --port 8000 --env-file ../.env
+npm run dev --prefix web
+
+# Produktion (~/gaer/.env)
+PAYMENT_PROVIDER=mobilepay
+MOBILEPAY_API_URL=https://api.vipps.no
+MOBILEPAY_CLIENT_ID=…
+MOBILEPAY_CLIENT_SECRET=…
+MOBILEPAY_SUBSCRIPTION_KEY=…
+MOBILEPAY_MSN=…</code></pre>
+      <p class="note">Nøglerne kræver en aftale med Vipps MobilePay og findes i deres portal under API-nøgler.
+        Prøv først mod testmiljøet med <code>MOBILEPAY_API_URL=https://apitest.vipps.no</code>.</p>
+    </div>
+  </div>
+</div></section>
+
+<footer><div class="inner">
+  <span>Gær butik · bygget på Gær</span>
+  <a href="demo.html">Demo-butikken</a>
+</div></footer>
+</body>
+</html>
