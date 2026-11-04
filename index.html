@@ -110,7 +110,7 @@
   <div class="dev">
     <div>
       <p class="section-lead" style="margin-bottom:16px">Butikken er bygget ind i <strong>Gær</strong> (Python/FastAPI, Vite/React,
-        Postgres) på branchen <code>shop</code> i <code>surdej-v2/gaer-base</code>.</p>
+        Postgres). Koden ligger i <a href="https://github.com/happy-mates-apps/gaer-self-service-shop"><code>happy-mates-apps/gaer-self-service-shop</code></a>, en fork af <code>gaer-base</code>.</p>
       <ul>
         <li><code>/w/butik/&lt;kode&gt;</code> er det, QR-koden åbner. <code>/w/butik</code> viser alle varer.</li>
         <li><code>POST /api/public/shop/checkout</code> opretter ordren og starter betalingen.</li>
@@ -122,7 +122,8 @@
     </div>
     <div>
 <pre><code># Lokalt
-git checkout shop
+git clone https://github.com/happy-mates-apps/gaer-self-service-shop
+cd gaer-self-service-shop
 docker compose up -d
 (cd server &amp;&amp; python -m app.migrate)
 cd server &amp;&amp; uvicorn app.main:app --reload \
@@ -144,7 +145,7 @@ MOBILEPAY_MSN=…</code></pre>
 
 <footer><div class="inner">
   <span>Gær butik · bygget på Gær</span>
-  <a href="demo.html">Demo-butikken</a>
+  <span><a href="demo.html">Demo-butikken</a> · <a href="https://github.com/happy-mates-apps/gaer-self-service-shop">GitHub</a></span>
 </div></footer>
 </body>
 </html>
