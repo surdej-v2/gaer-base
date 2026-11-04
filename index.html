@@ -9,10 +9,17 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/qrcode.js" defer></script>
-<script src="assets/demo.js" defer></script>
+<script src="assets/store.js" defer></script>
 <script src="assets/qr.js" defer></script>
+<script src="assets/promo.js" defer></script>
+<script src="assets/notify.js" defer></script>
 </head>
 <body>
+<div class="notify" id="notify" role="region" aria-label="Nyhed"><div class="inner">
+  <span class="notify-text"><strong>Nyt:</strong> Prøv backenden. Opret varer, udskriv QR-koder og se ordrerne fra demo-butikken.</span>
+  <a class="notify-cta" href="admin.html">Åbn backend →</a>
+  <button class="notify-close" type="button" aria-label="Luk">×</button>
+</div></div>
 <header class="top"><div class="inner">
   <a class="brand" href="./"><span class="dot"></span>Gær butik</a>
   <nav>
@@ -81,6 +88,7 @@
   <h2>Varer, QR-etiketter og ordrer ét sted</h2>
   <p class="section-lead">I administrationen på <code>/admin/shop</code> opretter du varer med pris og lager,
     udskriver etiketter og følger salget. Du logger ind med telefonnummer og passkey.</p>
+  <div class="actions" style="margin-bottom:28px"><a class="btn" href="admin.html">Prøv den simulerede backend</a></div>
   <div class="admin-shots">
     <figure class="wide"><img src="img/admin-varer.png" alt="Liste over varer med pris, lager, solgt og omsætning" loading="lazy">
       <figcaption><strong>Varer.</strong> Pris, lager (eller ubegrænset), antal solgt og omsætning. Skjul en vare, og koden holder op med at sælge.</figcaption></figure>

@@ -1,42 +1,12 @@
 // Demo of the buyer flow in /w/butik, entirely in the browser: no server, no real payment.
-// Same markup and CSS classes as server/app/routes/shop.py, so it looks like the real thing.
+// Same markup and CSS classes as server/app/routes/shop.py. Data: assets/store.js (shared with admin.html).
 // Routes (hash): #/  ·  #/vare/<code>  ·  #/betal/<token>  ·  #/ordre/<token>
 (function () {
   "use strict";
-
-  var PRODUCTS = {
-    aebler: { name: "Æbler, 1 kg", description: "Ingrid Marie fra haven. Tag en pose fra kurven.", price: 2500, stock: 12 },
-    honning: { name: "Honning, 450 g", description: "Sommerhonning fra egne bistader.", price: 7500, stock: 4 },
-    aeg: { name: "Friske æg, 10 stk", description: "", price: 3500, stock: null },
-  };
-  window.GAER_DEMO_PRODUCTS = PRODUCTS;
-
-  // Demo state per browser: orders and stock. Resets with "Nulstil demo".
-  var KEY = "gaer.shopdemo";
-  function load() {
-    try { return JSON.parse(localStorage.getItem(KEY)) || { seq: 0, orders: {}, sold: {} }; }
-    catch (e) { return { seq: 0, orders: {}, sold: {} }; }
-  }
-  function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* private mode: state lives until reload */ } }
-  var state = load();
-
-  function stock(code) {
-    var p = PRODUCTS[code];
-    return p.stock === null ? null : Math.max(p.stock - (state.sold[code] || 0), 0);
-  }
-  function kr(ore) {
-    return (ore / 100).toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " kr.";
-  }
-  function esc(s) {
-    return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; });
-  }
-  function token() {
-    var b = new Uint8Array(16);
-    crypto.getRandomValues(b);
-    return Array.prototype.map.call(b, function (x) { return ("0" + x.toString(16)).slice(-2); }).join("");
-  }
-
+  var S = window.GaerStore, kr = S.kr, esc = S.esc;
   var main = document.getElementById("main");
+  if (!main) return;
+
   function render(html, title) {
     main.innerHTML = html;
     document.title = title + " · Gær butik (demo)";
@@ -49,20 +19,19 @@
   }
 
   function index() {
-    var items = Object.keys(PRODUCTS).map(function (code) {
-      var p = PRODUCTS[code];
-      return '<a class="shop-item" href="#/vare/' + code + '"><span>' + esc(p.name) + "</span><strong>" +
-        (stock(code) === 0 ? "Udsolgt" : kr(p.price)) + "</strong></a>";
+    var items = S.products().filter(function (p) { return p.active; }).map(function (p) {
+      return '<a class="shop-item" href="#/vare/' + p.code + '"><span>' + esc(p.name) + "</span><strong>" +
+        (p.stock === 0 ? "Udsolgt" : kr(p.price)) + "</strong></a>";
     }).join("");
-    render("<h1>Butik</h1><div class=\"shop-list\">" + items + "</div>" +
+    render("<h1>Butik</h1><div class=\"shop-list\">" + (items || "<p>Der er ingen varer endnu.</p>") + "</div>" +
       '<p class="shop-small">Det her er en demo. Ingen rigtige penge, ingen server. ' +
-      '<a href="#/nulstil">Nulstil demo</a></p>', "Butik");
+      '<a href="admin.html">Se backend</a> · <a href="#/nulstil">Nulstil demo</a></p>', "Butik");
   }
 
   function product(code) {
-    var p = PRODUCTS[code];
-    if (!p) return render('<h1>Varen findes ikke</h1><p>Koden er ikke i brug længere. <a href="#/">Se alle varer</a>.</p>', "Varen findes ikke");
-    var left = stock(code), form;
+    var p = S.product(code);
+    if (!p || !p.active) return render('<h1>Varen findes ikke</h1><p>Koden er ikke i brug længere. <a href="#/">Se alle varer</a>.</p>', "Varen findes ikke");
+    var left = p.stock, form;
     if (left === 0) {
       form = '<p class="shop-pill">Udsolgt</p>';
     } else {
@@ -86,15 +55,13 @@
       var b = f.querySelector("button");
       b.disabled = true;
       b.textContent = "Åbner MobilePay …";
-      var t = token(), q = Number(qty.value);
-      state.orders[t] = { id: ++state.seq, code: code, name: p.name, qty: q, amount: p.price * q, status: "pending", paid_at: null };
-      save(state);
+      var t = S.createOrder(code, Number(qty.value));
       setTimeout(function () { location.hash = "#/betal/" + t; }, 500);
     });
   }
 
   function pay(t) {
-    var o = state.orders[t];
+    var o = S.order(t);
     if (!o) return notFound();
     if (o.status !== "pending") { location.hash = "#/ordre/" + t; return; }
     render('<div class="shop-receipt pending"><p class="shop-pill">Her ville MobilePay åbne · ingen rigtige penge</p>' +
@@ -103,20 +70,14 @@
       '<button class="shop-button secondary" data-answer="reject">Afvis</button></div></div>', "MobilePay (demo)");
     main.querySelectorAll("[data-answer]").forEach(function (b) {
       b.addEventListener("click", function () {
-        var ok = b.getAttribute("data-answer") === "approve";
-        o.status = ok ? "paid" : "cancelled";
-        if (ok) {
-          o.paid_at = new Date().toISOString();
-          state.sold[o.code] = (state.sold[o.code] || 0) + o.qty;
-        }
-        save(state);
+        S.answerPayment(t, b.getAttribute("data-answer") === "approve");
         location.hash = "#/ordre/" + t;
       });
     });
   }
 
   function receipt(t) {
-    var o = state.orders[t];
+    var o = S.order(t);
     if (!o) return notFound();
     if (o.status === "paid") {
       var d = new Date(o.paid_at);
@@ -125,7 +86,9 @@
       return render('<div class="shop-receipt paid"><div class="shop-mark">✓</div><h1>Betalt</h1>' +
         '<p class="shop-order">Ordre <strong>#' + o.id + "</strong></p>" + lines(o) +
         '<p class="shop-small">Betalt ' + when + ". Tag din vare. Vis denne side, hvis nogen spørger.</p>" +
-        '<p class="shop-small"><a href="#/">Tilbage til butikken</a></p></div>', "Ordre #" + o.id + " · Betalt");
+        (o.fulfilled_at ? '<p class="shop-pill">Udleveret</p>' : "") +
+        '<p class="shop-small"><a href="#/">Tilbage til butikken</a> · <a href="admin.html#ordrer">Se ordren i backend</a></p></div>',
+        "Ordre #" + o.id + " · Betalt");
     }
     if (o.status === "cancelled") {
       return render('<div class="shop-receipt cancelled"><div class="shop-mark">✕</div><h1>Betalingen blev ikke gennemført</h1>' +
@@ -145,16 +108,13 @@
     if (parts[0] === "betal") return pay(parts[1]);
     if (parts[0] === "ordre") return receipt(parts[1]);
     if (parts[0] === "nulstil") {
-      state = { seq: 0, orders: {}, sold: {} };
-      save(state);
+      S.reset();
       location.hash = "#/";
       return;
     }
     index();
   }
 
-  if (main) {
-    window.addEventListener("hashchange", route);
-    route();
-  }
+  window.addEventListener("hashchange", route);
+  route();
 })();
