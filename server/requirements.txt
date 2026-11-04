@@ -8,3 +8,4 @@ httpx==0.28.1
 python-multipart==0.0.32
 markdown==3.11
 nh3==0.3.7
+segno==1.6.6

@@ -26,6 +26,8 @@ import Web from "./pages/Web";
 import Integrations from "./pages/Integrations";
 import AiAdmin from "./pages/AiAdmin";
 import Settings from "./pages/Settings";
+import Shop from "./pages/Shop";
+import ShopPrint from "./pages/ShopPrint";
 import "../styles.css";
 import "./admin.css";
 
@@ -62,10 +64,12 @@ createRoot(document.getElementById("root")!).render(
           <ToastProvider>
             <AdminProvider>
               <Routes>
+                <Route path="shop/print" element={<ShopPrint />} />
                 <Route element={<AdminShell />}>
                   <Route index element={<Stats />} />
                   <Route path="users" element={<Users />} />
                   <Route path="impersonation" element={<Impersonation />} />
+                  <Route path="shop" element={legacy(<Shop />)} />
                   <Route path="features" element={<Features />} />
                   <Route path="app-stores" element={<AppStores />} />
                   <Route path="app-stores/:tab" element={<AppStores />} />

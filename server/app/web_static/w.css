@@ -43,3 +43,39 @@ footer .inner { display: flex; justify-content: space-between; gap: 12px; paddin
 .login-card p.first { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 12px; font-size: 14px; }
 .login-card .button { display: inline-block; background: var(--fg); color: #fff; font-weight: 600; padding: 10px 18px; border-radius: 8px; }
 .login-card .button:hover { text-decoration: none; opacity: .9; }
+
+/* /w/butik — self-service shop (product page from a QR code, receipt) */
+body.shop .content { max-width: 560px; padding-top: clamp(28px, 6vw, 56px); }
+body.shop .content h1 { font-size: clamp(30px, 7vw, 44px); }
+.shop-desc { margin: 0 0 8px; }
+.shop-price { font-size: 28px !important; font-weight: 700; color: var(--fg) !important; margin: 8px 0 20px; }
+.shop-buy { display: flex; flex-direction: column; gap: 14px; padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: #fff; }
+.shop-buy label { display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 18px; }
+.shop-buy select { font: inherit; font-size: 18px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: #fff; min-width: 90px; }
+.shop-total { display: flex; justify-content: space-between; margin: 0; font-size: 18px; }
+.shop-button { display: block; width: 100%; text-align: center; font: inherit; font-size: 18px; font-weight: 700; padding: 15px 18px; border-radius: 12px; border: 0; cursor: pointer; background: var(--fg); color: #fff; }
+.shop-button:hover { text-decoration: none; opacity: .92; }
+.shop-button:disabled { opacity: .6; cursor: wait; }
+.shop-button.mobilepay { background: #5a78ff; }
+.shop-button.secondary { background: var(--muted); color: var(--fg); }
+.shop-error { margin: 0; color: #b91c1c !important; font-size: 15px !important; }
+.shop-small { font-size: 15px !important; color: var(--muted-fg) !important; }
+.shop-note { font-size: 15px !important; color: #92400e !important; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 12px; }
+.shop-pill { display: inline-block; font-size: 14px !important; font-weight: 600; padding: 4px 12px; border-radius: 9999px; background: var(--muted); color: var(--fg) !important; }
+.shop-list { display: flex; flex-direction: column; gap: 8px; }
+.shop-item { display: flex; justify-content: space-between; gap: 12px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 12px; color: var(--fg); font-size: 18px; }
+.shop-item:hover { text-decoration: none; background: var(--muted); }
+.shop-receipt { text-align: center; padding: 28px 20px; border-radius: 20px; border: 1px solid var(--border); }
+.shop-receipt h1::after { margin-left: auto; margin-right: auto; }
+.shop-receipt.paid { background: #ecfdf5; border-color: #6ee7b7; }
+.shop-receipt.cancelled { background: #fef2f2; border-color: #fecaca; }
+.shop-mark { width: 72px; height: 72px; margin: 0 auto 12px; border-radius: 9999px; display: grid; place-items: center; font-size: 40px; font-weight: 700; color: #fff; background: #10b981; }
+.shop-receipt.cancelled .shop-mark { background: #ef4444; }
+.shop-receipt.pending .shop-mark { background: #94a3b8; }
+.shop-mark.spin { animation: shop-spin 1.4s linear infinite; }
+@keyframes shop-spin { to { transform: rotate(360deg); } }
+.shop-order { font-size: 22px !important; color: var(--fg) !important; margin: 0 0 12px; }
+.shop-lines { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; text-align: left; max-width: 340px; margin: 0 auto 14px; font-size: 17px; }
+.shop-lines dt { color: var(--muted-fg); }
+.shop-lines dd { margin: 0; font-weight: 600; text-align: right; }
+.shop-actions { display: flex; flex-direction: column; gap: 10px; max-width: 340px; margin: 16px auto 0; }

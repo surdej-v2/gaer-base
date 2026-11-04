@@ -66,6 +66,15 @@ class Settings:
     max_upload_mb: int = field(default_factory=lambda: _int("MAX_UPLOAD_MB", 25))
     download_link_seconds: int = field(default_factory=lambda: _int("DOWNLOAD_LINK_SECONDS", 300))
 
+    # Shop payments: "console" (simulated payment page, dev and tests only) or "mobilepay"
+    # (Vipps MobilePay ePayment API). Keys from portal.vippsmobilepay.com → Utvikler/Developer.
+    payment_provider: str = field(default_factory=lambda: _env("PAYMENT_PROVIDER", "console"))
+    mobilepay_api_url: str = field(default_factory=lambda: _env("MOBILEPAY_API_URL", "https://api.vipps.no"))
+    mobilepay_client_id: str | None = field(default_factory=lambda: _env("MOBILEPAY_CLIENT_ID"))
+    mobilepay_client_secret: str | None = field(default_factory=lambda: _env("MOBILEPAY_CLIENT_SECRET"))
+    mobilepay_subscription_key: str | None = field(default_factory=lambda: _env("MOBILEPAY_SUBSCRIPTION_KEY"))
+    mobilepay_msn: str | None = field(default_factory=lambda: _env("MOBILEPAY_MSN"))  # Merchant Serial Number
+
     # Set to 1 when running behind the Caddy proxy from deploy/, so client IPs come from X-Forwarded-For.
     trust_proxy: bool = field(default_factory=lambda: _env("TRUST_PROXY", "0") == "1")
 

@@ -33,3 +33,22 @@ body { font-size: 14px; line-height: normal; }
   .tg-shell { flex-direction: column; }
   .tg-side { position: static !important; width: 100% !important; height: auto !important; }
 }
+
+/* /admin/shop/print — QR labels. --qr is the size of the code. */
+.shop-print { padding: 20px; font-family: var(--hm-font-sans); }
+.shop-print-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 20px; padding: 12px 14px; border: 1px solid var(--hm-border); border-radius: 12px; background: var(--hm-muted); }
+.shop-print-bar label { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.shop-print-bar input { width: 72px; }
+.shop-labels { display: flex; flex-wrap: wrap; gap: 6mm; }
+.shop-label { width: calc(var(--qr) + 12mm); padding: 5mm 6mm; border: 1px dashed #94a3b8; border-radius: 4mm; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.5mm; break-inside: avoid; page-break-inside: avoid; background: #fff; }
+.shop-label-name { font-weight: 700; font-size: 13pt; line-height: 1.2; }
+.shop-label-price { font-weight: 700; font-size: 16pt; }
+.shop-label-qr { width: var(--qr); height: var(--qr); }
+.shop-label-qr svg { width: 100%; height: 100%; display: block; }
+.shop-label-cta { font-size: 9pt; font-weight: 600; color: #5a78ff; }
+.shop-label-url { font-family: var(--hm-font-mono); font-size: 7pt; color: #64748b; word-break: break-all; }
+@media print {
+  @page { margin: 10mm; }
+  .shop-print { padding: 0; }
+  .shop-print-bar { display: none; }
+}

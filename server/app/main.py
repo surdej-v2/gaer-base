@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import config, db, retention
-from app.routes import admin, ai, app_store, auth, clips, features, files, impersonation, me, office, public, web
+from app.routes import admin, ai, app_store, auth, clips, features, files, impersonation, me, office, public, shop, web
 from app.security import bootstrap_admin_phone
 from app.sessions import optional_principal
 
@@ -85,6 +85,7 @@ def create_app() -> FastAPI:
 
     for r in (auth.router, ai.router, me.router, files.router, clips.router, public.router, admin.router, app_store.router,
               features.router, features.admin_router, impersonation.router, office.router,
+              shop.router, shop.admin_router,  # before web.router: /w/butik/… must win over the /w catch-all
               web.router, files.memory_router):
         app.include_router(r)
 
