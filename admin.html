@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Backend (simuleret) · Gær butik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/qrcode.js" defer></script>
+<script src="assets/store.js" defer></script>
+<script src="assets/qr.js" defer></script>
+<script src="assets/admin.js" defer></script>
+</head>
+<body class="adm-body">
+<div class="adm">
+  <aside class="adm-side">
+    <a class="adm-brand" href="./"><span class="dot"></span><span>Gær<small>/admin · simuleret</small></span></a>
+    <div class="adm-group">Butik</div>
+    <nav class="adm-nav">
+      <a href="#varer" data-view="varer">Varer</a>
+      <a href="#ordrer" data-view="ordrer">Ordrer <span class="adm-badge" id="badge" hidden></span></a>
+      <a href="#etiketter" data-view="etiketter">QR-etiketter</a>
+      <a href="#audit" data-view="audit">Audit-log</a>
+    </nav>
+    <div class="adm-group">Prøv</div>
+    <nav class="adm-nav">
+      <a href="demo.html" target="_blank" rel="noopener">Demo-butikken ↗</a>
+      <a href="./">Om butikken</a>
+    </nav>
+  </aside>
+  <div class="adm-wrap">
+    <div class="adm-notice">
+      <span><strong>Simuleret backend.</strong> Ingen login og ingen server: alt gemmes kun i din browser.
+        Køb i demo-butikken dukker op her med det samme.</span>
+      <button class="btn outline adm-sm" id="reset" type="button">Nulstil demo</button>
+    </div>
+    <main class="adm-main" id="view"></main>
+  </div>
+</div>
+</body>
+</html>
