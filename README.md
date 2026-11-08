@@ -9,4 +9,6 @@ entirely in the browser (`demo.html`, state in localStorage, no real payment). T
 - `etiketter.html` + `assets/qr.js` — printable labels; QR codes are drawn in the browser from the page's
   own address, so they work on any Pages URL (`assets/qrcode.js`: qrcode-generator 1.4.4, MIT)
 
+Custom domain: `CNAME` → gaer-self-service-shop.pebercake.app (DNS: wildcard `*.pebercake.app` CNAME → happy-mates-apps.github.io, Cloudflare "DNS only").
+
 Publish: `git subtree split --prefix site -b gh-pages-build && git push origin gh-pages-build:gh-pages --force`

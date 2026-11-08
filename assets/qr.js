@@ -1,5 +1,6 @@
-// Draws QR codes for the demo products. URLs are built from where this page is served,
-// so the codes work on any GitHub Pages address (public or private) and locally.
+// Draws QR labels for the demo products (from assets/store.js). URLs are built from where this page
+// is served, so the codes work on any address (GitHub Pages, own domain, locally).
+// <div data-labels> gets every product for sale; etiketter.html?kode=<code> prints just that one.
 (function () {
   "use strict";
   function demoUrl(code) {
@@ -19,11 +20,8 @@
     svg.setAttribute("role", "img");
     return svg;
   }
-  function kr(ore) {
-    return (ore / 100).toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " kr.";
-  }
-  function label(code, p) {
-    var url = demoUrl(code);
+  function label(p) {
+    var url = demoUrl(p.code);
     var el = document.createElement("a");
     el.className = "shop-label";
     el.href = url;
@@ -31,15 +29,23 @@
       '<div class="shop-label-qr"></div><div class="shop-label-cta">Scan og betal med MobilePay</div>' +
       '<div class="shop-label-url"></div>';
     el.querySelector(".shop-label-name").textContent = p.name;
-    el.querySelector(".shop-label-price").textContent = kr(p.price);
+    el.querySelector(".shop-label-price").textContent = window.GaerStore.kr(p.price);
     el.querySelector(".shop-label-qr").appendChild(svgFor(url));
     el.querySelector(".shop-label-url").textContent = url.replace(/^https?:\/\//, "");
     return el;
   }
-  document.addEventListener("DOMContentLoaded", function () {
-    var products = window.GAER_DEMO_PRODUCTS || {};
+  function fill() {
+    var only = new URLSearchParams(location.search).get("kode");
+    var products = window.GaerStore.products().filter(function (p) { return p.active && (!only || p.code === only); });
     document.querySelectorAll("[data-labels]").forEach(function (box) {
-      Object.keys(products).forEach(function (code) { box.appendChild(label(code, products[code])); });
+      box.innerHTML = "";
+      products.forEach(function (p) { box.appendChild(label(p)); });
+      if (!products.length) box.innerHTML = '<p class="muted">Ingen varer til salg.</p>';
     });
+  }
+  window.GaerLabels = { svgFor: svgFor, demoUrl: demoUrl };
+  document.addEventListener("DOMContentLoaded", function () {
+    fill();
+    window.GaerStore.subscribe(fill);
   });
 })();
