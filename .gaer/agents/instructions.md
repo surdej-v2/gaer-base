@@ -75,7 +75,7 @@ They share the same login (session cookie), the same database and the same API.
 | `/mcp`, `/mcp/admin` | MCP clients (OAuth bearer) | **MCP servers** (Streamable HTTP): the app as the logged-in user, and admin where every change is a draft. Consent page `/forbind`; deep links `/go` and `/admin/go`; hub in `/admin/mcp`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. | `server/app/mcp/`, skill `gaer-mcp` |
 | `/health` | deploy | Database check + version; used by `deploy/deploy.sh` before switching versions. | `main.py` |
 
-<details><summary>All routes (61)</summary>
+<details><summary>All routes (66)</summary>
 
 | Path | Served by | Access | Page |
 | --- | --- | --- | --- |
@@ -105,6 +105,9 @@ They share the same login (session cookie), the same database and the same API.
 | `/admin/logs/audit` | admin app (`admin.html`) | admin | Audit-log |
 | `/admin/web` | admin app (`admin.html`) | admin | Website |
 | `/admin/files` | admin app (`admin.html`) | admin | Filer |
+| `/admin/knowledge` | admin app (`admin.html`) | admin | Viden |
+| `/admin/knowledge/spaces/:id` | admin app (`admin.html`) | admin | Vidensrum |
+| `/admin/knowledge/agents/:id` | admin app (`admin.html`) | admin | Agent |
 | `/admin/ai` | admin app (`admin.html`) | admin | AI |
 | `/admin/integrations` | admin app (`admin.html`) | admin | Udvidelse og Office |
 | `/admin/mcp` | admin app (`admin.html`) | admin | MCP-servere |
@@ -130,6 +133,8 @@ They share the same login (session cookie), the same database and the same API.
 | `/extension/chat` | app (`index.html`) | logged in | AI · own chrome · embeddable |
 | `/extension/klip` | app (`index.html`) | logged in | Klip · own chrome · embeddable |
 | `/extension/konto` | app (`index.html`) | logged in | Konto · own chrome · embeddable |
+| `/extension/agent` | app (`index.html`) | logged in | Agenter (feature `knowledge`) · own chrome · embeddable |
+| `/extension/agent/:slug` | app (`index.html`) | logged in | Agent (feature `knowledge`) · own chrome · embeddable |
 | `/office-addin` | app (`index.html`) | everyone | Office-router · own chrome · embeddable |
 | `/extension/tools` | app (`index.html`) | logged in | Office-værktøjer · own chrome · embeddable |
 | `/extension/tools/word` | app (`index.html`) | logged in | Word · own chrome · embeddable |

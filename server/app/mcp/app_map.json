@@ -116,6 +116,18 @@
       "title": "Jobs og oprydning",
       "anchors": []
     },
+    "/admin/knowledge": {
+      "title": "Viden",
+      "anchors": []
+    },
+    "/admin/knowledge/agents/:id": {
+      "title": "Agent",
+      "anchors": []
+    },
+    "/admin/knowledge/spaces/:id": {
+      "title": "Vidensrum",
+      "anchors": []
+    },
     "/admin/logs/audit": {
       "title": "Audit-log",
       "anchors": []
@@ -176,6 +188,14 @@
     },
     "/extension": {
       "title": "Aktuel side",
+      "anchors": []
+    },
+    "/extension/agent": {
+      "title": "Agenter",
+      "anchors": []
+    },
+    "/extension/agent/:slug": {
+      "title": "Agent",
       "anchors": []
     },
     "/extension/chat": {

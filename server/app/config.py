@@ -114,6 +114,12 @@ class Settings:
     ai_max_output_tokens: int = field(default_factory=lambda: _int("AI_MAX_OUTPUT_TOKENS", 1500))
     ai_max_context_chars: int = field(default_factory=lambda: _int("AI_MAX_CONTEXT_CHARS", 24000))
 
+    # Viden (specs/knowledge): embeddings for the vidensrum. Empty KNOWLEDGE_EMBED_MODEL (or no AI_API_KEY) = full-text
+    # search only. Answers are written by AI_MODEL; without AI the agent returns the best excerpts.
+    knowledge_embed_model: str = field(default_factory=lambda: _env("KNOWLEDGE_EMBED_MODEL", "bge-m3"))
+    knowledge_max_zip_files: int = field(default_factory=lambda: _int("KNOWLEDGE_MAX_ZIP_FILES", 1000))
+    knowledge_max_zip_mb: int = field(default_factory=lambda: _int("KNOWLEDGE_MAX_ZIP_MB", 200))
+
     # MCP servers (specs/mcp): /mcp for the app, /mcp/admin for admin. 0 turns a server off (404).
     mcp_app_enabled: bool = field(default_factory=lambda: _env("MCP_APP_ENABLED", "1") == "1")
     mcp_admin_enabled: bool = field(default_factory=lambda: _env("MCP_ADMIN_ENABLED", "1") == "1")

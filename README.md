@@ -45,7 +45,7 @@ herfra ind i sin fork.
 | `/mcp`, `/mcp/admin` | MCP-klienter (OAuth) | MCP-servere: appen som den indloggede bruger og admin med kladder. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. |
 | `/health` | udrulning | Sundhedstjek (database + version), bruges af `deploy/deploy.sh`. |
 
-<details><summary>Alle ruter (61)</summary>
+<details><summary>Alle ruter (66)</summary>
 
 | Sti | Svarer | Adgang | Side |
 | --- | --- | --- | --- |
@@ -75,6 +75,9 @@ herfra ind i sin fork.
 | `/admin/logs/audit` | admin-appen | admin | Audit-log |
 | `/admin/web` | admin-appen | admin | Website |
 | `/admin/files` | admin-appen | admin | Filer |
+| `/admin/knowledge` | admin-appen | admin | Viden |
+| `/admin/knowledge/spaces/:id` | admin-appen | admin | Vidensrum |
+| `/admin/knowledge/agents/:id` | admin-appen | admin | Agent |
 | `/admin/ai` | admin-appen | admin | AI |
 | `/admin/integrations` | admin-appen | admin | Udvidelse og Office |
 | `/admin/mcp` | admin-appen | admin | MCP-servere |
@@ -100,6 +103,8 @@ herfra ind i sin fork.
 | `/extension/chat` | appen | logget ind | AI · eget layout · kan indlejres |
 | `/extension/klip` | appen | logget ind | Klip · eget layout · kan indlejres |
 | `/extension/konto` | appen | logget ind | Konto · eget layout · kan indlejres |
+| `/extension/agent` | appen | logget ind | Agenter (feature `knowledge`) · eget layout · kan indlejres |
+| `/extension/agent/:slug` | appen | logget ind | Agent (feature `knowledge`) · eget layout · kan indlejres |
 | `/office-addin` | appen | alle | Office-router · eget layout · kan indlejres |
 | `/extension/tools` | appen | logget ind | Office-værktøjer · eget layout · kan indlejres |
 | `/extension/tools/word` | appen | logget ind | Word · eget layout · kan indlejres |

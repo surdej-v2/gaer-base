@@ -24,6 +24,7 @@ import OfficeShell from "./office/OfficeShell";
 import { DocumentTool, OutlookTool, ToolLayout, WordTool } from "./office/Tools";
 import { MobileClips, MobileFiles, MobileHome, MobileLayout } from "./mobile/Mobile";
 import ReviewLauncher from "./review/ReviewLauncher";
+import { AgentChat, AgentList } from "./knowledge/Agents";
 
 function TopBar() {
   const { user, impersonator, scope, config, logout } = useAuth();
@@ -121,6 +122,8 @@ export default function App() {
           <Route path="outlook" element={<OutlookTool />} />
           <Route path="document" element={<DocumentTool />} />
         </Route>
+        <Route path="/extension/agent" element={<RequireUser login="/extension/login"><FeatureGate feature="knowledge"><AgentList /></FeatureGate></RequireUser>} />
+        <Route path="/extension/agent/:slug" element={<RequireUser login="/extension/login"><FeatureGate feature="knowledge"><AgentChat /></FeatureGate></RequireUser>} />
         <Route path="/extension" element={<RequireUser login="/extension/login"><ExtensionLayout /></RequireUser>}>
           <Route index element={<ExtensionPage />} />
           <Route path="chat" element={<ExtensionChat />} />

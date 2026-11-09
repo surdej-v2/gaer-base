@@ -404,6 +404,27 @@
    "title": "Filer"
   },
   {
+   "path": "/admin/knowledge",
+   "group": "admin",
+   "app": "admin",
+   "access": "admin",
+   "title": "Viden"
+  },
+  {
+   "path": "/admin/knowledge/spaces/:id",
+   "group": "admin",
+   "app": "admin",
+   "access": "admin",
+   "title": "Vidensrum"
+  },
+  {
+   "path": "/admin/knowledge/agents/:id",
+   "group": "admin",
+   "app": "admin",
+   "access": "admin",
+   "title": "Agent"
+  },
+  {
    "path": "/admin/ai",
    "group": "admin",
    "app": "admin",
@@ -590,6 +611,26 @@
    "title": "Konto",
    "chrome": "own",
    "embeddable": true
+  },
+  {
+   "path": "/extension/agent",
+   "group": "extension",
+   "app": "app",
+   "access": "user",
+   "title": "Agenter",
+   "chrome": "own",
+   "embeddable": true,
+   "feature": "knowledge"
+  },
+  {
+   "path": "/extension/agent/:slug",
+   "group": "extension",
+   "app": "app",
+   "access": "user",
+   "title": "Agent",
+   "chrome": "own",
+   "embeddable": true,
+   "feature": "knowledge"
   },
   {
    "path": "/office-addin",

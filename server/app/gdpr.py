@@ -48,6 +48,17 @@ async def build_user_export(conn, user_id: int) -> dict:
                                       where space = 'shared' and uploaded_by = %s order by created_at""", user_id),
         "clips": await rows("""select id, source, title, body, url, created_at, updated_at from clips
                                where user_id = %s order by created_at""", user_id),
+        "knowledge_agent_members": await rows("""select a.name as agent, a.slug, m.privilege, m.created_at
+                                                 from knowledge_agent_members m join knowledge_agents a on a.id = m.agent_id
+                                                 where m.user_id = %s order by a.name""", user_id),
+        "knowledge_conversations": await rows("""
+            select c.id, a.name as agent, c.title, c.created_at, c.updated_at,
+                   coalesce((select jsonb_agg(jsonb_build_object('role', m.role, 'text', m.text, 'citations', m.citations,
+                                                                 'agent_version', m.agent_version, 'created_at', m.created_at)
+                                              order by m.id)
+                             from knowledge_messages m where m.conversation_id = c.id), '[]'::jsonb) as messages
+            from knowledge_conversations c join knowledge_agents a on a.id = c.agent_id
+            where c.user_id = %s order by c.created_at""", user_id),
         "bridge_consents": await rows("select domain, created_at from bridge_consents where user_id = %s order by domain",
                                       user_id),
         "gdpr_requests": await rows("""select id, kind, status, message, received_at, completed_at from gdpr_requests
@@ -141,7 +152,10 @@ async def ensure_can_erase(conn, user_id: int) -> dict:
 async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, reason: str,
                      gdpr_request: int | None = None) -> dict:
     """The right to be forgotten. Deletes the user (passkeys, authenticator apps, sessions, clips, domain consents, AI usage, one-time
-    codes, feature level, review sessions and notes and their test accounts cascade; review screenshots and audio are files; feature usage is purged with the logs), their files in Object Storage (their whole home, folders cascade; files they put in /shared stay, the link to them is set to null), the contact details on their GDPR requests, and
+    codes, feature level, review sessions and notes and their test accounts, Viden conversations and agent memberships
+    cascade; review screenshots and audio are files; feature usage is purged with the logs), their files in Object Storage
+    (their whole home and folders cascade; files they put in /shared stay, with the uploader link set to null), the
+    contact details on their GDPR requests, and
     log data about them (via the purge user). The erasure itself is logged without personal data."""
     async with db.connection() as conn:
         user = await ensure_can_erase(conn, user_id)

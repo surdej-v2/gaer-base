@@ -87,7 +87,7 @@ async def test_schedules_and_retention_policies(make_client, owner_conn):
     admin = make_client()
     await full_user(admin, "71111111")
     owner_conn.execute("update job_schedules set next_run_at = now() - interval '1 minute'")
-    assert await jobs.schedule_due() == 3
+    assert await jobs.schedule_due() == 4  # maintenance, retention.logs, retention.cleanup, knowledge.bin
     assert await jobs.schedule_due() == 0  # next run moved forward
 
     # Old operational data goes; new stays.

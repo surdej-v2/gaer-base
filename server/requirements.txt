@@ -12,3 +12,4 @@ mcp==2.3.0
 cryptography==50.0.2
 segno==1.6.6
 PyYAML==6.0.3
+pypdf==5.4.0
