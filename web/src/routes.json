@@ -242,7 +242,7 @@
    "group": "home",
    "app": "app",
    "access": "user",
-   "title": "Forside"
+   "title": "Overblik"
   },
   {
    "path": "/w/{slug}",

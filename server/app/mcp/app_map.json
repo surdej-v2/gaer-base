@@ -2,7 +2,7 @@
   "generated_by": "npm run app-map --prefix web",
   "routes": {
     "/": {
-      "title": "Forside",
+      "title": "Overblik",
       "anchors": []
     },
     "/admin": {

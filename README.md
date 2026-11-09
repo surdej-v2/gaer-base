@@ -50,7 +50,7 @@ herfra ind i sin fork.
 
 | Sti | Svarer | Adgang | Side |
 | --- | --- | --- | --- |
-| `/` | appen | logget ind | Forside |
+| `/` | appen | logget ind | Overblik |
 | `/w/{slug}` | serveren | alle | Website |
 | `/login` | appen | alle | Log ind · kan indlejres |
 | `/extension/login` | appen | alle | Log ind i udvidelsen · eget layout · kan indlejres |

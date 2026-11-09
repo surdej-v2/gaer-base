@@ -80,7 +80,7 @@ They share the same login (session cookie), the same database and the same API.
 
 | Path | Served by | Access | Page |
 | --- | --- | --- | --- |
-| `/` | app (`index.html`) | logged in | Forside |
+| `/` | app (`index.html`) | logged in | Overblik |
 | `/w/{slug}` | server | everyone | Website |
 | `/login` | app (`index.html`) | everyone | Log ind · embeddable |
 | `/extension/login` | app (`index.html`) | everyone | Log ind i udvidelsen · own chrome · embeddable |

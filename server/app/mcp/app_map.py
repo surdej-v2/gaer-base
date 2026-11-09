@@ -53,8 +53,8 @@ SECTIONS: list[dict] = [
     {"path": "/admin/settings", "title": "Indstillinger", "purpose": "Navn, logo, SMS-afsender, GDPR-mail og version",
      "api": "GET/PUT /api/admin/settings", "source": "web/src/admin-app/pages/Settings.tsx · server/app/settings_store.py"},
     # The app on /
-    {"path": "/", "title": "Forside", "purpose": "Appens forside for brugere, der er logget ind", "api": "GET /api/auth/me",
-     "source": "web/src/pages/Home.tsx"},
+    {"path": "/", "title": "Overblik", "purpose": "Dashboard for brugere, der er logget ind: tal, assistenten, seneste aktivitet, delt med dig og sikkerhed",
+     "api": "GET /api/user/overview", "source": "web/src/pages/Home.tsx · web/src/shell.tsx"},
     {"path": "/klip", "title": "Klip", "purpose": "Brugerens klip: tekst og links fra web, udvidelse, Office og mobil",
      "api": "/api/clips", "source": "web/src/clips.tsx · server/app/routes/clips.py"},
     {"path": "/klip/:id", "title": "Klip", "purpose": "Ét klip", "api": "GET /api/clips/{id}", "source": "web/src/clips.tsx"},
