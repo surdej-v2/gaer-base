@@ -1,5 +1,5 @@
 # Production stack on the UpCloud server, in ~/gaer next to .env (stack secrets) and app.env (app settings).
-# Postgres, the app, NATS (JetStream on its own volume) and cloudflared. Driven by deploy.sh; IMAGE is passed in by it. Traffic arrives through the Cloudflare Tunnel — no open ports.
+# Postgres, the app, NATS (JetStream on its own volume), ClickHouse (own volume) and cloudflared. Driven by deploy.sh; IMAGE is passed in by it. Traffic arrives through the Cloudflare Tunnel — no open ports.
 
 name: gaer
 
@@ -38,6 +38,11 @@ services:
       # NATS in the stack: clients with the token, monitoring for /admin/nats (internal network only)
       NATS_URL: nats://${NATS_TOKEN:+${NATS_TOKEN}@}nats:4222
       NATS_MONITOR_URL: http://nats:8222
+      # ClickHouse in the stack (HTTP interface, internal network only): app.clickhouse and /admin/clickhouse
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: gaer
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DATABASE: gaer
     # Mail module (specs/mail): with MAIL_PRIVATE_IP in .env, MAIL_HOSTNAME resolves to the Stalwart server's private
     # address, so STALWART_URL=https://<MAIL_HOSTNAME>:8443 goes over the private network with a valid certificate.
     extra_hosts:
@@ -61,6 +66,26 @@ services:
       interval: 5s
       retries: 20
 
+  # ClickHouse. Data lives on the "clickhouse" volume. No published ports: only containers in the stack reach it.
+  # The user gaer gets the password CLICKHOUSE_PASSWORD from .env (no password if empty). deploy/clickhouse.xml limits
+  # its memory and system logs. The app runs without it; /admin/clickhouse and the job clickhouse.monitor report it.
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.8.36.3-alpine
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: gaer
+      CLICKHOUSE_USER: gaer
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    volumes:
+      - clickhouse:/var/lib/clickhouse
+      - ./clickhouse.xml:/etc/clickhouse-server/config.d/gaer.xml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8123/ping"]
+      interval: 5s
+      retries: 30
+
   cloudflared:
     image: cloudflare/cloudflared:2026.10.7
     restart: unless-stopped
@@ -71,3 +96,4 @@ services:
 volumes:
   postgres:
   nats:
+  clickhouse:

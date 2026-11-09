@@ -5,11 +5,12 @@ description: Start Postgres, MinIO, the Python server and Vite locally against a
 
 # /gaer-dev
 
-1. Infrastructure (Postgres on 5432, MinIO on 9000/9001, NATS with JetStream on 4222, monitoring on 8222):
+1. Infrastructure (Postgres on 5432, MinIO on 9000/9001, NATS with JetStream on 4222, monitoring on 8222,
+   ClickHouse over HTTP on 8123):
    ```bash
    docker compose up -d
    ```
-2. Migrate:
+2. Migrate (Postgres, then ClickHouse when `CLICKHOUSE_URL` is set):
    ```bash
    (cd server && python -m app.migrate)
    ```

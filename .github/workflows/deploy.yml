@@ -61,7 +61,7 @@ jobs:
       - name: Ship deploy files and image to the server
         run: |
           $SSH "mkdir -p gaer"
-          $SCP deploy/deploy.sh deploy/compose.yml deploy/postgres-init.sh deploy/nats.conf "$REMOTE:gaer/"
+          $SCP deploy/deploy.sh deploy/compose.yml deploy/postgres-init.sh deploy/nats.conf deploy/clickhouse.xml "$REMOTE:gaer/"
           docker save "$IMAGE" | gzip -1 | $SSH "gunzip | docker load"
 
       - name: Release

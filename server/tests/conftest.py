@@ -61,6 +61,7 @@ os.environ.update({
     "ORIGIN": "http://localhost:5173",
     "SECRET_KEY": "test-secret",
     "STATIC_DIR": "/nonexistent",
+    "CLICKHOUSE_URL": "",  # off; test_clickhouse switches it on with a mock transport
 })
 
 from app import config  # noqa: E402

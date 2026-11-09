@@ -20,6 +20,7 @@ from app.routes import (admin, admin_files, admin_ops, ai, app_store, auth, clip
                         impersonation, knowledge, knowledge_admin, me, mcp_tools, nats, office, public, review, security,
                         user_area, web)
 from app.routes import admin_mail
+from app.routes import clickhouse as clickhouse_routes
 from app.routes import mail as mail_routes
 from app.security import bootstrap_admin_email, bootstrap_admin_phone
 from app.sessions import optional_principal
@@ -117,7 +118,7 @@ def create_app() -> FastAPI:
               admin_files.router, admin.router,  # admin_files first: /files/folders before /files/{file_id}
               app_store.router, mcp_tools.router, data.router, access_routes.router, features.router, features.admin_router,
               impersonation.router, mcp_oauth.router,
-              mcp_hub.router, office.router, review.router, admin_ops.router, hooks.router, nats.router, consumption.router,
+              mcp_hub.router, office.router, review.router, admin_ops.router, hooks.router, nats.router, clickhouse_routes.router, consumption.router,
               user_area.router, mail_routes.router, admin_mail.router,
               knowledge.router, knowledge_admin.router,
               web.router, files.memory_router):

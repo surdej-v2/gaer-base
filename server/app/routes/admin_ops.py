@@ -579,4 +579,7 @@ async def update_policy(key: str, body: PolicyIn, admin: Principal = Depends(req
 
 @router.post("/retention/policies/run")
 async def run_policies(admin: Principal = Depends(require_admin)):
-    return {"deleted": await retention.cleanup(actor_id=admin.user_id, meta=admin.meta)}
+    try:
+        return {"deleted": await retention.cleanup(actor_id=admin.user_id, meta=admin.meta)}
+    except retention.CleanupErrors as e:
+        return {"deleted": e.deleted, "errors": e.errors}

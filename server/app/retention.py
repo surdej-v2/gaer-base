@@ -8,7 +8,7 @@ run it now or purge everything about one user.
 import logging
 from datetime import date
 
-from app import config, db, settings_store
+from app import clickhouse, config, db, settings_store
 from app.logs import RequestMeta, audit
 from app.security import phone_hash
 
@@ -128,25 +128,74 @@ CLEANUP_SQL = {
     "review_orphans": """delete from review_sessions s where ended_at < now() - make_interval(days => %s)
                          and jsonb_array_length(pages) = 0
                          and not exists (select 1 from review_feedback r where r.session_id = s.id)""",
+    "clickhouse_checks": "delete from clickhouse_checks where checked_at < now() - make_interval(days => %s)",
 }
+
+# Policies whose data lives in ClickHouse (app.clickhouse): key → (table, time column) pairs. Skipped while ClickHouse
+# is not set up. A table ClickHouse does not have (a system log switched off in deploy/clickhouse.xml) counts as 0.
+CLICKHOUSE_CLEANUP: dict[str, list[tuple[str, str]]] = {
+    "clickhouse_events": [("events", "ts")],
+    "clickhouse_system_logs": [("system.query_log", "event_time"), ("system.part_log", "event_time")],
+}
+_UNKNOWN_TABLE = 60
+
+
+class CleanupErrors(Exception):
+    """Raised by cleanup() after the rest has been deleted and committed, when a ClickHouse policy failed."""
+
+    def __init__(self, deleted: dict, errors: dict):
+        super().__init__("; ".join(f"{k}: {v}" for k, v in errors.items()))
+        self.deleted = deleted
+        self.errors = errors
+
+
+async def _clickhouse_cleanup(key: str, days: int) -> int:
+    n = 0
+    for table, column in CLICKHOUSE_CLEANUP[key]:
+        try:
+            n += await clickhouse.delete_older(table, column, days)
+        except clickhouse.ClickHouseError as e:
+            if e.code != _UNKNOWN_TABLE:
+                raise
+    return n
 
 
 async def cleanup(*, only: str | None = None, actor_id: int | None = None, meta: RequestMeta | None = None) -> dict:
-    """Deletes operational data older than each enabled policy. Returns {policy: rows deleted}."""
-    counts = {}
+    """Deletes operational data older than each enabled policy. Returns {policy: rows deleted}.
+
+    ClickHouse policies run first, outside the Postgres transaction (a mutation can take a while). If one fails, the
+    rest still runs and is committed, and CleanupErrors is raised at the end, so the job shows as failed."""
     async with db.connection() as conn:
         policies = await db.fetch_all(conn, "select key, days from retention_policies where enabled"
                                       + (" and key = %s" if only else "") + " order by key", (only,) if only else ())
+    counts: dict[str, int] = {}
+    errors: dict[str, str] = {}
+    for p in policies:
+        if p["key"] in CLICKHOUSE_CLEANUP and clickhouse.configured():
+            try:
+                counts[p["key"]] = await _clickhouse_cleanup(p["key"], p["days"])
+            except clickhouse.ClickHouseError as e:
+                errors[p["key"]] = e.message
+                log.warning("retention %s failed: %s", p["key"], e.message)
+    async with db.connection() as conn:
         for p in policies:
-            sql = CLEANUP_SQL.get(p["key"])
-            if sql is None:
-                continue
-            n = (await conn.execute(sql, (p["days"],))).rowcount
-            counts[p["key"]] = n
+            if p["key"] in CLICKHOUSE_CLEANUP:
+                if p["key"] not in counts:
+                    continue
+                n = counts[p["key"]]
+            else:
+                sql = CLEANUP_SQL.get(p["key"])
+                if sql is None:
+                    continue
+                n = (await conn.execute(sql, (p["days"],))).rowcount
+                counts[p["key"]] = n
             await conn.execute("update retention_policies set last_run_at = now(), last_deleted = %s where key = %s",
                                (n, p["key"]))
-        if any(counts.values()) or actor_id is not None:
-            await audit(conn, "retention.cleanup", actor_id=actor_id, meta=meta or RequestMeta(), deleted=counts)
+        if any(counts.values()) or errors or actor_id is not None:
+            await audit(conn, "retention.cleanup", actor_id=actor_id, meta=meta or RequestMeta(), deleted=counts,
+                        **({"errors": errors} if errors else {}))
+    if errors:
+        raise CleanupErrors(counts, errors)
     return counts
 
 

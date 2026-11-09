@@ -38,9 +38,13 @@ export default function Jobs() {
     setError(null);
     setNotice(null);
     try {
-      const r = await fn() as { deleted?: Record<string, number> } | undefined;
+      const r = await fn() as { deleted?: Record<string, number>; errors?: Record<string, string> } | undefined;
       const counts = r?.deleted ? " " + Object.entries(r.deleted).map(([k, v]) => `${k}: ${fmtNumber(v)}`).join(" · ") : "";
       setNotice(label + counts);
+      // ClickHouse policies can fail on their own (the rest is still deleted).
+      if (r?.errors && Object.keys(r.errors).length) {
+        setError("Fejl: " + Object.entries(r.errors).map(([k, v]) => `${k}: ${v}`).join(" · "));
+      }
       await Promise.all([jobs.reload(), schedules.reload(), policies.reload()]);
     } catch (e) {
       setError(errorText(e));

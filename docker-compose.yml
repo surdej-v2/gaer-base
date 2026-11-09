@@ -1,4 +1,4 @@
-# Local development: Postgres, MinIO (stands in for OVHcloud Object Storage) and NATS.
+# Local development: Postgres, MinIO (stands in for OVHcloud Object Storage), NATS and ClickHouse.
 # The Python server and Vite run natively — see /gaer-dev.
 #
 #   docker compose up -d
@@ -50,6 +50,25 @@ services:
       interval: 3s
       retries: 20
 
+  # ClickHouse on the "clickhouse" volume. HTTP on :8123 (the app, python -m app.migrate and /admin/clickhouse); the
+  # native port 9000 is not published (MinIO has it). User, password and database gaer; deploy/clickhouse.xml tunes it.
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.8.36.3-alpine
+    environment:
+      CLICKHOUSE_DB: gaer
+      CLICKHOUSE_USER: gaer
+      CLICKHOUSE_PASSWORD: gaer
+    ports: ["8123:8123"]
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    volumes:
+      - clickhouse:/var/lib/clickhouse
+      - ./deploy/clickhouse.xml:/etc/clickhouse-server/config.d/gaer.xml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8123/ping"]
+      interval: 3s
+      retries: 20
+
   app:
     profiles: [app]
     build: .
@@ -60,6 +79,10 @@ services:
       ORIGIN: http://localhost:8000
       NATS_URL: nats://nats:4222
       NATS_MONITOR_URL: http://nats:8222
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: gaer
+      CLICKHOUSE_PASSWORD: gaer
+      CLICKHOUSE_DATABASE: gaer
     ports: ["8000:8000"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -68,3 +91,4 @@ volumes:
   postgres:
   minio:
   nats:
+  clickhouse:

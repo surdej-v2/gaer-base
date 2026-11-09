@@ -41,6 +41,20 @@
       "title": "App Stores",
       "anchors": []
     },
+    "/admin/clickhouse": {
+      "title": "ClickHouse",
+      "anchors": [
+        "clickhouse-disks",
+        "clickhouse-history",
+        "clickhouse-kpis",
+        "clickhouse-latest-check",
+        "clickhouse-schema",
+        "clickhouse-status",
+        "clickhouse-tab-{x}",
+        "clickhouse-tables-top",
+        "clickhouse-view-{x}"
+      ]
+    },
     "/admin/consent": {
       "title": "Samtykke og cookies",
       "anchors": []

@@ -48,7 +48,7 @@ herfra ind i sin fork.
 | `/mcp`, `/mcp/admin` | MCP-klienter (OAuth) | MCP-servere: appen som den indloggede bruger og admin med kladder. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. |
 | `/health` | udrulning | Sundhedstjek (database + version), bruges af `deploy/deploy.sh`. |
 
-<details><summary>Alle ruter (77)</summary>
+<details><summary>Alle ruter (78)</summary>
 
 | Sti | Svarer | Adgang | Side |
 | --- | --- | --- | --- |
@@ -96,6 +96,7 @@ herfra ind i sin fork.
 | `/admin/webhooks` | admin-appen | admin | Webhooks |
 | `/admin/jobs` | admin-appen | admin | Jobs og oprydning |
 | `/admin/nats` | admin-appen | admin | NATS |
+| `/admin/clickhouse` | admin-appen | admin | ClickHouse |
 | `/admin/mail` | admin-appen | admin | Mail |
 | `/admin/mail/users/:id` | admin-appen | admin | Brugerens mail |
 | `/admin/data` | admin-appen | admin | Katalog |
@@ -155,7 +156,7 @@ Kræver Python 3.12+, Node 22 og Docker.
 cp .env.example .env
 python -m venv .venv && . .venv/bin/activate && pip install -r server/requirements-dev.txt
 npm ci --prefix web
-docker compose up -d                                   # Postgres + MinIO + NATS
+docker compose up -d                                   # Postgres + MinIO + NATS + ClickHouse
 (cd server && python -m app.migrate)
 (cd server && uvicorn app.main:app --reload --port 8000 --env-file ../.env) &
 npm run dev --prefix web                               # http://localhost:5173
@@ -207,12 +208,12 @@ Push til `main` → `.github/workflows/deploy.yml`:
 
 1. Test (Python mod Postgres, build af frontend)
 2. Byg ét image, tagget med commit-sha, og send det direkte til UpCloud-serveren over SSH (`docker save | docker load`)
-3. Kopiér `deploy/compose.yml`, `deploy/postgres-init.sh`, `deploy/nats.conf` og `deploy/deploy.sh` til `~/gaer` på UpCloud-serveren
-4. `deploy.sh release`: start Postgres, migrér databasen, start den nye version med `docker compose`.
+3. Kopiér `deploy/compose.yml`, `deploy/postgres-init.sh`, `deploy/nats.conf`, `deploy/clickhouse.xml` og `deploy/deploy.sh` til `~/gaer` på UpCloud-serveren
+4. `deploy.sh release`: start Postgres og ClickHouse, migrér databasen (og ClickHouse), start den nye version med `docker compose`.
    Svarer `/health` ikke inden for 60 sekunder, startes den forrige version igen.
    `deploy.sh rollback` starter den forrige version.
 
-Stakken (`deploy/compose.yml`) er Postgres (egen database med de tre brugere), appen, NATS og `cloudflared`,
+Stakken (`deploy/compose.yml`) er Postgres (egen database med de tre brugere), appen, NATS, ClickHouse og `cloudflared`,
 som sender trafik ind via en Cloudflare Tunnel — serveren har ingen åbne web-porte.
 
 **NATS** (`nats:2.15.2-alpine`, konfiguration i `deploy/nats.conf`) kører med JetStream, og streams, key/value- og
@@ -222,6 +223,17 @@ NATS kan kun nås inde fra stakken). Overvågningen ses i `/admin/nats` (rollen 
 JetStream (streams og consumers), abonnementer, cluster/gateways/leaf nodes, konti og rå data — læst fra NATS'
 overvågningsport (`NATS_MONITOR_URL`, port 8222) gennem appen. Sæt `NATS_TOKEN` (`openssl rand -hex 24`) inden
 næste udrulning på en eksisterende server.
+
+**ClickHouse** (`clickhouse/clickhouse-server:26.8.36.3-alpine`, indstillinger i `deploy/clickhouse.xml`) har sine data
+på volumet `clickhouse` og kan kun nås inde fra stakken. Appen taler med den over HTTP (`app.clickhouse`, port 8123)
+som brugeren `gaer` med `CLICKHOUSE_PASSWORD` fra `~/gaer/.env` (tomt = ingen adgangskode). Skemaet ligger i
+`server/app/clickhouse_migrations/` og køres af `python -m app.migrate`; svarer ClickHouse ikke, giver det en advarsel,
+ikke en fejlet udrulning, for appen kører uden. Overvågningen ses i `/admin/clickhouse` (rollen Drift): server, diske,
+hukommelse, tabeller, kørende forespørgsler, mutationer, fejl og langsomme forespørgsler, plus resultatet af jobbet
+`clickhouse.monitor`, der hvert 5. minut tjekker svar, diskplads, parts, mutationer og skema. Skifter status, skrives det
+i audit-loggen, og webhook-hændelsen `clickhouse.status.changed` sendes. Gamle rækker slettes af opbevaringsreglerne
+`clickhouse_events`, `clickhouse_system_logs` og `clickhouse_checks` under `/admin/jobs`. ClickHouse indeholder ingen
+persondata. Sæt `CLICKHOUSE_PASSWORD` (`openssl rand -hex 24`) inden næste udrulning på en eksisterende server.
 
 GitHub-environment **production** skal have secrets `HOST` (serverens IP), `SSH_KEY` (privat deploy-nøgle
 til brugeren `deploy`) og `SSH_KNOWN_HOSTS` (`ssh-keyscan <host>`), samt variablen `DOMAIN` (smoke test).

@@ -87,8 +87,9 @@ async def test_schedules_and_retention_policies(make_client, owner_conn):
     admin = make_client()
     await full_user(admin, "71111111")
     owner_conn.execute("update job_schedules set next_run_at = now() - interval '1 minute'")
-    # maintenance, retention.logs, retention.cleanup, knowledge.bin, mail.retention, mail.sync, mail.backup
-    assert await jobs.schedule_due() == 7
+    # maintenance, retention.logs, retention.cleanup, knowledge.bin, mail.retention, mail.sync, mail.backup,
+    # clickhouse.monitor
+    assert await jobs.schedule_due() == 8
     assert await jobs.schedule_due() == 0  # next run moved forward
 
     # Old operational data goes; new stays.

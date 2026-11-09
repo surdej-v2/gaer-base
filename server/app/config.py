@@ -154,6 +154,15 @@ class Settings:
     nats_monitor_url: str | None = field(default_factory=lambda: _env("NATS_MONITOR_URL"))
     nats_monitor_timeout: float = field(default_factory=lambda: float(_env("NATS_MONITOR_TIMEOUT", "5")))
 
+    # ClickHouse (the "clickhouse" service in compose), reached over its HTTP interface (port 8123). Used by
+    # app.clickhouse, /admin/clickhouse, the retention policies clickhouse_* and the job clickhouse.monitor.
+    # Without CLICKHOUSE_URL the module is off: the page says so and nothing tries to connect.
+    clickhouse_url: str | None = field(default_factory=lambda: _env("CLICKHOUSE_URL"))
+    clickhouse_user: str = field(default_factory=lambda: _env("CLICKHOUSE_USER", "default"))
+    clickhouse_password: str = field(default_factory=lambda: _env("CLICKHOUSE_PASSWORD", ""))
+    clickhouse_database: str = field(default_factory=lambda: _env("CLICKHOUSE_DATABASE", "gaer"))
+    clickhouse_timeout: float = field(default_factory=lambda: float(_env("CLICKHOUSE_TIMEOUT", "10")))
+
     # Mail, calendar and contacts (specs/mail): Stalwart holds the mailboxes, Lettermint relays all outbound mail.
     # MAILBOX_BACKEND: "off" (the module answers "not set up"), "stalwart", or "memory" (development and tests).
     mailbox_backend: str = field(default_factory=lambda: _env("MAILBOX_BACKEND", "off"))

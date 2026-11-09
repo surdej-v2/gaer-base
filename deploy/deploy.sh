@@ -2,7 +2,7 @@
 # Runs on the UpCloud server in ~/gaer next to compose.yml, .env and app.env.
 # Called by .github/workflows/deploy.yml over SSH.
 #
-#   ./deploy.sh release <image>   migrate the database, start the new version, roll back if /health fails
+#   ./deploy.sh release <image>   migrate the database (and ClickHouse), start the new version, roll back if /health fails
 #   ./deploy.sh rollback          start the previous image again
 #
 # If the new version does not answer /health within 60 seconds, the previous image is started again.
@@ -35,6 +35,8 @@ release() {
   export IMAGE=$image
   compose pull --quiet cloudflared
   compose up -d --wait postgres
+  # ClickHouse is optional for the app: if it does not come up, migrate prints a warning and the deploy goes on.
+  compose up -d --wait clickhouse || log "clickhouse is not healthy; its migrations wait for the next release"
 
   log "migrating"
   compose run --rm --no-deps app python -m app.migrate

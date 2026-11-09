@@ -35,6 +35,7 @@ import KnowledgeOverview from "./pages/knowledge/Overview";
 import KnowledgeSpace from "./pages/knowledge/Space";
 import KnowledgeAgent from "./pages/knowledge/Agent";
 import Nats from "./pages/Nats";
+import ClickHouse from "./pages/ClickHouse";
 import MailAdmin from "./pages/mail/MailAdmin";
 import MailUser from "./pages/mail/MailUser";
 import DataCatalog from "./pages/data/Catalog";
@@ -107,6 +108,7 @@ createRoot(document.getElementById("root")!).render(
                   <Route path="webhooks" element={legacy(<Webhooks />)} />
                   <Route path="jobs" element={legacy(<Jobs />)} />
                   <Route path="nats" element={<Nats />} />
+                  <Route path="clickhouse" element={<ClickHouse />} />
                   <Route path="mail" element={<MailAdmin />} />
                   <Route path="mail/users/:id" element={<MailUser />} />
                   <Route path="data" element={<DataCatalog />} />
