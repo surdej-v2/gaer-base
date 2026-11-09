@@ -38,6 +38,7 @@ const ICONS: Record<string, ReactNode> = {
   alert: <><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" /></>,
   phone: <><rect x="6" y="2" width="12" height="20" rx="2" /><path d="M11 18h2" /></>,
   logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></>,
+  code: <><path d="M16 18l6-6-6-6" /><path d="M8 6l-6 6 6 6" /></>,
   upload: <><path d="M12 19V7" /><path d="M7 12l5-5 5 5" /><path d="M5 3h14" /></>,
 };
 
@@ -98,6 +99,7 @@ const WORK: NavItem[] = [
   { to: "/filer", label: "Filer", icon: "folder", feature: "filer", mobile: true },
   { to: "/user", label: "Mit område", icon: "users", end: true },
   { to: "/user/deling", label: "Deling", icon: "share" },
+  { to: "/develop", label: "Udvikling", icon: "code" },
 ];
 const ACCOUNT: NavItem[] = [
   { to: "/konto", label: "Konto og sikkerhed", icon: "user", end: true },

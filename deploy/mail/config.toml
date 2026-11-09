@@ -1,0 +1,143 @@
+# Stalwart on the UpCloud mail server (specs/mail, phase 1). Copied to /opt/gaer-mail/etc/config.toml by deploy.sh.
+# Written for Stalwart 0.13; check every key against the docs of the version in STALWART_IMAGE (stalw.art/docs)
+# before go-live — the list is in deploy/mail/README.md. Secrets come from stalwart.env via %{env:…}%; none are here.
+#
+# Only the bootstrap settings live in this file: stores, listeners, TLS, the relay and the master user. Accounts,
+# domains, DKIM and the rest of Stalwart's settings are kept in PostgreSQL and managed through the app
+# (/admin/mail) or Stalwart's own admin UI on the management listener.
+
+[server]
+hostname = "%{env:MAIL_HOSTNAME}%"
+
+# ── Listeners ───────────────────────────────────────────────────────────────
+# Public: 25 (MX), 465/587 (submission), 993 (IMAP), 443 (JMAP, CalDAV, CardDAV, autoconfig, ACME).
+# Management: 8443 (TLS), reached by the app over the private network or from its public IP only (firewall).
+
+[server.listener.smtp]
+bind = ["[::]:25"]
+protocol = "smtp"
+
+[server.listener.submissions]
+bind = ["[::]:465"]
+protocol = "smtp"
+tls.implicit = true
+
+[server.listener.submission]
+bind = ["[::]:587"]
+protocol = "smtp"
+
+[server.listener.imaps]
+bind = ["[::]:993"]
+protocol = "imap"
+tls.implicit = true
+
+[server.listener.https]
+bind = ["[::]:443"]
+protocol = "http"
+tls.implicit = true
+
+[server.listener.management]
+bind = ["[::]:8443"]
+protocol = "http"
+tls.implicit = true
+
+# The management API and admin UI answer only on the management listener; 443 serves clients.
+[http]
+allowed-endpoint = [ { if = "listener != 'management' && (starts_with(url_path, '/api') || starts_with(url_path, '/login') || url_path == '/')", then = "403" },
+                     { else = "200" } ]
+use-x-forwarded = false
+
+# ── TLS: Let's Encrypt for MAIL_HOSTNAME (TLS-ALPN-01 on 443) ───────────────
+
+[acme."letsencrypt"]
+directory = "https://acme-v02.api.letsencrypt.org/directory"
+challenge = "tls-alpn-01"
+contact = ["%{env:ACME_CONTACT}%"]
+domains = ["%{env:MAIL_HOSTNAME}%"]
+default = true
+renew-before = "30d"
+
+# ── Storage: PostgreSQL for data, search and lookups; Object Storage for blobs ─
+
+[storage]
+data = "postgresql"
+fts = "postgresql"
+lookup = "postgresql"
+blob = "s3"
+directory = "internal"
+
+[store."postgresql"]
+type = "postgresql"
+host = "%{env:STALWART_DB_HOST}%"
+port = "%{env:STALWART_DB_PORT}%"
+database = "%{env:STALWART_DB_NAME}%"
+user = "%{env:STALWART_DB_USER}%"
+password = "%{env:STALWART_DB_PASSWORD}%"
+timeout = "15s"
+# UpCloud Managed Database requires TLS; it is reached over the private network.
+tls.enable = true
+tls.allow-invalid-certs = true
+pool.max-connections = 20
+
+# Message bodies, attachments, events and contact cards. Never a lifecycle rule on this bucket: mail expires through
+# Stalwart (the app's mail.retention job), and the bucket also holds calendars and contacts.
+[store."s3"]
+type = "s3"
+bucket = "%{env:STALWART_S3_BUCKET}%"
+region = "%{env:STALWART_S3_REGION}%"
+endpoint = "%{env:STALWART_S3_ENDPOINT}%"
+access-key = "%{env:STALWART_S3_ACCESS_KEY}%"
+secret-key = "%{env:STALWART_S3_SECRET_KEY}%"
+timeout = "30s"
+purge.frequency = "0 3 *"
+
+[directory."internal"]
+type = "internal"
+store = "postgresql"
+
+# ── Who may log in to manage ────────────────────────────────────────────────
+# The fallback admin is for bootstrap.sh and emergencies; the app uses the principal "gaer-api" that bootstrap.sh
+# creates. The master user lets the app act as an account ("<account>%gaer-master") for retention, calendars and
+# contacts, never to show content to anyone.
+
+[authentication.fallback-admin]
+user = "admin"
+secret = "%{env:STALWART_ADMIN_SECRET}%"
+
+[authentication.master]
+user = "%{env:STALWART_MASTER_USER}%"
+secret = "%{env:STALWART_MASTER_SECRET}%"
+
+# ── Outbound: every mail leaves through Lettermint ──────────────────────────
+# Mail for local domains is delivered locally; everything else goes to Lettermint's SMTP relay. Stalwart keeps its
+# own queue, so mail waits and is retried during a Lettermint incident. The app rotates the credentials from
+# /admin/mail → Afsendelse (settings queue.route.lettermint.auth.*), which then override these.
+
+[queue.route."local"]
+type = "local"
+
+[queue.route."lettermint"]
+type = "relay"
+address = "%{env:LETTERMINT_SMTP_HOST}%"
+port = 587
+protocol = "smtp"
+tls.implicit = false
+tls.allow-invalid-certs = false
+auth.username = "%{env:LETTERMINT_SMTP_USERNAME}%"
+auth.secret = "%{env:LETTERMINT_SMTP_PASSWORD}%"
+
+[queue.strategy]
+route = [ { if = "is_local_domain('', rcpt_domain)", then = "'local'" },
+          { else = "'lettermint'" } ]
+
+# Lettermint signs with DKIM; Stalwart does not sign outbound mail itself.
+[auth.dkim]
+sign = false
+
+# ── Logging ─────────────────────────────────────────────────────────────────
+
+[tracer."stdout"]
+type = "stdout"
+level = "info"
+ansi = false
+enable = true

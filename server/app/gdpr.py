@@ -11,7 +11,7 @@ from datetime import datetime
 
 from fastapi import HTTPException
 
-from app import db, retention, webhooks
+from app import db, jobs, retention, webhooks
 from app.logs import RequestMeta, audit
 from app.storage import get_storage
 
@@ -68,6 +68,35 @@ async def build_user_export(conn, user_id: int) -> dict:
                              from knowledge_messages m where m.conversation_id = c.id), '[]'::jsonb) as messages
             from knowledge_conversations c join knowledge_agents a on a.id = c.agent_id
             where c.user_id = %s order by c.created_at""", user_id),
+        # Mail (specs/mail): the app's records of your mailbox. The mail, events and contacts themselves are in the
+        # mail server; you fetch them with your mail client, or as a zip from /user/mail (archive export).
+        "mailbox": await rows("""select m.local_part || '@' || d.name as address, m.kind, m.status, m.quota_mb,
+                                        m.used_bytes, m.requested_at, m.provisioned_at, m.last_login_at
+                                 from mailboxes m join mail_domains d on d.id = m.domain_id
+                                 where m.owner_id = %s order by m.created_at""", user_id),
+        "mail_aliases": await rows("""select a.address, a.created_at from mail_aliases a
+                                      join mailboxes m on m.id = a.mailbox_id where m.owner_id = %s order by a.address""",
+                                   user_id),
+        "mail_alias_requests": await rows("""select address, note, status, created_at, decided_at from mail_alias_requests
+                                             where user_id = %s order by created_at""", user_id),
+        "mail_shared_memberships": await rows("""select m.local_part || '@' || d.name as address, s.role, s.added_at
+                                                 from mail_shared_members s join mailboxes m on m.id = s.mailbox_id
+                                                 join mail_domains d on d.id = m.domain_id
+                                                 where s.user_id = %s order by address""", user_id),
+        "mail_identities": await rows("""select from_address, display_name, signature, updated_at from mail_identities
+                                         where user_id = %s order by from_address""", user_id),
+        "mail_collections": await rows("""select type, name, colour, timezone, is_default, entry_count, created_at
+                                          from mail_collections where owner_id = %s order by type, name""", user_id),
+        "mail_collection_shares": await rows("""select c.type, c.name, s.role, s.added_at from mail_collection_shares s
+                                                join mail_collections c on c.id = s.collection_id
+                                                where s.user_id = %s order by c.name""", user_id),
+        "mail_availability": await rows("""select publish, working_hours, timezone, updated_at from mail_availability
+                                           where user_id = %s""", user_id),
+        "mail_app_passwords": await rows("""select name, created_at, last_used_at, revoked_at from mail_app_passwords
+                                            where user_id = %s order by created_at""", user_id),
+        "mail_events": await rows("""select e.type, e.message_id, e.from_address, e.recipient_domain, e.count, e.at
+                                     from mail_events e join mailboxes m on m.id = e.mailbox_id
+                                     where m.owner_id = %s order by e.at limit 50000""", user_id),
         "bridge_consents": await rows("select domain, created_at from bridge_consents where user_id = %s order by domain",
                                       user_id),
         "gdpr_requests": await rows("""select id, kind, status, message, received_at, completed_at from gdpr_requests
@@ -116,12 +145,16 @@ README = """Indsigt i dine data
 data.json   alt, vi har gemt om dig: bruger og profil, passkeys og sikkerhedsnøgler, godkendelsesapps
             (uden den hemmelige nøgle), sessioner, klip, filer (oversigt), filer du har lagt i /shared
             (kun oversigt), hvem du har delt dit område med og hvis områder du har adgang til, tilladte domæner,
+            din postkasse (adresse, aliasser, fælles postkasser, afsenderidentiteter, kalendere og adressebøger
+            og hvem de er delt med, app-adgangskoder uden selve koden, leveringshændelser),
             GDPR-anmodninger, samtykker, login-log, ændringslog, AI-forbrug, feature-niveau og -brug,
             MCP-adgangsanmodninger (hvad dine MCP-klienter har bedt om, og hvem der godkendte),
             review-sessioner og -noter, testkonti du har oprettet og statistik knyttet til dig.
 files/      kopier af de filer, du har uploadet, dit profilbillede og skærmbilleder og lyd fra review-noter.
 
-Samtaler med AI'en bliver ikke gemt og er derfor ikke med.
+Samtaler med AI'en bliver ikke gemt og er derfor ikke med. Dine mails, kalenderaftaler og kontakter ligger i
+mailserveren: hent dem med din mailklient, eksportér kalendere og adressebøger på /user/mail, eller bed om et
+mailarkiv der, hvis arkiveksport er slået til.
 """
 
 
@@ -167,7 +200,8 @@ async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, r
                      gdpr_request: int | None = None) -> dict:
     """The right to be forgotten. Deletes the user (passkeys, authenticator apps, sessions, clips, domain consents, AI usage,
     AI budgets and their alerts, one-time codes, feature level, review sessions and notes, their test accounts, access to
-    and from their area (/user), Viden conversations and agent memberships cascade; review screenshots and audio are files;
+    and from their area (/user), Viden conversations and agent memberships cascade; their mailbox rows cascade and the
+    mailbox itself is removed in Stalwart by the job mail.principal.delete; review screenshots and audio are files;
     feature usage is purged with the logs; their files in Object Storage (their whole home and folders cascade; files they
     put in /shared stay, with the uploader link set to null); the contact details on their GDPR requests, and
     log data about them (via the purge user). The erasure itself is logged without personal data."""
@@ -181,6 +215,12 @@ async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, r
                                             then 'completed' else status end,
                               completed_at = coalesce(completed_at, now()), handled_by = coalesce(handled_by, %s)
                               where user_id = %s or id = %s""", (actor_id, user_id, gdpr_request))
+        # Mail: the personal mailbox is removed in Stalwart by a job (with retries); the app's rows (mailbox, aliases,
+        # identities, collections, shares, app passwords, events) cascade with the user.
+        for mb in await db.fetch_all(conn, """select stalwart_principal from mailboxes where owner_id = %s
+                                              and status in ('provisioning', 'active', 'suspended')""", (user_id,)):
+            await jobs.enqueue(conn, "mail.principal.delete", {"principal": mb["stalwart_principal"]},
+                               dedupe_key=f"mail.principal.delete:{mb['stalwart_principal']}", max_attempts=10)
         # Delegations cascade with the user; access given to their e-mail before they claimed it is removed here.
         if user["email"]:
             await conn.execute("delete from user_delegations where delegate_id is null and delegate_email = %s",

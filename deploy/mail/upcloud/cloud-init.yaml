@@ -1,0 +1,14 @@
+#cloud-config
+# The Stalwart server: Docker and unattended security updates. deploy/mail/deploy.sh does the rest.
+hostname: ${hostname}
+fqdn: ${hostname}
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - unattended-upgrades
+runcmd:
+  - curl -fsSL https://get.docker.com | sh
+  - systemctl enable --now docker
+  - mkdir -p /opt/gaer-mail

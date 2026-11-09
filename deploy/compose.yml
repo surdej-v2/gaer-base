@@ -38,6 +38,10 @@ services:
       # NATS in the stack: clients with the token, monitoring for /admin/nats (internal network only)
       NATS_URL: nats://${NATS_TOKEN:+${NATS_TOKEN}@}nats:4222
       NATS_MONITOR_URL: http://nats:8222
+    # Mail module (specs/mail): with MAIL_PRIVATE_IP in .env, MAIL_HOSTNAME resolves to the Stalwart server's private
+    # address, so STALWART_URL=https://<MAIL_HOSTNAME>:8443 goes over the private network with a valid certificate.
+    extra_hosts:
+      - "${MAIL_HOSTNAME:-mail.invalid}:${MAIL_PRIVATE_IP:-127.0.0.1}"
     depends_on:
       postgres: { condition: service_healthy }
 

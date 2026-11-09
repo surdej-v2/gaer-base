@@ -89,6 +89,25 @@
    ]
   },
   {
+   "id": "mail",
+   "docs_path": "`/user/mail`, `/admin/mail`",
+   "who": {
+    "en": "logged in (`/admin/mail`: admin, section Drift)",
+    "da": "logget ind (`/admin/mail`: admin, Drift)"
+   },
+   "what": {
+    "en": "**Mail, calendar and contacts** (spec in `specs/mail/`): one personal mailbox per user in **Stalwart** plus shared mailboxes (reader/sender/manager), calendars (CalDAV/JMAP) and address books (CardDAV) with sharing, all outbound mail relayed by **Lettermint**, mail kept at most **30 days**. `/user/mail` manages your mailbox, aliases, identities, app passwords, calendars, address books and client setup (`/user/<id>/mail` is the same page for your own id, 404 for anyone else); `/admin/mail` is the operator console (domains + DNS check, mailboxes, shared, calendars & contacts, sending, retention, health, audit) and `/admin/mail/users/<id>` one user's mail. Off unless `MAILBOX_BACKEND` is set.",
+    "da": "**Mail, kalender og kontakter**: personlig postkasse i Stalwart, fælles postkasser, kalendere og adressebøger med deling, udgående mail via Lettermint, mail slettes efter højst 30 dage. `/user/mail` til brugeren, `/admin/mail` til drift."
+   },
+   "code": [
+    "pages/Mail.tsx",
+    "admin-app/pages/mail/",
+    "mailbox/",
+    "routes/mail.py",
+    "routes/admin_mail.py"
+   ]
+  },
+  {
    "id": "mcp-links",
    "docs_path": "`/forbind`, `/go`",
    "who": {
@@ -106,6 +125,22 @@
    ]
   },
   {
+   "id": "develop",
+   "docs_path": "/develop",
+   "who": {
+    "en": "logged in",
+    "da": "logget ind"
+   },
+   "what": {
+    "en": "**Prompt catalogue** for the development process: ready-made prompts to paste into Claude (artifacts, new features, endpoints, migrations, tests, review, debugging), filtered by category and search, copied with one click. Linked from the home page. The prompts live in the code (`web/src/develop/prompts.ts`).",
+    "da": "**Promptkatalog** til udviklingsprocessen: færdige prompts til Claude (artifacts, nye features, endpoints, migrationer, tests, review, fejlfinding) med kategori, søgning og kopiér-knap. Linket fra forsiden."
+   },
+   "code": [
+    "pages/Develop.tsx",
+    "develop/prompts.ts"
+   ]
+  },
+  {
    "id": "admin",
    "docs_path": "/admin/…",
    "who": {
@@ -113,7 +148,7 @@
     "da": "admin (+ MFA)"
    },
    "what": {
-    "en": "**Standalone admin app** (own Vite entry `web/admin.html`): statistics, users + impersonation, features and rings, App Stores, auth/audit log, analytics, heatmaps, GDPR, retention, consent, files, website (`/admin/web`), AI (`/admin/ai`), AI consumption and budgets (`/admin/consumption`), extension & Office (`/admin/integrations`), MCP servers (`/admin/mcp`), webhooks (`/admin/webhooks`), jobs and cleanup (`/admin/jobs`), NATS monitoring (`/admin/nats`), data catalog + Udforsk + API sources (`/admin/data`), settings. Every read and change is audited.",
+    "en": "**Standalone admin app** (own Vite entry `web/admin.html`): statistics, users + impersonation, features and rings, App Stores, auth/audit log, analytics, heatmaps, GDPR, retention, consent, files, website (`/admin/web`), AI (`/admin/ai`), AI consumption and budgets (`/admin/consumption`), extension & Office (`/admin/integrations`), MCP servers (`/admin/mcp`), webhooks (`/admin/webhooks`), jobs and cleanup (`/admin/jobs`), NATS monitoring (`/admin/nats`), mail (`/admin/mail`), data catalog + Udforsk + API sources (`/admin/data`), settings. Every read and change is audited.",
     "da": "Administration — en selvstændig app (`web/admin.html`). Kræver anden faktor efter tre logins med engangskode. Alt logges."
    },
    "code": [
@@ -329,12 +364,28 @@
    "title": "Deling"
   },
   {
+   "path": "/user/mail",
+   "group": "mail",
+   "app": "app",
+   "access": "user",
+   "title": "Mail",
+   "feature": "mail"
+  },
+  {
    "path": "/user/:id",
    "group": "user-area",
    "app": "app",
    "access": "user",
    "title": "Delt område"
    },
+  {
+   "path": "/user/:id/mail",
+   "group": "mail",
+   "app": "app",
+   "access": "user",
+   "title": "Mail",
+   "feature": "mail"
+  },
    {
    "path": "/konto/forbrug",
    "group": "account",
@@ -369,6 +420,13 @@
    "app": "app",
    "access": "public",
    "title": "Deep link"
+  },
+  {
+   "path": "/develop",
+   "group": "develop",
+   "app": "app",
+   "access": "user",
+   "title": "Udvikling"
   },
   {
    "path": "/admin",
@@ -530,6 +588,20 @@
    "app": "admin",
    "access": "admin",
    "title": "NATS"
+  },
+  {
+   "path": "/admin/mail",
+   "group": "admin",
+   "app": "admin",
+   "access": "admin",
+   "title": "Mail"
+  },
+  {
+   "path": "/admin/mail/users/:id",
+   "group": "admin",
+   "app": "admin",
+   "access": "admin",
+   "title": "Brugerens mail"
   },
   {
    "path": "/admin/data",

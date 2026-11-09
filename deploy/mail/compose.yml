@@ -1,0 +1,25 @@
+# Stalwart on the UpCloud mail server (specs/mail, phase 1), in /opt/gaer-mail next to stalwart.env.
+# Driven by deploy.sh. Data lives in Managed PostgreSQL and Object Storage; the volume only holds the
+# configuration and the ACME certificates.
+
+name: gaer-mail
+
+services:
+  stalwart:
+    image: ${STALWART_IMAGE:?set STALWART_IMAGE in stalwart.env}
+    restart: unless-stopped
+    env_file: stalwart.env
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+      - "443:443"
+      - "8443:8443"
+    volumes:
+      - stalwart:/opt/stalwart
+      - ./config.toml:/opt/stalwart/etc/config.toml:ro
+    # Readiness is checked from the host by deploy.sh (https://localhost:8443/healthz/ready).
+
+volumes:
+  stalwart:

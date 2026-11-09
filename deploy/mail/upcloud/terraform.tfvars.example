@@ -1,0 +1,8 @@
+prefix                = "kunde"
+zone                  = "de-fra1"
+object_storage_region = "europe-2"
+mail_hostname         = "mail.kunde.dk"
+ssh_keys              = ["ssh-ed25519 AAAA… drift@kunde"]
+admin_cidrs           = ["203.0.113.10/32"]
+# Only if the app server is not attached to the private network (output network_id): its public IP.
+management_cidrs      = ["198.51.100.20/32"]

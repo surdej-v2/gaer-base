@@ -8,3 +8,9 @@ __pycache__/
 .env.local
 deploy/.env
 .DS_Store
+deploy/mail/stalwart.env
+deploy/mail/outputs.json
+deploy/mail/upcloud/.terraform/
+deploy/mail/upcloud/.terraform.lock.hcl
+deploy/mail/upcloud/terraform.tfvars
+deploy/mail/upcloud/*.tfstate*

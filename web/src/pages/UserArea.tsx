@@ -6,6 +6,7 @@ import { api, ApiError, errorText } from "../api";
 import { useAuth } from "../auth";
 import { FeatureGate } from "../features";
 import { Alert, download, fmtBytes, fmtDate, fmtDay, fmtNumber, Loading, useLoad } from "../ui";
+import { useMailStatus } from "../mail";
 import Account from "./Account";
 import { activityText, Avatar, name, ROLE_TEXT, type Overview, type Person, type Role, type Stats } from "./userAreaShared";
 
@@ -43,8 +44,9 @@ function RolePill({ role, label }: { role: string; label: string }) {
   return <span className={`pill ${role === "author" ? "amber" : ""}`}>{label}</span>;
 }
 
-/** The heading and tabs on your own pages. */
-function OwnHeader({ title, path }: { title: string; path: string }) {
+/** The heading and tabs on your own pages (also used by /user/mail). */
+export function OwnHeader({ title, path }: { title: string; path: string }) {
+  const mail = useMailStatus();
   return (
     <>
       <div className="spread" style={{ alignItems: "flex-end" }}>
@@ -58,6 +60,7 @@ function OwnHeader({ title, path }: { title: string; path: string }) {
         <NavLink to="/user" end>Overblik</NavLink>
         <NavLink to="/user/indstillinger">Indstillinger</NavLink>
         <NavLink to="/user/deling" data-deeplink="user-sharing">Deling</NavLink>
+        {mail?.enabled && <FeatureGate feature="mail"><NavLink to="/user/mail" data-deeplink="user-mail">Mail</NavLink></FeatureGate>}
       </nav>
     </>
   );

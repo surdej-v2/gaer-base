@@ -121,6 +121,10 @@ CLEANUP_SQL = {
                                    or (status in ('awaiting_user', 'awaiting_approver') and session_id is null))""",
     "knowledge_ingest_log": "delete from knowledge_ingest_log where created_at < now() - make_interval(days => %s)",
     "knowledge_conversations": "delete from knowledge_conversations where updated_at < now() - make_interval(days => %s)",
+    "mail_events": "delete from mail_events where at < now() - make_interval(days => %s)",
+    "mail_retention_runs": "delete from mail_retention_runs where started_at < now() - make_interval(days => %s)",
+    "mail_alias_requests": """delete from mail_alias_requests where status <> 'pending'
+                              and decided_at < now() - make_interval(days => %s)""",
     "review_orphans": """delete from review_sessions s where ended_at < now() - make_interval(days => %s)
                          and jsonb_array_length(pages) = 0
                          and not exists (select 1 from review_feedback r where r.session_id = s.id)""",

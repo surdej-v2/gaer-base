@@ -145,6 +145,29 @@
       "title": "Auth-log",
       "anchors": []
     },
+    "/admin/mail": {
+      "title": "Mail",
+      "anchors": [
+        "mail-alias-requests",
+        "mail-bulk",
+        "mail-domain-{x}",
+        "mail-drift",
+        "mail-retention-policy",
+        "mail-shared-collections",
+        "mail-shared-{x}",
+        "mail-tab-{x}",
+        "mail-warnings"
+      ]
+    },
+    "/admin/mail/users/:id": {
+      "title": "Brugerens mail",
+      "anchors": [
+        "mail-user-audit",
+        "mail-user-mailbox",
+        "mail-user-offboarding",
+        "mail-user-provisioning"
+      ]
+    },
     "/admin/mcp": {
       "title": "MCP-servere",
       "anchors": [
@@ -196,6 +219,12 @@
     "/admin/webhooks": {
       "title": "Webhooks",
       "anchors": []
+    },
+    "/develop": {
+      "title": "Udvikling",
+      "anchors": [
+        "prompt-{x}"
+      ]
     },
     "/extension": {
       "title": "Aktuel side",
@@ -360,6 +389,7 @@
         "user-activity",
         "user-grant",
         "user-grants",
+        "user-mail",
         "user-shared",
         "user-sharing"
       ]
@@ -377,6 +407,28 @@
         "user-activity",
         "user-grant",
         "user-grants",
+        "user-mail",
+        "user-shared",
+        "user-sharing"
+      ]
+    },
+    "/user/:id/mail": {
+      "title": "Mail",
+      "anchors": [
+        "account-ai-usage",
+        "account-mcp",
+        "account-profile",
+        "account-ring",
+        "account-security",
+        "account-sessions",
+        "mail-provisioning",
+        "mail-working-hours",
+        "mail-{x}",
+        "mcp-access",
+        "user-activity",
+        "user-grant",
+        "user-grants",
+        "user-mail",
         "user-shared",
         "user-sharing"
       ]
@@ -394,6 +446,7 @@
         "user-activity",
         "user-grant",
         "user-grants",
+        "user-mail",
         "user-shared",
         "user-sharing"
       ]
@@ -411,6 +464,28 @@
         "user-activity",
         "user-grant",
         "user-grants",
+        "user-mail",
+        "user-shared",
+        "user-sharing"
+      ]
+    },
+    "/user/mail": {
+      "title": "Mail",
+      "anchors": [
+        "account-ai-usage",
+        "account-mcp",
+        "account-profile",
+        "account-ring",
+        "account-security",
+        "account-sessions",
+        "mail-provisioning",
+        "mail-working-hours",
+        "mail-{x}",
+        "mcp-access",
+        "user-activity",
+        "user-grant",
+        "user-grants",
+        "user-mail",
         "user-shared",
         "user-sharing"
       ]

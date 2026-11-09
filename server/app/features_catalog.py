@@ -22,6 +22,7 @@ CATALOG: tuple[CatalogFeature, ...] = (
     CatalogFeature("mobil", "Mobil-app", "PWA under /m med bundmenu, kamera-upload og klip", "bruger"),
     CatalogFeature("extension", "Browserudvidelse", "Sidepanel i Chrome og Edge, gem siden som klip", "integration"),
     CatalogFeature("office", "Office-tilføjelser", "Word, Excel, PowerPoint og Outlook i én router", "integration"),
+    CatalogFeature("mail", "Mail", "Postkasse, kalendere og kontakter i Stalwart på /user/mail; udgående mail via Lettermint", "bruger"),
     CatalogFeature("knowledge", "Viden", "Vidensrum med indekserede dokumenter og agenter på /extension/agent", "bruger"),
     CatalogFeature("website", "Website /w", "Offentlige Markdown-sider på dansk og engelsk", "platform"),
     CatalogFeature("heatmaps", "Heatmaps", "Klik- og scroll-heatmaps pr. side", "admin"),

@@ -15,7 +15,9 @@ import Files from "./pages/Files";
 import Privacy from "./pages/Privacy";
 import McpConsent from "./pages/McpConsent";
 import { DelegatedArea, UserHome, UserSettings, UserSharing } from "./pages/UserArea";
+import UserMail, { UserMailById } from "./pages/Mail";
 import Approve from "./pages/Approve";
+import Develop from "./pages/Develop";
 import ExtensionLayout from "./extension/ExtensionLayout";
 import ExtensionPage from "./extension/ExtensionPage";
 import ExtensionAccount from "./extension/ExtensionAccount";
@@ -55,6 +57,7 @@ function TopBar() {
         <nav className="nav">
           {full && <FeatureGate feature="klip"><NavLink to="/klip">Klip</NavLink></FeatureGate>}
           {full && <FeatureGate feature="filer"><NavLink to="/filer">Filer</NavLink></FeatureGate>}
+          {full && <NavLink to="/develop">Udvikling</NavLink>}
           {full && <NavLink to="/user">Mit område</NavLink>}
           {full && user.role === "admin" && <a href="/admin">Admin</a>}
           {user ? (
@@ -122,7 +125,9 @@ export default function App() {
         <Route path="/user" element={<RequireUser><UserHome /></RequireUser>} />
         <Route path="/user/indstillinger" element={<RequireUser><UserSettings /></RequireUser>} />
         <Route path="/user/deling" element={<RequireUser><UserSharing /></RequireUser>} />
+        <Route path="/user/mail" element={<RequireUser><FeatureGate feature="mail"><UserMail /></FeatureGate></RequireUser>} />
         <Route path="/user/:id" element={<RequireUser><DelegatedArea /></RequireUser>} />
+        <Route path="/user/:id/mail" element={<RequireUser><FeatureGate feature="mail"><UserMailById /></FeatureGate></RequireUser>} />
         <Route path="/konto/forbrug" element={<RequireUser><AiUsage /></RequireUser>} />
         <Route path="/forbind" element={<RequireUser><McpConsent /></RequireUser>} />
         <Route path="/godkend" element={<RequireUser><Approve /></RequireUser>} />
@@ -130,6 +135,7 @@ export default function App() {
         <Route path="/klip" element={<RequireUser><FeatureGate feature="klip"><ClipsPage /></FeatureGate></RequireUser>} />
         <Route path="/klip/:id" element={<RequireUser><FeatureGate feature="klip"><ClipsPage /></FeatureGate></RequireUser>} />
         <Route path="/go" element={<GoPage />} />
+        <Route path="/develop" element={<RequireUser><Develop /></RequireUser>} />
 
         <Route path="/extension/login" element={<Login home="/extension" embedded />} />
         <Route path="/extension/tools" element={<RequireUser login="/extension/login"><ToolLayout /></RequireUser>}>

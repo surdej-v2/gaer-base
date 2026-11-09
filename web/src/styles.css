@@ -219,6 +219,11 @@ a.list-row:hover { text-decoration: none; background: var(--hm-muted); }
 .matrix td.no { color: #64748b; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
+/* Prompt catalogue (/develop) */
+.prompt-card h3 { margin: 0; }
+.prompt-text { margin: 0; font-family: var(--hm-font-mono); font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; color: #334155; background: var(--hm-muted); border-radius: var(--hm-radius-md); padding: 12px 14px; max-height: 128px; overflow: hidden; }
+.prompt-text.open { max-height: none; }
+.prompt-field { background: #fef3c7; color: #92400e; border-radius: 4px; padding: 0 2px; }
 /* ── Signed-in shell (shell.tsx): sidepanel, header, assistant panel, phone toolbar ── */
 .shell { display: flex; min-height: 100vh; background: #f8fafc; }
 .side { position: sticky; top: 0; height: 100vh; flex: none; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; padding: 14px 12px; background: #fff; border-right: 1px solid var(--hm-border); overflow-x: hidden; overflow-y: auto; }

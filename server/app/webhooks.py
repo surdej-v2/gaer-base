@@ -61,6 +61,10 @@ EVENTS: dict[str, str] = {
     "ai.budget.warning": "En bruger har passeret en advarselsgrænse for AI-forbrug (bruger-id, budget-id, procent)",
     "ai.budget.cap": "En bruger har nået sit månedlige AI-loft (bruger-id, budget-id, om AI er blokeret)",
     "ai.budget.total": "En bruger har brugt hele sit AI-budget for perioden (bruger-id, budget-id)",
+    "mail.mailbox.provisioned": "En postkasse er sat op i Stalwart (postkasse-id, personlig eller fælles)",
+    "mail.mailbox.suspended": "En postkasse er suspenderet (postkasse-id)",
+    "mail.mailbox.deleted": "En postkasse er slettet eller lavet om til et alias (postkasse-id)",
+    "mail.retention.completed": "Sletningen af gammel mail har kørt (kørsel-id, antal slettet, fejl)",
 }
 
 # Tests replace this with an httpx.MockTransport.
