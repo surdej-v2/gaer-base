@@ -5,10 +5,10 @@
 // Pages with their own chrome (/m, /extension, Office) never get this shell; see OWN_CHROME in App.tsx.
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth";
 import { Chat, useAiStatus, type ChatContext } from "./ai";
-import { useFeature } from "./features";
+import { useFeature, useFeatureCheck } from "./features";
 import manifest from "./routes.json";
 
 // ── Icons (inline stroke SVG, 24×24) ─────────────────────────────────────────
@@ -40,6 +40,7 @@ const ICONS: Record<string, ReactNode> = {
   logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></>,
   code: <><path d="M16 18l6-6-6-6" /><path d="M8 6l-6 6 6 6" /></>,
   upload: <><path d="M12 19V7" /><path d="M7 12l5-5 5 5" /><path d="M5 3h14" /></>,
+  search: <><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></>,
 };
 
 export function Icon({ name, size = 20 }: { name: keyof typeof ICONS | string; size?: number }) {
@@ -107,24 +108,55 @@ const ACCOUNT: NavItem[] = [
   { to: "/privatliv", label: "Privatliv", icon: "shield" },
 ];
 
-function SideLink({ item, onClick }: { item: NavItem; onClick?: () => void }) {
-  const enabled = useFeature(item.feature ?? "");
-  if (item.feature && !enabled) return null;
+const GROUPS: { label: string; items: NavItem[] }[] = [
+  { label: "Arbejde", items: WORK },
+  { label: "Konto", items: ACCOUNT },
+];
+
+// ── Filtering the sidepanel ─────────────────────────────────────────────────
+
+const fold = (text: string) => text.toLocaleLowerCase("da");
+
+/** The menu groups that match a search: an item matches on its own label or its group's. */
+function filterGroups(query: string, on: (feature: string) => boolean) {
+  const q = fold(query.trim());
+  return GROUPS.map((g) => {
+    const all = !q || fold(g.label).includes(q);
+    return { ...g, items: g.items.filter((i) => (!i.feature || on(i.feature)) && (all || fold(i.label).includes(q))) };
+  }).filter((g) => g.items.length > 0);
+}
+
+/** A label with the first match of the search marked. */
+function Hit({ text, query }: { text: string; query: string }) {
+  const q = fold(query.trim());
+  const i = q ? fold(text).indexOf(q) : -1;
+  if (i < 0) return <>{text}</>;
+  return <>{text.slice(0, i)}<mark className="side-hit">{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}</>;
+}
+
+function SideLink({ item, query = "", onClick }: { item: NavItem; query?: string; onClick?: () => void }) {
   return (
     <NavLink to={item.to} end={item.end} className="side-link" title={item.label} onClick={onClick}>
       <Icon name={item.icon} />
-      <span className="cap">{item.label}</span>
+      <span className="cap"><Hit text={item.label} query={query} /></span>
     </NavLink>
   );
 }
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavLinks({ query = "", onNavigate }: { query?: string; onNavigate?: () => void }) {
+  const on = useFeatureCheck();
+  const groups = filterGroups(query, on);
+  const count = groups.reduce((n, g) => n + g.items.length, 0);
   return (
     <>
-      <span className="side-label">Arbejde</span>
-      {WORK.map((i) => <SideLink key={i.to} item={i} onClick={onNavigate} />)}
-      <span className="side-label">Konto</span>
-      {ACCOUNT.map((i) => <SideLink key={i.to} item={i} onClick={onNavigate} />)}
+      {groups.map((g) => (
+        <div key={g.label} className="side-group" role="group" aria-label={g.label}>
+          <span className="side-label" aria-hidden="true"><Hit text={g.label} query={query} /></span>
+          {g.items.map((i) => <SideLink key={i.to} item={i} query={query} onClick={onNavigate} />)}
+        </div>
+      ))}
+      {query.trim() && count === 0 && <p className="side-empty">Ingen sider matcher “{query.trim()}”.</p>}
+      {query.trim() && <span className="sr-only" role="status">{count === 1 ? "1 side matcher" : `${count} sider matcher`}</span>}
     </>
   );
 }
@@ -191,11 +223,44 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [ai, setAi] = useState<AiRequest | null>(null);
   const [more, setMore] = useState(false);
   const counter = useRef(0);
+  const [search, setSearch] = useState<string | null>(null); // null: the search field is closed
+  const searchRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+  const featureOn = useFeatureCheck();
 
   useEffect(() => {
     try { localStorage.setItem(NAV_KEY, JSON.stringify(nav)); } catch { /* private mode: not remembered */ }
   }, [nav]);
   useEffect(() => setMore(false), [pathname]);
+
+  const openSearch = () => {
+    setNav((n) => (n.collapsed ? { ...n, collapsed: false } : n));
+    setSearch((s) => s ?? "");
+    requestAnimationFrame(() => searchRef.current?.focus());
+  };
+  const closeSearch = () => setSearch(null);
+
+  // "/" anywhere outside a text field opens the menu search.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      if (window.matchMedia("(max-width: 760px)").matches) return; // phones have no sidepanel
+      e.preventDefault();
+      openSearch();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const searchKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") { e.preventDefault(); closeSearch(); }
+    else if (e.key === "Enter") {
+      const first = filterGroups(search ?? "", featureOn)[0]?.items[0];
+      if (first) { e.preventDefault(); navigate(first.to); closeSearch(); }
+    }
+  };
 
   const shell = useMemo<ShellApi>(() => ({
     aiEnabled,
@@ -245,18 +310,38 @@ export function AppShell({ children }: { children: ReactNode }) {
     <ShellContext.Provider value={shell}>
       <div className={`shell ${nav.collapsed ? "collapsed" : ""}`}>
         <nav className="side" aria-label="Hovedmenu" style={{ width }}>
-          <div className="side-brand">
-            <Link to="/" className="brand" title={config?.app_name ?? "Tørgær"}>
-              {config?.logo_url ? <img src={config.logo_url} alt="" /> : <span className="brand-dot" />}
-              <span className="cap">{config?.app_name ?? "Tørgær"}</span>
-            </Link>
-            <button className="icon-btn" onClick={toggle} aria-expanded={!nav.collapsed}
-                    aria-label={nav.collapsed ? "Fold sidepanelet ud" : "Fold sidepanelet ind"}
-                    title={nav.collapsed ? "Fold sidepanelet ud" : "Fold sidepanelet ind"}>
-              <Icon name="panel" size={18} />
-            </button>
+          <div className="side-head">
+            <div className="side-brand">
+              <Link to="/" className="brand" title={config?.app_name ?? "Tørgær"}>
+                {config?.logo_url ? <img src={config.logo_url} alt="" /> : <span className="brand-dot" />}
+                <span className="cap">{config?.app_name ?? "Tørgær"}</span>
+              </Link>
+              <button className={`icon-btn ${search !== null ? "on" : ""}`} onClick={() => (search === null || nav.collapsed ? openSearch() : closeSearch())}
+                      aria-expanded={search !== null && !nav.collapsed} aria-controls="side-search"
+                      aria-label="Søg i menuen" title="Søg i menuen (/)">
+                <Icon name="search" size={18} />
+              </button>
+              <button className="icon-btn" onClick={toggle} aria-expanded={!nav.collapsed}
+                      aria-label={nav.collapsed ? "Fold sidepanelet ud" : "Fold sidepanelet ind"}
+                      title={nav.collapsed ? "Fold sidepanelet ud" : "Fold sidepanelet ind"}>
+                <Icon name="panel" size={18} />
+              </button>
+            </div>
+            {search !== null && !nav.collapsed && (
+              <div className="side-search" id="side-search">
+                <Icon name="search" size={16} />
+                <label htmlFor="side-search-input" className="sr-only">Filtrer menuen</label>
+                <input id="side-search-input" ref={searchRef} type="search" autoFocus placeholder="Filtrer menuen" autoComplete="off"
+                       value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={searchKey} />
+                <button type="button" className="icon-btn" onClick={closeSearch} aria-label="Luk søgning" title="Luk søgning (Esc)">
+                  <Icon name="x" size={16} />
+                </button>
+              </div>
+            )}
           </div>
-          <NavLinks />
+          <div className="side-scroll">
+            <NavLinks query={nav.collapsed ? "" : search ?? ""} onNavigate={search ? closeSearch : undefined} />
+          </div>
           <div className="side-foot">
             <OutLinks />
             <Link to="/konto" className="side-link side-user" title={who}>

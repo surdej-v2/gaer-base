@@ -53,13 +53,22 @@ export function viewLevel(ctx: FeaturesCtx): number {
   return ctx.preview?.level ?? ctx.features?.level ?? 4;
 }
 
-/** True while loading (nothing flickers away) and for keys that are not registered yet. */
-export function useFeature(key: string): boolean {
-  const ctx = useContext(FeaturesContext);
+function featureOn(ctx: FeaturesCtx, key: string): boolean {
   if (!ctx.features) return true;
   if (!ctx.preview) return ctx.features.byKey.get(key)?.enabled ?? true;
   const ring = effectiveRing(ctx, key);
   return ring === null ? true : ring >= viewLevel(ctx);
+}
+
+/** True while loading (nothing flickers away) and for keys that are not registered yet. */
+export function useFeature(key: string): boolean {
+  return featureOn(useContext(FeaturesContext), key);
+}
+
+/** The same check as useFeature, for a list of keys (e.g. filtering a menu). */
+export function useFeatureCheck(): (key: string) => boolean {
+  const ctx = useContext(FeaturesContext);
+  return useCallback((key: string) => featureOn(ctx, key), [ctx]);
 }
 
 export function FeatureGate({ feature, children }: { feature: string; children: ReactNode }) {

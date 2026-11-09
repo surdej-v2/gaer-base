@@ -31,10 +31,16 @@ body { font-size: 14px; line-height: normal; }
 
 @media (max-width: 900px) {
   .tg-shell { flex-direction: column; }
-  .tg-side { position: static !important; width: 100% !important; height: auto !important; }
+  .tg-side { position: static !important; width: 100% !important; height: auto !important; max-height: 70vh; }
 }
 
 /* /admin/consumption tables: first and last cell line up with the card's padding. */
 .tg-ctable td { padding: 10px; }
 .tg-ctable td:first-child { padding-left: 20px; }
 .tg-ctable td:last-child { padding-right: 20px; }
+
+/* The side menu's search field (AdminShell). */
+.tg-side-search::placeholder { color: rgba(255, 255, 255, 0.5); }
+.tg-side-search::-webkit-search-cancel-button { display: none; }
+.tg-admin .tg-side-search:focus { border-color: transparent !important; box-shadow: none !important; }
+#tg-side-search:focus-within { border-color: #2563eb !important; box-shadow: 0 0 0 1px #2563eb; }

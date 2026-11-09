@@ -1,12 +1,12 @@
 // Shell of the /admin app: dark side menu, sticky top bar and the impersonation banner.
-import { useEffect, type CSSProperties } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { GraceBanner } from "./mfa";
-import { ArrowLeft, ExternalLink, VenetianMask, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, Search, VenetianMask, X } from "lucide-react";
 import { api, errorText } from "../api";
 import { useAuth } from "../auth";
 import { useAdmin } from "./context";
-import { navFor, sectionFor, type NavBadge } from "./nav";
+import { navFor, sectionFor, type NavBadge, type NavGroup } from "./nav";
 import ToergaerMark from "./ToergaerMark";
 import { initials, MONO, SANS } from "./theme";
 import { useToast } from "./ui";
@@ -30,6 +30,33 @@ export default function AdminShell() {
 
   useEffect(() => handshake(true), []);
 
+  // The menu search: null while closed. "/" outside a text field opens it, Esc closes, Enter opens the first match.
+  const [search, setSearch] = useState<string | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+  const groups = filterGroups(navFor(user?.admin_sections), search ?? "");
+  const matches = groups.reduce((n, g) => n + g.items.length, 0);
+  const openSearch = () => {
+    setSearch((s) => s ?? "");
+    requestAnimationFrame(() => searchRef.current?.focus());
+  };
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      e.preventDefault();
+      openSearch();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  const searchKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") { e.preventDefault(); setSearch(null); }
+    else if (e.key === "Enter" && groups[0]?.items[0]) { e.preventDefault(); navigate(groups[0].items[0].path); setSearch(null); }
+  };
+  const query = search ?? "";
+
   const badge = (b?: NavBadge): { text: string; amber: boolean } | null => {
     if (b === "impersonation" && impersonating) return { text: "Aktiv", amber: true };
     if (b === "features" && missingFeatures) return { text: String(missingFeatures), amber: true };
@@ -50,21 +77,48 @@ export default function AdminShell() {
   return (
     <div className="tg-admin tg-shell" style={{ minHeight: "100vh", display: "flex", fontSize: 14, fontFamily: SANS, color: "#020817", background: "#f1f5f9" }}>
       <aside className="tg-side" style={{ position: "sticky", top: 0, height: "100vh", width: 232, flex: "none", boxSizing: "border-box", display: "flex",
-        flexDirection: "column", background: "#0f172a", color: "#ffffff", padding: "20px 10px 16px", overflowY: "auto" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "0 10px 22px" }}>
-          <ToergaerMark size={28} byline={false} dark />
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: MONO }}>/admin · {instance}</span>
+        flexDirection: "column", background: "#0f172a", color: "#ffffff", overflow: "hidden" }}>
+        <div style={{ flex: "none", display: "flex", flexDirection: "column", gap: 12, padding: "20px 10px 12px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "0 0 0 10px" }}>
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+              <ToergaerMark size={28} byline={false} dark />
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: MONO, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>/admin · {instance}</span>
+            </div>
+            <button type="button" className="tg-nav" onClick={() => (search === null ? openSearch() : setSearch(null))}
+                    aria-expanded={search !== null} aria-controls="tg-side-search" aria-label="Søg i menuen" title="Søg i menuen (/)"
+                    style={{ flex: "none", width: 36, height: 36, display: "inline-flex", alignItems: "center", justifyContent: "center", border: 0, borderRadius: 8, cursor: "pointer",
+                      background: search !== null ? "rgba(255,255,255,0.1)" : "transparent", color: search !== null ? "#ffffff" : "rgba(255,255,255,0.72)" }}>
+              <Search size={16} strokeWidth={2} />
+            </button>
+          </div>
+          {search !== null && (
+            <div id="tg-side-search" style={{ display: "flex", alignItems: "center", gap: 6, height: 36, padding: "0 2px 0 10px", boxSizing: "border-box", borderRadius: 8,
+              border: "1px solid rgba(255,255,255,0.16)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}>
+              <Search size={14} strokeWidth={2} style={{ flex: "none" }} />
+              <label htmlFor="tg-side-search-input" style={VISUALLY_HIDDEN}>Filtrer menuen</label>
+              <input id="tg-side-search-input" ref={searchRef} type="search" autoFocus className="tg-side-search" placeholder="Filtrer menuen" autoComplete="off"
+                     value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={searchKey}
+                     style={{ flex: 1, minWidth: 0, height: "100%", border: 0, padding: 0, background: "transparent", color: "#ffffff", font: `400 13px ${SANS}`, boxShadow: "none" }} />
+              <button type="button" className="tg-nav" onClick={() => setSearch(null)} aria-label="Luk søgning" title="Luk søgning (Esc)"
+                      style={{ flex: "none", width: 30, height: 30, display: "inline-flex", alignItems: "center", justifyContent: "center", border: 0, borderRadius: 6,
+                        cursor: "pointer", background: "transparent", color: "rgba(255,255,255,0.72)" }}>
+                <X size={14} strokeWidth={2} />
+              </button>
+            </div>
+          )}
         </div>
-        <nav style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {navFor(user?.admin_sections).map((g) => (
-            <div key={g.label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <div style={{ padding: "0 10px 4px", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>
-                {g.label}
+        <nav aria-label="Admin" style={{ flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", padding: "0 10px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
+          {groups.map((g) => (
+            <div key={g.label} role="group" aria-label={g.label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <div aria-hidden="true" style={{ position: "sticky", top: 0, zIndex: 1, background: "#0f172a", padding: "14px 10px 6px", fontSize: 10, fontWeight: 700,
+                letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>
+                <Hit text={g.label} query={query} />
               </div>
               {g.items.map((n) => {
                 const b = badge(n.badge);
                 return (
-                  <NavLink key={n.path} to={n.path} end={n.path === "/" || n.path === "/data" || n.path === "/adoption"} style={{ textDecoration: "none" }}>
+                  <NavLink key={n.path} to={n.path} end={n.path === "/" || n.path === "/data" || n.path === "/adoption"} style={{ textDecoration: "none" }}
+                           onClick={search ? () => setSearch(null) : undefined}>
                     {({ isActive }) => (
                       <span className={isActive ? undefined : "tg-nav"} style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, width: "100%",
                         boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, font: `${isActive ? 600 : 400} 13px ${SANS}`,
@@ -72,7 +126,7 @@ export default function AdminShell() {
                         <span style={{ position: "absolute", left: 0, top: "50%", width: 2, height: 16, marginTop: -8, borderRadius: 2,
                           background: isActive ? "#fcbf49" : "transparent" }} />
                         <n.icon size={16} strokeWidth={2} style={{ flex: "none" }} />
-                        <span style={{ flex: 1, minWidth: 0 }}>{n.label}</span>
+                        <span style={{ flex: 1, minWidth: 0 }}><Hit text={n.label} query={query} /></span>
                         {b && (
                           <span style={{ minWidth: 18, padding: "0 6px", boxSizing: "border-box", borderRadius: 9999, background: b.amber ? "#f59e0b" : "#dc2626",
                             color: b.amber ? "#0f172a" : "#ffffff", fontSize: 10, fontWeight: 700, textAlign: "center", lineHeight: "18px" }}>{b.text}</span>
@@ -84,9 +138,13 @@ export default function AdminShell() {
               })}
             </div>
           ))}
+          {query.trim() && matches === 0 && (
+            <p style={{ margin: "16px 10px", fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Ingen sider matcher “{query.trim()}”.</p>
+          )}
+          {query.trim() && <span role="status" style={VISUALLY_HIDDEN}>{matches === 1 ? "1 side matcher" : `${matches} sider matcher`}</span>}
         </nav>
-        <div style={{ marginTop: "auto", padding: "12px 10px 0", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column",
-          gap: 10, fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
+        <div style={{ flex: "none", padding: "12px 20px 16px", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column",
+          gap: 10, fontSize: 12, color: "rgba(255,255,255,0.7)", background: "#0f172a" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ width: 8, height: 8, borderRadius: 9999, background: health && !health.ok ? "#dc2626" : "#10b981",
               animation: health?.ok ? "tgpulse 2s infinite" : "none" }} />
@@ -162,6 +220,32 @@ export default function AdminShell() {
         ["API", `${window.location.origin}/api`],
       ]} />
     </div>
+  );
+}
+
+const VISUALLY_HIDDEN: CSSProperties = { position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0 };
+
+const fold = (text: string) => text.toLocaleLowerCase("da");
+
+/** The menu groups that match a search: an item matches on its own label or its group's. */
+function filterGroups(groups: NavGroup[], query: string): NavGroup[] {
+  const q = fold(query.trim());
+  if (!q) return groups;
+  return groups.map((g) => (fold(g.label).includes(q) ? g : { ...g, items: g.items.filter((i) => fold(i.label).includes(q)) }))
+    .filter((g) => g.items.length > 0);
+}
+
+/** A label with the first match of the search marked. */
+function Hit({ text, query }: { text: string; query: string }) {
+  const q = fold(query.trim());
+  const i = q ? fold(text).indexOf(q) : -1;
+  if (i < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, i)}
+      <mark style={{ background: "#fcbf49", color: "#0f172a", borderRadius: 3, padding: "0 1px" }}>{text.slice(i, i + q.length)}</mark>
+      {text.slice(i + q.length)}
+    </>
   );
 }
 
