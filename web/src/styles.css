@@ -52,7 +52,8 @@ p { margin: 0; text-wrap: pretty; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--hm-foreground); letter-spacing: -0.01em; }
 .brand:hover { text-decoration: none; color: var(--hm-foreground); }
 .brand img { height: 28px; width: auto; }
-.brand-dot { width: 26px; height: 26px; border-radius: 9999px; background: var(--gaer-gradient); }
+/* The Happy Mates mark (public/favicon.svg) stands in until an admin uploads a logo in /admin/settings. */
+.brand-dot { width: 28px; height: 28px; flex: none; background: url("/favicon.svg") center / contain no-repeat; }
 .nav { display: flex; gap: 4px; margin-left: auto; align-items: center; }
 .nav a { padding: 6px 12px; border-radius: var(--hm-radius-md); color: var(--hm-muted-foreground); font-size: 14px; font-weight: 600; }
 .nav a:hover { background: var(--hm-muted); color: var(--hm-foreground); text-decoration: none; }

@@ -83,7 +83,7 @@ export function ToolLayout() {
     <div className="embed-shell">
       <header className="embed-header">
         {config?.logo_url ? <img src={config.logo_url} alt="" /> : <span className="brand-dot" style={{ width: 20, height: 20 }} />}
-        <strong>{config?.app_name ?? "Gær"}</strong>
+        <strong>{config?.app_name ?? "Tørgær"}</strong>
         <span className="muted tiny" style={{ marginLeft: "auto" }}>{user?.display_name || user?.email || user?.phone}</span>
         <button className="btn btn-ghost btn-sm" onClick={async () => { await logout(); window.location.reload(); }}>Log ud</button>
       </header>

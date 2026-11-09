@@ -8,6 +8,8 @@ specs/forside-246/.
 import math
 from html import escape
 
+from app import og
+
 LANGS = ("da", "en", "de", "sv", "no")
 HTML_LANG = {"no": "nb"}
 LANG_CODES = {"da": "DA", "en": "EN", "de": "DE", "sv": "SV", "no": "NO"}
@@ -173,7 +175,7 @@ def _toggle_label(on: str, off: str) -> str:
     return f'<span class="when-off">{escape(on)}</span><span class="when-on">{escape(off)}</span>'
 
 
-def render(*, lang: str, app_name: str, base: str, nav: list[dict], first_user: bool) -> str:
+def render(*, lang: str, app_name: str, base: str, nav: list[dict], first_user: bool, og_image: str = "") -> str:
     t = TEXT[lang]
     e = {k: escape(v) for k, v in t.items() if isinstance(v, str)}
     name = escape(app_name)
@@ -196,8 +198,8 @@ def render(*, lang: str, app_name: str, base: str, nav: list[dict], first_user: 
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>246 · {name}</title>
 <meta name="description" content="{e['first']} {e['aloud']}">
-<meta property="og:title" content="246"><meta property="og:description" content="{e['first']} {e['aloud']}">
-<meta property="og:site_name" content="{name}"><meta property="og:type" content="website">
+{og.meta_tags(title="246", description=f"{t['first']} {t['aloud']}", site_name=app_name, image=og_image,
+              url=f"{base}/w/?lang={lang}")}
 <meta name="theme-color" content="#020817">
 <link rel="canonical" href="{base}/w/?lang={lang}">{alternates}
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">

@@ -50,7 +50,7 @@ function TopBar() {
       <div className="topbar-inner">
         <Link to="/" className="brand">
           {config?.logo_url ? <img src={config.logo_url} alt="" /> : <span className="brand-dot" />}
-          {config?.app_name ?? "Gær"}
+          {config?.app_name ?? "Tørgær"}
         </Link>
         <nav className="nav">
           {full && <FeatureGate feature="klip"><NavLink to="/klip">Klip</NavLink></FeatureGate>}

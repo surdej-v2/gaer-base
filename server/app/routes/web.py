@@ -12,13 +12,14 @@ import io
 import os
 import zipfile
 from html import escape
+from html import unescape as html_unescape
 
 import markdown
 import nh3
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
-from app import config, db, settings_store, web_front
+from app import config, db, og, settings_store, web_front
 from app.routes.auth import admin_open_to_anyone
 
 router = APIRouter(tags=["web"])
@@ -88,7 +89,7 @@ def _page_html(*, lang: str, page: dict | None, nav: list[dict], values: dict, s
     description = escape(page["description"]) if page else ""
     base = config.settings.origin.rstrip("/")
     path = f"/w/{slug}" if slug else "/w/"
-    logo = '<img src="/api/public/logo" alt="">' if values["logo_key"] else '<span class="dot"></span>'
+    logo = '<img src="/api/public/logo" alt="">' if values["logo_key"] else '<img src="/favicon.svg" alt="">'
     links = "".join(
         f'<a href="/w/{escape(p["slug"])}"{" class=active" if p["slug"] == slug else ""}>{escape(p["title"])}</a>'
         for p in nav if p["slug"])
@@ -107,8 +108,8 @@ def _page_html(*, lang: str, page: dict | None, nav: list[dict], values: dict, s
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title} · {name}</title>
 <meta name="description" content="{description}">
-<meta property="og:title" content="{title}"><meta property="og:description" content="{description}">
-<meta property="og:site_name" content="{name}"><meta property="og:type" content="website">
+{og.meta_tags(title=html_unescape(title), description=html_unescape(description), site_name=values["app_name"],
+              image=og.image_url("w" if slug == "" else "default", values["og_images"], page), url=f"{base}{path}")}
 <link rel="canonical" href="{base}{path}?lang={lang}">
 <link rel="alternate" hreflang="da" href="{base}{path}?lang=da"><link rel="alternate" hreflang="en" href="{base}{path}?lang=en">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -155,7 +156,7 @@ async def w_page(slug: str, request: Request):
         first_user = await admin_open_to_anyone(conn)
     if story:
         html = web_front.render(lang=lang, app_name=values["app_name"], base=config.settings.origin.rstrip("/"),
-                                nav=nav, first_user=first_user)
+                                nav=nav, first_user=first_user, og_image=og.image_url("w", values["og_images"]))
     else:
         html = _page_html(lang=lang, page=page, nav=nav, values=values, slug=slug, first_user=first_user)
     found = page is not None or slug == ""

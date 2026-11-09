@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
-from app import admin_roles, config, db, gdpr, mail, mfa, retention, settings_store
+from app import admin_roles, config, db, gdpr, mail, mfa, og, retention, settings_store
 from app.logs import audit, auth_event, changed
 from app.routes.auth import parse_email, parse_phone
 from app.routes.files import delete_file, save_upload
@@ -867,6 +867,90 @@ async def web_front_put(body: WebFrontIn, admin: Principal = Depends(require_adm
     return {"ok": True, "front": body.front}
 
 
+# ── Sharing images (og:image) for the anonymous pages, app/og.py ─────────────
+
+async def _og_upload(conn, file: UploadFile, admin: Principal, prefix: str) -> str:
+    head = await file.read(16)
+    content_type = og.sniff(head)
+    if content_type is None:
+        raise HTTPException(400, "Billedet skal være PNG, JPEG eller WebP (helst 1200 × 630 pixels)")
+    await file.seek(0)
+    row = await save_upload(conn, file, owner_id=None, actor=admin, prefix=prefix, content_type=content_type)
+    return row["storage_key"]
+
+
+async def _og_forget(conn, key: str | None, admin: Principal) -> None:
+    if key:
+        old = await db.fetch_one(conn, "select id from files where storage_key = %s", (key,))
+        if old:
+            await delete_file(conn, old["id"], admin)
+
+
+@router.get("/web/og")
+async def web_og_list():
+    async with db.connection() as conn:
+        overrides = await settings_store.get(conn, "og_images")
+    return {"surfaces": [{"name": name, "label": label, "custom": bool(overrides.get(name)),
+                          "url": og.image_url(name, overrides)} for name, label in og.SURFACES.items()]}
+
+
+@router.post("/web/og/{name}")
+async def web_og_upload(name: str, file: UploadFile, admin: Principal = Depends(require_admin)):
+    if name not in og.SURFACES:
+        raise HTTPException(404, "Ukendt side")
+    async with db.connection() as conn:
+        overrides = dict(await settings_store.get(conn, "og_images"))
+        old = overrides.get(name)
+        overrides[name] = await _og_upload(conn, file, admin, "settings/og")
+        await settings_store.set_many(conn, {"og_images": overrides})
+        await audit(conn, "update", actor_id=admin.user_id, meta=admin.meta, table="settings", row_id=f"og_images.{name}",
+                    before={"og_image": old}, after={"og_image": overrides[name]})
+        await _og_forget(conn, old, admin)
+    return {"ok": True, "url": og.image_url(name, overrides)}
+
+
+@router.delete("/web/og/{name}")
+async def web_og_reset(name: str, admin: Principal = Depends(require_admin)):
+    """Back to the generated image."""
+    async with db.connection() as conn:
+        overrides = dict(await settings_store.get(conn, "og_images"))
+        old = overrides.pop(name, None)
+        if old:
+            await settings_store.set_many(conn, {"og_images": overrides})
+            await audit(conn, "update", actor_id=admin.user_id, meta=admin.meta, table="settings",
+                        row_id=f"og_images.{name}", before={"og_image": old}, after={"og_image": None})
+            await _og_forget(conn, old, admin)
+    return {"ok": True, "url": og.image_url(name, overrides)}
+
+
+@router.post("/web/{page_id}/og")
+async def web_page_og_upload(page_id: int, file: UploadFile, admin: Principal = Depends(require_admin)):
+    async with db.connection() as conn:
+        page = await db.fetch_one(conn, "select id, og_image_key from web_pages where id = %s for update", (page_id,))
+        if page is None:
+            raise HTTPException(404, "Siden findes ikke")
+        key = await _og_upload(conn, file, admin, "web/og")
+        await conn.execute("update web_pages set og_image_key = %s, updated_at = now() where id = %s", (key, page_id))
+        await audit(conn, "update", actor_id=admin.user_id, meta=admin.meta, table="web_pages", row_id=page_id,
+                    before={"og_image_key": page["og_image_key"]}, after={"og_image_key": key})
+        await _og_forget(conn, page["og_image_key"], admin)
+    return {"ok": True, "og_image_key": key}
+
+
+@router.delete("/web/{page_id}/og")
+async def web_page_og_reset(page_id: int, admin: Principal = Depends(require_admin)):
+    async with db.connection() as conn:
+        page = await db.fetch_one(conn, "select id, og_image_key from web_pages where id = %s for update", (page_id,))
+        if page is None:
+            raise HTTPException(404, "Siden findes ikke")
+        if page["og_image_key"]:
+            await conn.execute("update web_pages set og_image_key = null, updated_at = now() where id = %s", (page_id,))
+            await audit(conn, "update", actor_id=admin.user_id, meta=admin.meta, table="web_pages", row_id=page_id,
+                        before={"og_image_key": page["og_image_key"]}, after={"og_image_key": None})
+            await _og_forget(conn, page["og_image_key"], admin)
+    return {"ok": True}
+
+
 @router.post("/web")
 async def web_create(body: WebPageIn, admin: Principal = Depends(require_admin)):
     async with db.connection() as conn:
@@ -909,9 +993,11 @@ async def web_update(page_id: int, body: WebPageIn, admin: Principal = Depends(r
 @router.delete("/web/{page_id}")
 async def web_delete(page_id: int, admin: Principal = Depends(require_admin)):
     async with db.connection() as conn:
-        row = await db.fetch_one(conn, "delete from web_pages where id = %s returning slug, lang, title", (page_id,))
+        row = await db.fetch_one(conn, "delete from web_pages where id = %s returning slug, lang, title, og_image_key",
+                                 (page_id,))
         if row is None:
             raise HTTPException(404, "Siden findes ikke")
+        await _og_forget(conn, row.pop("og_image_key"), admin)
         await audit(conn, "delete", actor_id=admin.user_id, meta=admin.meta, table="web_pages", row_id=page_id,
                     before=row)
     return {"ok": True}

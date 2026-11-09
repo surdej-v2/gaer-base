@@ -2,14 +2,16 @@
 
 import logging
 import os
+import re
+from html import escape
 from contextlib import AsyncExitStack, asynccontextmanager
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.routing import Route
 
-from app import captcha, config, db, jobs, mail, retention, webhooks
+from app import captcha, config, db, jobs, mail, og, retention, settings_store, webhooks
 from app.mcp import hub as mcp_hub
 from app.mcp import oauth as mcp_oauth
 from app.mcp import transport as mcp_transport
@@ -81,8 +83,32 @@ async def mcp_sessions(app: FastAPI):
         yield
 
 
+_html_cache: dict[str, tuple[float, str]] = {}
+
+
+async def app_html(page: str, path: str) -> str:
+    """index.html with the page's title and sharing tags (og:image etc., app/og.py), so links to /login,
+    /privatliv and the app's pages get a preview when they are shared."""
+    mtime = os.path.getmtime(page)
+    cached = _html_cache.get(page)
+    if not cached or cached[0] != mtime:
+        with open(page, encoding="utf-8") as f:
+            cached = _html_cache[page] = (mtime, f.read())
+    async with db.connection() as conn:
+        values = await settings_store.get_all(conn)
+    name = values["app_name"]
+    route = route_manifest.route_for(path)
+    title = f"{route['title']} · {name}" if route and path != "/" else name
+    surface = og.surface_for(path)
+    tags = og.meta_tags(title=title, description=og.DESCRIPTIONS.get(surface, ""), site_name=name,
+                        image=og.image_url(surface, values["og_images"]),
+                        url=config.settings.origin.rstrip("/") + (path if route else "/"))
+    html = re.sub(r"<title>.*?</title>", lambda _: f"<title>{escape(title)}</title>", cached[1], count=1)
+    return html.replace("</head>", f"{tags}\n</head>", 1)
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gær", lifespan=lifespan, docs_url="/api/docs" if not config.settings.is_production else None,
+    app = FastAPI(title="Tørgær", lifespan=lifespan, docs_url="/api/docs" if not config.settings.is_production else None,
                   redoc_url=None, openapi_url="/api/openapi.json" if not config.settings.is_production else None)
 
     @app.middleware("http")
@@ -142,9 +168,11 @@ def create_app() -> FastAPI:
             return FileResponse(candidate)
         # /admin is a separate Vite entry (web/admin.html); everything else is the app on / (web/src/routes.json).
         page = admin_index if route_manifest.app_for("/" + full_path) == "admin" else index
-        if os.path.isfile(page):
+        if not os.path.isfile(page):
+            return JSONResponse({"detail": "Frontend er ikke bygget. Kør npm run build i web/."}, status_code=404)
+        if page == admin_index:
             return FileResponse(page, headers={"Cache-Control": "no-cache"})
-        return JSONResponse({"detail": "Frontend er ikke bygget. Kør npm run build i web/."}, status_code=404)
+        return HTMLResponse(await app_html(page, "/" + full_path), headers={"Cache-Control": "no-cache"})
 
     return app
 

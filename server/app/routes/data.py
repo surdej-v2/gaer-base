@@ -30,7 +30,7 @@ CLASSES = "^(white|green|yellow|red)$"
 MASKED = {"yellow", "red"}
 MASK = "•••"
 UNMASK_MINUTES = 15
-OWN_SOURCE = {"id": None, "key": "gaer", "name": "Gær (egen database)", "kind": "gaer", "hosts": []}
+OWN_SOURCE = {"id": None, "key": "gaer", "name": "Tørgær (egen database)", "kind": "gaer", "hosts": []}
 
 # Never offered in Udforsk: one-time codes, challenges, sessions, tokens, authenticator secrets, the auth log
 # (phone/e-mail hashes), settings, the migration list and the catalog itself.

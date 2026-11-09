@@ -110,7 +110,7 @@ export default function Explorer({ dataset, onUnmasked }: { dataset: Dataset; on
                 {w && dataset.source_kind === "rest" && (
                   <span style={{ padding: "2px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 600,
                     background: w === "api" ? "rgba(37,99,235,0.1)" : "#f1f5f9", color: w === "api" ? "#1d4ed8" : "#475569" }}>
-                    {w === "api" ? "→ API-parameter" : "filtreres i Gær"}
+                    {w === "api" ? "→ API-parameter" : "filtreres i Tørgær"}
                   </span>
                 )}
                 <IconBtn icon={X} label="Fjern filter" onClick={() => setFilters(filters.filter((_, j) => j !== i))} />

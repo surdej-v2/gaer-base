@@ -29,7 +29,7 @@ class Settings:
 
     # WebAuthn / passkeys
     rp_id: str = field(default_factory=lambda: _env("RP_ID", "localhost"))
-    rp_name: str = field(default_factory=lambda: _env("RP_NAME", "Gær"))
+    rp_name: str = field(default_factory=lambda: _env("RP_NAME", "Tørgær"))
     origin: str = field(default_factory=lambda: _env("ORIGIN", "http://localhost:5173"))
 
     # Optional: the only e-mail address (or, with SMS login, phone number) that may become the first admin.

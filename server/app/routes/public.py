@@ -11,10 +11,10 @@ import re
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
-from app import config, db, settings_store, webhooks
+from app import config, db, og, settings_store, webhooks
 from app.logs import RequestMeta, audit
 from app.routes.auth import admin_open_to_anyone
 from app.security import classify_device, client_ip, user_agent
@@ -50,6 +50,26 @@ async def logo():
         raise HTTPException(404)
     data, content_type = await get_storage().get(key)
     return Response(data, media_type=content_type, headers={"Cache-Control": "public, max-age=300"})
+
+
+@router.get("/public/og/{name}")
+async def og_image(name: str):
+    """og:image for the anonymous pages (app/og.py): an admin's upload, else the generated image."""
+    async with db.connection() as conn:
+        if name.startswith("page-") and name[5:].isdigit():
+            row = await db.fetch_one(conn, "select og_image_key from web_pages where id = %s and published", (int(name[5:]),))
+            key = row["og_image_key"] if row else None
+            if not key:
+                raise HTTPException(404)
+        elif name in og.SURFACES:
+            key = og.resolve(name, await settings_store.get(conn, "og_images"))
+        else:
+            raise HTTPException(404)
+    headers = {"Cache-Control": "public, max-age=3600"}
+    if key:
+        data, content_type = await get_storage().get(key)
+        return Response(data, media_type=content_type, headers=headers)
+    return FileResponse(og.generated(name), media_type="image/png", headers=headers)
 
 
 class ConsentIn(BaseModel):

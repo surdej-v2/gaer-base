@@ -24,10 +24,10 @@ from app.security import client_ip, user_agent
 from app.sessions import Principal
 
 INSTRUCTIONS = {
-    "app": ("Gær for den bruger, der loggede ind: klip, filer, features og privatliv. Du ser og ændrer kun brugerens egne "
+    "app": ("Tørgær for den bruger, der loggede ind: klip, filer, features og privatliv. Du ser og ændrer kun brugerens egne "
             "data. Sletning og GDPR-eksport giver en kladde: vis opsummeringen og kald confirm_draft(draftId, reason), "
             "først når brugeren har sagt ja. Svar indeholder links (links[]) til den rigtige skærm — tag dem med."),
-    "admin": ("Admin af denne Gær-instans. Læseværktøjer svarer med det samme. Alle ændringer giver en kladde med "
+    "admin": ("Admin af denne Tørgær-instans. Læseværktøjer svarer med det samme. Alle ændringer giver en kladde med "
               "opsummering og konsekvens: vis den for brugeren og kald confirm_draft(draftId, reason) først efter et ja. "
               "Svar indeholder deep links (links[]) der åbner den rigtige skærm i /admin — tag dem med. "
               "Start med nav_sections eller nav_resolve, hvis du ikke ved, hvor noget ligger."),
@@ -78,7 +78,7 @@ def build_server(server: str) -> Server:
         return types.CallToolResult(content=[types.TextContent(type="text", text=text)], is_error=is_error,
                                     structured_content=result)
 
-    return Server(info["name"], version=config.settings.version, title=f"Gær · {info['label']}",
+    return Server(info["name"], version=config.settings.version, title=f"Tørgær · {info['label']}",
                   instructions=INSTRUCTIONS[server], on_list_tools=list_tools, on_call_tool=call_tool)
 
 

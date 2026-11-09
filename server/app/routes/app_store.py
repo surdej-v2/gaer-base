@@ -87,7 +87,7 @@ def defaults(values: dict) -> dict:
     labels = [p for p in labels if p] or ["app"]
     slug = labels[0] if len(labels) == 1 else labels[-2]
     origin = f"https://{host}"
-    name = (values.get("app_name") or "Gær")[:30]
+    name = (values.get("app_name") or "Tørgær")[:30]
     return {
         "host": host,
         "cfg": {"name": name, "bundleId": ".".join([*reversed(labels), "app"]), "primary": "#2563eb", "primarySoft": "#dbeafe",

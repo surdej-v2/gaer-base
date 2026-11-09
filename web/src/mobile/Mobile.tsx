@@ -35,7 +35,7 @@ export function MobileLayout() {
     <div className="embed-shell mobile">
       <header className="embed-header">
         {config?.logo_url ? <img src={config.logo_url} alt="" /> : <span className="brand-dot" style={{ width: 22, height: 22 }} />}
-        <strong>{config?.app_name ?? "Gær"}</strong>
+        <strong>{config?.app_name ?? "Tørgær"}</strong>
       </header>
       <main className="embed-main"><Outlet /></main>
       <nav className="tabbar">

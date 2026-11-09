@@ -189,7 +189,9 @@
     },
     "/admin/web": {
       "title": "Website",
-      "anchors": []
+      "anchors": [
+        "web-og"
+      ]
     },
     "/admin/webhooks": {
       "title": "Webhooks",

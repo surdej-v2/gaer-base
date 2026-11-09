@@ -6,7 +6,7 @@ from app import config
 from app.db import fetch_all
 
 DEFAULTS: dict = {
-    "app_name": "Gær",
+    "app_name": "Tørgær",
     "logo_key": None,
     "sms_sender": None,             # falls back to SMS_SENDER
     "gdpr_email": "",
@@ -24,6 +24,7 @@ DEFAULTS: dict = {
     "ai_default_monthly_tokens": 200_000,   # per user; 0 turns AI off for users without their own limit
     "ai_default_warn_pct": 80,              # warn users without a budget at this share of their limit; 0: never
     "ai_warning_mail": True,                # e-mail users when they pass a warning level, reach the cap or use up a budget
+    "og_images": {},                        # og:image per anonymous surface → storage key (app/og.py)
     "web_front": "markdown",                # /w/: "markdown" (slug '') or "facit246" (app/web_front.py); default: WEB_FRONT
 }
 

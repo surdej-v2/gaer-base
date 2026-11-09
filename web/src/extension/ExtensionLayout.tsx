@@ -12,7 +12,7 @@ export default function ExtensionLayout() {
     <div className="embed-shell">
       <header className="embed-header">
         {config?.logo_url ? <img src={config.logo_url} alt="" /> : <span className="brand-dot" style={{ width: 20, height: 20 }} />}
-        <strong>{config?.app_name ?? "Gær"}</strong>
+        <strong>{config?.app_name ?? "Tørgær"}</strong>
       </header>
       <main className="embed-main">
         <Outlet />

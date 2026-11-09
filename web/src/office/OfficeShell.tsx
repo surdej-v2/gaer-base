@@ -99,7 +99,7 @@ export default function OfficeShell() {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       {error && <div className="alert error" style={{ margin: 12 }}>{error}</div>}
-      <iframe ref={frame} src={src} title="Gær" style={{ border: 0, flex: 1, width: "100%" }}
+      <iframe ref={frame} src={src} title="Tørgær" style={{ border: 0, flex: 1, width: "100%" }}
               allow="publickey-credentials-get *; publickey-credentials-create *; clipboard-write" />
     </div>
   );

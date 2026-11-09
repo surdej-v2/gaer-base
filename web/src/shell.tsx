@@ -244,9 +244,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className={`shell ${nav.collapsed ? "collapsed" : ""}`}>
         <nav className="side" aria-label="Hovedmenu" style={{ width }}>
           <div className="side-brand">
-            <Link to="/" className="brand" title={config?.app_name ?? "Gær"}>
+            <Link to="/" className="brand" title={config?.app_name ?? "Tørgær"}>
               {config?.logo_url ? <img src={config.logo_url} alt="" /> : <span className="brand-dot" />}
-              <span className="cap">{config?.app_name ?? "Gær"}</span>
+              <span className="cap">{config?.app_name ?? "Tørgær"}</span>
             </Link>
             <button className="icon-btn" onClick={toggle} aria-expanded={!nav.collapsed}
                     aria-label={nav.collapsed ? "Fold sidepanelet ud" : "Fold sidepanelet ind"}
