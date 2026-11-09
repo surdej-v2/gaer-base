@@ -48,9 +48,13 @@ def surface_for(path: str) -> str:
     return {"/login": "login", "/privatliv": "privatliv"}.get(path, "default")
 
 
+# The generated images, by surface. Paths come only from this table, never from a request.
+GENERATED: dict[str, str] = {name: os.path.join(STATIC, f"{name}.png") for name in SURFACES}
+
+
 def generated(name: str) -> str:
-    path = os.path.join(STATIC, f"{name}.png")
-    return path if name in SURFACES and os.path.isfile(path) else os.path.join(STATIC, "default.png")
+    path = GENERATED.get(name)
+    return path if path and os.path.isfile(path) else GENERATED["default"]
 
 
 def _version(key: str | None, name: str) -> str:
