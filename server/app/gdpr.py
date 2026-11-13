@@ -111,6 +111,8 @@ async def build_user_export(conn, user_id: int) -> dict:
                                               order by p.id""", user_id),
         "developer_notifications": await rows("""select kind, title, body, link, created_at, read_at from dev_notifications
                                                   where user_id = %s order by id""", user_id),
+        "developer_api_calls": await rows("""select ts, api, major, method, path, status from dev_api_log
+                                              where user_id = %s order by id""", user_id),
         "groups": await rows("""select g.name, g.slug, m.role, m.added_at from group_members m join groups g on g.id = m.group_id
                                 where m.user_id = %s order by g.name""", user_id),
         # The secret manager ("vault_*", so no export ever contains the word of the TOTP check): roles and access, never a value.
