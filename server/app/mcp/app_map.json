@@ -328,7 +328,27 @@
       "anchors": []
     },
     "/developer/datastudie": {
-      "title": "Datastudie",
+      "title": "Endpoints i Datastudie",
+      "anchors": []
+    },
+    "/developer/datastudie/endpoints/:id": {
+      "title": "Endpoint",
+      "anchors": []
+    },
+    "/developer/datastudie/multisource": {
+      "title": "Multisource-kilder",
+      "anchors": []
+    },
+    "/developer/datastudie/ny": {
+      "title": "Nyt endpoint",
+      "anchors": []
+    },
+    "/developer/datastudie/operationer": {
+      "title": "Operationer",
+      "anchors": []
+    },
+    "/developer/datastudie/operationer/:id": {
+      "title": "Operation",
       "anchors": []
     },
     "/developer/eksport": {

@@ -16,7 +16,7 @@ BUILTIN = ("app", "admin")
 # Paths under /mcp that are ordinary routes (oauth.py) or built-in servers: no dynamic endpoint may take them.
 RESERVED = {"app", "admin", "register", "authorize", "token", "consent", "data", "studio", "developer", "well-known"}
 AUDIENCES = {"all": "Alle loggede brugere", "internal": "Kun interne brugere", "admin": "Kun admins"}
-COLUMNS = "key, name, description, instructions, audience, enabled, builtin, created_by, created_at, updated_at"
+COLUMNS = "key, name, description, instructions, audience, enabled, builtin, created_by, created_at, updated_at, artifact_id"
 
 
 def path_for(key: str) -> str:
@@ -81,4 +81,4 @@ def out(e: dict) -> dict:
     return {"key": e["key"], "path": path_for(e["key"]), "name": e["name"], "description": e["description"],
             "instructions": e["instructions"], "audience": e["audience"], "audienceLabel": AUDIENCES[e["audience"]],
             "enabled": e["enabled"], "builtin": e["builtin"], "scope": scope_for(e["key"]),
-            "createdAt": e["created_at"], "updatedAt": e["updated_at"]}
+            "createdAt": e["created_at"], "updatedAt": e["updated_at"], "artifactId": e.get("artifact_id")}

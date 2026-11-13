@@ -97,7 +97,7 @@ They share the same login (session cookie), the same database and the same API.
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP clients (OAuth bearer) | **MCP servers** (Streamable HTTP): the app as the logged-in user, admin where every change is a draft, and the endpoints defined in `/developer/studio/mcp` on `/mcp/<key>` (as the user, with the tools chosen there). Consent page `/forbind`; deep links `/go` and `/admin/go`; hub in `/admin/mcp`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. | `server/app/mcp/`, skill `gaer-mcp`, `server/app/mcp/endpoints.py` |
 | `/health` | deploy | Database check + version; used by `deploy/deploy.sh` before switching versions. | `main.py` |
 
-<details><summary>All routes (131)</summary>
+<details><summary>All routes (136)</summary>
 
 | Path | Served by | Access | Page |
 | --- | --- | --- | --- |
@@ -131,7 +131,7 @@ They share the same login (session cookie), the same database and the same API.
 | `/developer/studio/mcp` | app (`index.html`) | admin | MCP Studio |
 | `/developer/prompts` | app (`index.html`) | admin | Promptkatalog |
 | `/developer/trae` | app (`index.html`) | admin | Træstrukturer |
-| `/developer/datastudie` | app (`index.html`) | admin | Datastudie |
+| `/developer/datastudie` | app (`index.html`) | admin | Endpoints i Datastudie |
 | `/developer/pipeline` | app (`index.html`) | admin | Pipelines |
 | `/developer/api` | app (`index.html`) | admin | API-studie |
 | `/developer/forbindelser` | app (`index.html`) | admin | Dataforbindelser |
@@ -152,6 +152,11 @@ They share the same login (session cookie), the same database and the same API.
 | `/developer/pipeline/:id` | app (`index.html`) | admin | Pipeline-editor |
 | `/developer/forbindelser/cache` | app (`index.html`) | admin | Cache |
 | `/developer/forbindelser/:id` | app (`index.html`) | admin | Forbindelse |
+| `/developer/datastudie/ny` | app (`index.html`) | admin | Nyt endpoint |
+| `/developer/datastudie/endpoints/:id` | app (`index.html`) | admin | Endpoint |
+| `/developer/datastudie/operationer` | app (`index.html`) | admin | Operationer |
+| `/developer/datastudie/operationer/:id` | app (`index.html`) | admin | Operation |
+| `/developer/datastudie/multisource` | app (`index.html`) | admin | Multisource-kilder |
 | `/admin` | admin app (`admin.html`) | admin | Statistik |
 | `/admin/go` | admin app (`admin.html`) | admin | Deep link |
 | `/admin/users` | admin app (`admin.html`) | admin | Brugere og roller |

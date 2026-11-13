@@ -27,6 +27,7 @@ import { ArtifactPage } from "./developer/devui";
 import DevHelp, { Soon } from "./developer/Help";
 import { PipelineEditor, PipelineList, PipelineNew, PlansPage, RunPage, RunsPage, SnapshotsPage } from "./developer/Pipeline";
 import { ConnectionList, ConnectionPage } from "./developer/Connections";
+import { CachePage, EndpointList, EndpointPage, Guide, OperationList, OperationPage } from "./developer/Datastudie";
 import StudioOverview from "./developer/StudioOverview";
 import ApiStudio from "./developer/ApiStudio";
 import McpStudio from "./developer/McpStudio";
@@ -167,7 +168,12 @@ export default function App() {
         <Route path="/go" element={<GoPage />} />
         <Route path="/developer" element={<RequireUser><DeveloperShell /></RequireUser>}>
           <Route index element={<DevOverview />} />
-          <Route path="datastudie" element={<Soon title="Datastudie" text="Beskriv data med AI og udgiv som MCP-endpoint." />} />
+          <Route path="datastudie" element={<EndpointList />} />
+          <Route path="datastudie/ny" element={<Guide />} />
+          <Route path="datastudie/endpoints/:id" element={<EndpointPage />} />
+          <Route path="datastudie/operationer" element={<OperationList />} />
+          <Route path="datastudie/operationer/:id" element={<OperationPage />} />
+          <Route path="datastudie/multisource" element={<Soon title="Multisource-kilder" text="Kilder, der henter fra flere kilder live, parallelt og med cache." />} />
           <Route path="pipeline" element={<PipelineList />} />
           <Route path="pipeline/ny" element={<PipelineNew />} />
           <Route path="pipeline/snapshots" element={<SnapshotsPage />} />
@@ -177,7 +183,7 @@ export default function App() {
           <Route path="pipeline/:id" element={<PipelineEditor />} />
           <Route path="api" element={<Soon title="API-studie" text="REST-API'er over de samme operationer, med OpenAPI og nøgler." />} />
           <Route path="forbindelser" element={<ConnectionList />} />
-          <Route path="forbindelser/cache" element={<Soon title="Cache" text="Cache for live-kilder og multisource-kilder med TTL pr. kilde og trin." />} />
+          <Route path="forbindelser/cache" element={<CachePage />} />
           <Route path="forbindelser/:id" element={<ConnectionPage />} />
           <Route path="eksport" element={<Soon title="Eksport og import" text="Flyt artefakter mellem instanser." />} />
           <Route path="katalog" element={<CatalogList />} />

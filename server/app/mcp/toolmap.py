@@ -44,7 +44,10 @@ TOOL_COLUMNS = """t.id, t.name, t.kind, t.dataset_id, t.title, t.description, t.
                   d.name as dataset_name, d.description as dataset_description, d.personal_data,
                   (select max(case f.classification when 'red' then 2 when 'yellow' then 1 else 0 end)
                      from dataset_fields f where f.dataset_id = t.dataset_id) as field_rank,
-                  array(select e.endpoint from mcp_tool_endpoints e where e.tool_id = t.id order by e.endpoint) as endpoints"""
+                  array(select e.endpoint from mcp_tool_endpoints e where e.tool_id = t.id order by e.endpoint) as endpoints,
+                  t.artifact_id, t.examples,
+                  (select v.definition from dev_artifacts a join dev_artifact_versions v on v.id = a.current_version_id
+                    where a.id = t.artifact_id) as op_definition"""
 TOOL_FROM = "mcp_tools t left join datasets d on d.id = t.dataset_id"
 
 
@@ -60,7 +63,7 @@ def possible_endpoints(t: dict, keys: list[str]) -> list[str]:
     """Where this tool can be offered, given every endpoint key: a Data tool anywhere, a Code tool on the built-in
     endpoints that have its handler and — when the app has one — on every dynamic endpoint (they run the app's)."""
     if t["kind"] != "code":
-        return list(keys)
+        return list(keys)       # Data and operation tools can be offered anywhere
     servers = code_names().get(t["name"], [])
     return [k for k in keys if (k in ENDPOINTS and k in servers) or (k not in ENDPOINTS and "app" in servers)]
 
@@ -113,7 +116,7 @@ def out(t: dict, keys: list[str] | None = None) -> dict:
             "classificationLabel": CLASS_LABELS[t["classification"]], "ownClassification": t["own_classification"],
             "datasetId": t["dataset_id"], "datasetName": t["dataset_name"], "enabled": t["enabled"],
             "endpoints": list(t["endpoints"]), "possibleEndpoints": implemented, "core": t["name"] in CORE,
-            "requestLevel": request_level(t), "updatedAt": t["updated_at"]}
+            "requestLevel": request_level(t), "updatedAt": t["updated_at"], "artifactId": t.get("artifact_id")}
 
 
 async def get(conn, tool_id: int) -> dict:
@@ -156,6 +159,12 @@ def spec_for(t: dict, endpoint: str) -> dict:
         spec = dict(catalog_spec(endpoints_mod.handler_server(endpoint), t["name"]))
         if t["description"] and t["description"] != spec["description"]:
             spec["description"] = t["description"]
+    elif t["kind"] == "operation":
+        from app.devkit.operations import param_specs
+        definition = t.get("op_definition") or {}
+        spec = {"server": endpoint, "domain": "operation", "name": t["name"], "mode": "read",
+                "description": t["description"] or definition.get("description") or t["name"], "params": param_specs(definition),
+                "link": None, "examples": t.get("examples") or []}
     else:
         desc = t["description"] or t["dataset_description"] or ""
         spec = {"server": endpoint, "domain": "data", "name": t["name"], "mode": "read",

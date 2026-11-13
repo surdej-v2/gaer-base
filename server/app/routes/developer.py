@@ -124,6 +124,9 @@ async def update_artifact(artifact_id: int, body: ArtifactPatch, p: Principal = 
                         before={k: a[k] for k in changed}, after=changed)
         if body.enabled is not None:
             await artifacts.set_status(conn, a, body.enabled, actor_id=p.user_id, meta=p.meta)
+            if a["type"] == "mcp_endpoint":
+                from app.devkit import mcp_endpoints
+                await mcp_endpoints.set_enabled(conn, a, body.enabled)
         return await artifacts.detail(conn, artifact_id)
 
 

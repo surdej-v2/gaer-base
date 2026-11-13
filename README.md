@@ -50,7 +50,7 @@ herfra ind i sin fork.
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP-klienter (OAuth) | MCP-servere: appen som den indloggede bruger, admin med kladder, og egne endpoints fra MCP Studio på `/mcp/<nøgle>`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. |
 | `/health` | udrulning | Sundhedstjek (database + version), bruges af `deploy/deploy.sh`. |
 
-<details><summary>Alle ruter (131)</summary>
+<details><summary>Alle ruter (136)</summary>
 
 | Sti | Svarer | Adgang | Side |
 | --- | --- | --- | --- |
@@ -84,7 +84,7 @@ herfra ind i sin fork.
 | `/developer/studio/mcp` | appen | admin | MCP Studio |
 | `/developer/prompts` | appen | admin | Promptkatalog |
 | `/developer/trae` | appen | admin | Træstrukturer |
-| `/developer/datastudie` | appen | admin | Datastudie |
+| `/developer/datastudie` | appen | admin | Endpoints i Datastudie |
 | `/developer/pipeline` | appen | admin | Pipelines |
 | `/developer/api` | appen | admin | API-studie |
 | `/developer/forbindelser` | appen | admin | Dataforbindelser |
@@ -105,6 +105,11 @@ herfra ind i sin fork.
 | `/developer/pipeline/:id` | appen | admin | Pipeline-editor |
 | `/developer/forbindelser/cache` | appen | admin | Cache |
 | `/developer/forbindelser/:id` | appen | admin | Forbindelse |
+| `/developer/datastudie/ny` | appen | admin | Nyt endpoint |
+| `/developer/datastudie/endpoints/:id` | appen | admin | Endpoint |
+| `/developer/datastudie/operationer` | appen | admin | Operationer |
+| `/developer/datastudie/operationer/:id` | appen | admin | Operation |
+| `/developer/datastudie/multisource` | appen | admin | Multisource-kilder |
 | `/admin` | admin-appen | admin | Statistik |
 | `/admin/go` | admin-appen | admin | Deep link |
 | `/admin/users` | admin-appen | admin | Brugere og roller |

@@ -526,7 +526,7 @@
    "group": "developer",
    "app": "app",
    "access": "admin",
-   "title": "Datastudie"
+   "title": "Endpoints i Datastudie"
   },
   {
    "path": "/developer/pipeline",
@@ -667,6 +667,41 @@
    "app": "app",
    "access": "admin",
    "title": "Forbindelse"
+  },
+  {
+   "path": "/developer/datastudie/ny",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Nyt endpoint"
+  },
+  {
+   "path": "/developer/datastudie/endpoints/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Endpoint"
+  },
+  {
+   "path": "/developer/datastudie/operationer",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Operationer"
+  },
+  {
+   "path": "/developer/datastudie/operationer/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Operation"
+  },
+  {
+   "path": "/developer/datastudie/multisource",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Multisource-kilder"
   },
   {
    "path": "/admin",

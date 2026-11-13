@@ -31,6 +31,7 @@ MINIMUM = {"white": 0, "green": 0, "yellow": 1, "red": 3}
 LABELS = {"show": "Vis", "round": "Afrund", "interval": "Vis som interval", "aggregate": "Kun aggregeret",
           "remove": "Fjern", "mask": "Maskér", "hash": "Hash", "partial": "Delvis visning"}
 RANK = {"white": 0, "green": 1, "yellow": 2, "red": 3}
+CLASS_DA = {"white": "hvid", "green": "grøn", "yellow": "gul", "red": "rød"}
 
 
 class MaskingError(ValueError):
@@ -63,7 +64,7 @@ def policy_for(fields: list[dict], overrides: dict[str, str] | None = None) -> d
         if choice not in STRICTNESS:
             raise MaskingError(f"Ukendt maskering for {f['name']}: {choice}")
         if STRICTNESS[choice] < MINIMUM[effective_class(f)]:
-            raise MaskingError(f"{f['name']} er {effective_class(f)} og kan ikke vises med '{LABELS[choice]}'. "
+            raise MaskingError(f"{f['name']} er {CLASS_DA[effective_class(f)]} og kan ikke vises med '{LABELS[choice]}'. "
                                f"Vælg mindst {LABELS[DEFAULT[effective_class(f)]].lower()}")
         policy[f["name"]] = choice
     return policy
