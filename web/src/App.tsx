@@ -27,6 +27,7 @@ import { ArtifactPage } from "./developer/devui";
 import DevHelp, { Soon } from "./developer/Help";
 import { PipelineEditor, PipelineList, PipelineNew, PlansPage, RunPage, RunsPage, SnapshotsPage } from "./developer/Pipeline";
 import { ConnectionList, ConnectionPage } from "./developer/Connections";
+import { MultisourceList, MultisourcePage } from "./developer/Multisource";
 import { ClientsPage, McpOverview, MonitorPage, TestBench } from "./developer/McpStudie";
 import { CachePage, EndpointList, EndpointPage, Guide, OperationList, OperationPage } from "./developer/Datastudie";
 import StudioOverview from "./developer/StudioOverview";
@@ -174,7 +175,8 @@ export default function App() {
           <Route path="datastudie/endpoints/:id" element={<EndpointPage />} />
           <Route path="datastudie/operationer" element={<OperationList />} />
           <Route path="datastudie/operationer/:id" element={<OperationPage />} />
-          <Route path="datastudie/multisource" element={<Soon title="Multisource-kilder" text="Kilder, der henter fra flere kilder live, parallelt og med cache." />} />
+          <Route path="datastudie/multisource" element={<MultisourceList />} />
+          <Route path="datastudie/multisource/:id" element={<MultisourcePage />} />
           <Route path="pipeline" element={<PipelineList />} />
           <Route path="pipeline/ny" element={<PipelineNew />} />
           <Route path="pipeline/snapshots" element={<SnapshotsPage />} />

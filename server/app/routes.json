@@ -733,6 +733,13 @@
    "title": "Eksterne MCP-servere"
   },
   {
+   "path": "/developer/datastudie/multisource/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Multisource-kilde"
+  },
+  {
    "path": "/admin",
    "group": "admin",
    "app": "admin",

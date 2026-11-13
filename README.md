@@ -50,7 +50,7 @@ herfra ind i sin fork.
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP-klienter (OAuth) | MCP-servere: appen som den indloggede bruger, admin med kladder, og egne endpoints fra MCP Studio på `/mcp/<nøgle>`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. |
 | `/health` | udrulning | Sundhedstjek (database + version), bruges af `deploy/deploy.sh`. |
 
-<details><summary>Alle ruter (141)</summary>
+<details><summary>Alle ruter (142)</summary>
 
 | Sti | Svarer | Adgang | Side |
 | --- | --- | --- | --- |
@@ -115,6 +115,7 @@ herfra ind i sin fork.
 | `/developer/mcp/klienter` | appen | admin | Forbundne klienter |
 | `/developer/mcp/drift` | appen | admin | MCP-overvågning |
 | `/developer/mcp/eksterne` | appen | admin | Eksterne MCP-servere |
+| `/developer/datastudie/multisource/:id` | appen | admin | Multisource-kilde |
 | `/admin` | admin-appen | admin | Statistik |
 | `/admin/go` | admin-appen | admin | Deep link |
 | `/admin/users` | admin-appen | admin | Brugere og roller |

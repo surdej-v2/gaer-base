@@ -57,3 +57,26 @@ call logs its arguments with the values of parameters on non-white fields masked
 
 Token buckets per key (`cache.take(key, per_minute)`): Redis Lua script or one Postgres statement
 (`dev_rate_buckets`). Idempotency keys (`idem_get`/`idem_put`): Redis `SET NX PX 24h` or `dev_idempotency`.
+
+## Multisource sources (fase 5; DS-10 … DS-17)
+
+`app/devkit/multisource.py`, artifact type `multisource`, UI `/developer/datastudie/multisource`.
+
+- A definition is a list of steps (JSON) with `operation` (an operation id), `http` (`{source, dataset}` of an API source
+  with app access: API key, bearer or OAuth client credentials from Hemmeligheder) or `delegated: true`.
+- The graph runs level by level (`levels()`); steps on one level run in parallel (`asyncio.gather`). Roots are merged on
+  `key`; `after` + `join` merges by local → foreign; `foreach` enriches each element (one row: fields merged; several:
+  a list under the step id), at most `concurrency` calls at a time, or in batches of `batch.size` through an operation
+  parameter with op `in` (`WHERE id = ANY(...)`). A foreach on the base step enriches the result.
+- Pagination: offset for operations (`paginate: true`), `cursor` or `nextLink` (Microsoft Graph, `@odata.nextLink`)
+  for HTTP steps, up to `max_items`. A nextLink to a host outside the source's hosts is refused.
+- Limits: `max_items`, one `deadline_ms` for the whole call, `timeout_ms` per call, `retries` with exponential backoff
+  and jitter; HTTP 429 waits for `Retry-After` (at most 30 s and never past the deadline).
+- `partial: mark` (default): a failing element gets `_fejl: {step: message}` and the answer `partial: true`;
+  `partial: fail`: the first failure stops the call (424).
+- Every step masks before anything is merged or cached (operations mask; HTTP steps by their dataset's fields).
+- Cache per step with its own TTL; `delegated` steps put the user in the key (F-19) and answer "ikke tilgængelig endnu".
+- A multisource source can be a tool on a Datastudie endpoint (`{"name": …, "multisource": id}`); its parameters are
+  always masked in the MCP log.
+- Microsoft Graph with app access is an API source like any other (base_url, `auth: oauth2` client credentials, rows
+  `$.value[*]`, `paginate: {type: nextLink}`); `$batch` (up to 20 calls) is not used — batch calls go through operations.

@@ -36,8 +36,9 @@ async def prepare(conn, artifact: dict | None, definition: dict) -> dict:
         if name in seen:
             raise HTTPException(422, f"{name} findes to gange")
         seen.add(name)
-        op = await db.fetch_one(conn, f"select {artifacts.COLUMNS} from dev_artifacts a where a.id = %s and a.type = 'operation'",
-                                (int(t.get("operation") or 0),))
+        op = await db.fetch_one(conn, f"""select {artifacts.COLUMNS} from dev_artifacts a where a.id = %s
+                                           and a.type in ('operation', 'multisource')""",
+                                (int(t.get("operation") or t.get("multisource") or 0),))
         if op is None:
             raise HTTPException(422, f"{name}: operationen findes ikke")
         v = await artifacts.current(conn, op) or await artifacts.open_version(conn, op["id"])

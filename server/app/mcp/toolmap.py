@@ -162,6 +162,10 @@ def spec_for(t: dict, endpoint: str) -> dict:
     elif t["kind"] == "operation":
         from app.devkit.operations import param_specs
         definition = t.get("op_definition") or {}
+        if "steps" in definition:   # a multisource source (app/devkit/multisource.py)
+            definition = {"params": [{"name": p["name"], "type": p.get("type", "string"), "required": bool(p.get("required")),
+                                      "description": p.get("description", ""), "field": p["name"]} for p in definition.get("params") or []],
+                          "max_limit": definition.get("limits", {}).get("max_items", 200), "description": definition.get("description")}
         spec = {"server": endpoint, "domain": "operation", "name": t["name"], "mode": "read",
                 "description": t["description"] or definition.get("description") or t["name"], "params": param_specs(definition),
                 "link": None, "examples": t.get("examples") or []}

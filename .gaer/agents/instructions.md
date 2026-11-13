@@ -97,7 +97,7 @@ They share the same login (session cookie), the same database and the same API.
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP clients (OAuth bearer) | **MCP servers** (Streamable HTTP): the app as the logged-in user, admin where every change is a draft, and the endpoints defined in `/developer/studio/mcp` on `/mcp/<key>` (as the user, with the tools chosen there). Consent page `/forbind`; deep links `/go` and `/admin/go`; hub in `/admin/mcp`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. | `server/app/mcp/`, skill `gaer-mcp`, `server/app/mcp/endpoints.py` |
 | `/health` | deploy | Database check + version; used by `deploy/deploy.sh` before switching versions. | `main.py` |
 
-<details><summary>All routes (141)</summary>
+<details><summary>All routes (142)</summary>
 
 | Path | Served by | Access | Page |
 | --- | --- | --- | --- |
@@ -162,6 +162,7 @@ They share the same login (session cookie), the same database and the same API.
 | `/developer/mcp/klienter` | app (`index.html`) | admin | Forbundne klienter |
 | `/developer/mcp/drift` | app (`index.html`) | admin | MCP-overvågning |
 | `/developer/mcp/eksterne` | app (`index.html`) | admin | Eksterne MCP-servere |
+| `/developer/datastudie/multisource/:id` | app (`index.html`) | admin | Multisource-kilde |
 | `/admin` | admin app (`admin.html`) | admin | Statistik |
 | `/admin/go` | admin app (`admin.html`) | admin | Deep link |
 | `/admin/users` | admin app (`admin.html`) | admin | Brugere og roller |

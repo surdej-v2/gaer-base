@@ -14,7 +14,10 @@ from app.mcp.registry import Caller, ToolError
 
 
 def log_args(t: dict, args: dict | None) -> dict | None:
-    return masking.mask_args(args, operations.sensitive_params(t.get("op_definition") or {}))
+    d = t.get("op_definition") or {}
+    if "steps" in d:   # a multisource source: its parameters feed several sources, so their values are never logged
+        return masking.mask_args(args, set(args or {}))
+    return masking.mask_args(args, operations.sensitive_params(d))
 
 
 async def run(t: dict, args: dict, caller: Caller) -> dict:
@@ -26,6 +29,10 @@ async def run(t: dict, args: dict, caller: Caller) -> dict:
     if v is None:
         raise ToolError("Operationen har ingen udgivet version endnu")
     try:
+        if a["type"] == "multisource":
+            from app.devkit import multisource
+            out = await multisource.execute(a, v, args, principal=caller.principal, user_id=caller.user_id)
+            return {"rows": out["rows"], "count": out["count"], "partial": out["partial"], "version": out["version"], "_cache": None}
         out = await operations.execute(a, v, args, principal=caller.principal, user_id=caller.user_id)
     except HTTPException as e:
         raise ToolError(str(e.detail))

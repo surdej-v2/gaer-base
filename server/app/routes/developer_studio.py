@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app import db
-from app.devkit import artifacts, assist, cache, masking, mcp_endpoints, operations
+from app.devkit import artifacts, assist, cache, masking, mcp_endpoints, multisource, operations
 from app.mcp import endpoints as endpoints_mod
 from app.mcp import oauth
 from app.sessions import Principal, require_admin
@@ -304,3 +304,73 @@ async def dataset_fields(dataset_id: int):
                                            where dataset_id = %s order by position, id""", (dataset_id,))
     return {"items": [{**r, "suggested": masking.default_for(r), "allowed": masking.allowed_for(r)} for r in rows]}
 
+
+
+# ── Multisource sources (DS-10 … DS-17) ─────────────────────────────────────
+
+@router.get("/multisource")
+async def list_multisource():
+    async with db.connection() as conn:
+        rows = await db.fetch_all(conn, f"""select {artifacts.COLUMNS}, v.major, v.minor, v.patch, v.definition from dev_artifacts a
+                                            left join dev_artifact_versions v on v.id = a.current_version_id
+                                            where a.type = 'multisource' order by a.name""")
+    return {"items": [{**artifacts.out(r, r if r["major"] is not None else None),
+                       "steps": [s["id"] for s in (r["definition"] or {}).get("steps") or []]} for r in rows]}
+
+
+class MultiIn(BaseModel):
+    slug: str = Field(min_length=1, max_length=62)
+    name: str = Field(min_length=1, max_length=120)
+    definition: dict
+    approval_flow: bool = False
+
+
+@router.post("/multisource", status_code=201)
+async def create_multisource(body: MultiIn, p: Principal = Depends(require_admin)):
+    async with db.connection() as conn:
+        d = await multisource.validate(conn, body.definition)
+        a = await artifacts.create(conn, type_="multisource", slug=_slug(body.slug), name=body.name, description=d["description"],
+                                   definition=d, actor_id=p.user_id, meta=p.meta, approval_flow=body.approval_flow)
+        return await artifacts.detail(conn, a["id"])
+
+
+@router.get("/multisource/{artifact_id}")
+async def multisource_detail(artifact_id: int):
+    async with db.connection() as conn:
+        a = await artifacts.get(conn, artifact_id)
+        if a["type"] != "multisource":
+            raise HTTPException(404, "Kilden findes ikke")
+        detail = await artifacts.detail(conn, artifact_id)
+    working = detail["draft"] or detail["current"]
+    return {"artifact": detail, "levels": [[s["id"] for s in lvl] for lvl in multisource.levels(working["definition"]["steps"])]}
+
+
+@router.put("/multisource/{artifact_id}")
+async def save_multisource(artifact_id: int, body: OperationEdit, p: Principal = Depends(require_admin)):
+    async with db.connection() as conn:
+        a = await artifacts.get(conn, artifact_id, lock=True)
+        if a["type"] != "multisource":
+            raise HTTPException(404, "Kilden findes ikke")
+        d = await multisource.validate(conn, body.definition)
+        v = await artifacts.save_draft(conn, a, d, actor_id=p.user_id, meta=p.meta, note=body.note)
+        if body.submit:
+            v = await artifacts.submit(conn, a, actor_id=p.user_id, meta=p.meta, note=body.note, reason=body.reason)
+    return {"version": artifacts.version_out(v)}
+
+
+@router.post("/multisource/{artifact_id}/try")
+async def try_multisource(artifact_id: int, body: TryIn, p: Principal = Depends(require_admin)):
+    """DS-16: every step with sample rows (masked), time, calls and cache status."""
+    async with db.connection() as conn:
+        a = await artifacts.get(conn, artifact_id)
+        v = await artifacts.open_version(conn, artifact_id) if body.draft else await artifacts.current(conn, a)
+    if v is None:
+        raise HTTPException(409, "Der er ingen version at teste")
+    if not body.cache:
+        await cache.clear_artifact(artifact_id)
+    return await multisource.execute(a, v, body.args, principal=p, user_id=p.user_id)
+
+
+@router.post("/multisource/{artifact_id}/cache/clear")
+async def clear_multisource_cache(artifact_id: int, p: Principal = Depends(require_admin)):
+    return await clear_cache(artifact_id, p)

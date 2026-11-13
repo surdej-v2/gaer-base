@@ -339,6 +339,10 @@
       "title": "Multisource-kilder",
       "anchors": []
     },
+    "/developer/datastudie/multisource/:id": {
+      "title": "Multisource-kilde",
+      "anchors": []
+    },
     "/developer/datastudie/ny": {
       "title": "Nyt endpoint",
       "anchors": []
