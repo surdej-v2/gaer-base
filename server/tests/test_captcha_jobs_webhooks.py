@@ -89,8 +89,8 @@ async def test_schedules_and_retention_policies(make_client, owner_conn):
     owner_conn.execute("update job_schedules set next_run_at = now() - interval '1 minute'")
     # maintenance, retention.logs, retention.cleanup, knowledge.bin, mail.retention, mail.sync, mail.backup,
     # files.uploads_cleanup, mail.lettermint_poll, secrets.maintenance, secrets.digest, pipeline.schedule,
-    # developer.cache_cleanup, developer.metrics
-    assert await jobs.schedule_due() == 14
+    # developer.cache_cleanup, developer.metrics, developer.api_sunset
+    assert await jobs.schedule_due() == 15
     assert await jobs.schedule_due() == 0  # next run moved forward
 
     # Old operational data goes; new stays.

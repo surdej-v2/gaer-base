@@ -111,7 +111,8 @@ def clean_database():
                         data_sources, datasets, dataset_fields, events, kill_switches, meta_dimensions, meta_nodes, meta_objects
                         restart identity cascade""")
         # Gær Developer: the ingest status, snapshots and the foreign tables of connections.
-        conn.execute("truncate ingest.load_status, dev_cache, dev_cache_generations, dev_rate_buckets, dev_idempotency")
+        conn.execute("truncate ingest.load_status, dev_cache, dev_cache_generations, dev_rate_buckets, dev_idempotency, dev_call_metrics, "
+                     "dev_metric_alerts, dev_mcp_testcases, dev_api_log, dev_instance_keys, dev_known_instances, dev_imports cascade")
         conn.execute("""do $$ declare r record; begin
             for r in select matviewname from pg_matviews where schemaname = 'snapshots' loop
                 execute format('drop materialized view if exists snapshots.%I cascade', r.matviewname); end loop;

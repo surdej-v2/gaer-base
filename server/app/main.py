@@ -37,6 +37,8 @@ from app.routes import developer as developer_routes
 from app.routes import developer_data as developer_data_routes
 from app.routes import developer_studio as developer_studio_routes
 from app.routes import developer_mcp as developer_mcp_routes
+from app.routes import developer_api as developer_api_routes
+from app.routes import gaer_api
 from app.routes import yubikey as yubikey_routes
 from app.security import bootstrap_admin_email, bootstrap_admin_phone
 from app.sessions import optional_principal
@@ -206,6 +208,7 @@ def create_app() -> FastAPI:
               meta_routes.router, admin_meta.router,
               messages_routes.router, admin_messages.router, developer_routes.router, developer_data_routes.router,
               developer_studio_routes.router, developer_mcp_routes.router,
+              developer_api_routes.router, gaer_api.router,
               web.router, files.memory_router):
         app.include_router(r)
 

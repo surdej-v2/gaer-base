@@ -30,6 +30,9 @@ the registered tools and the catalog differ. Code: `server/app/mcp/`.
 - `Caller.server` is the endpoint key; `mcp_log.server` and `mcp_drafts.server` hold it, so a draft made on
   `/mcp/salg` is confirmed there (`drafts.py` uses `caller.server`).
 
+## Tools from Gær Developer (`specs/developer/RUNTIME.md`)
+- A third kind of tool, `operation` (`mcp_tools.artifact_id`), is written when a Datastudie endpoint (artifact `mcp_endpoint`) is published; it runs `app/devkit/operations.py` (or a multisource source) through `mcp/operation_tools.py`, masked by the approved policy. Its level is its classification; external users do not see non-white operation tools. Arguments on non-white fields are masked in `mcp_log` (column `cache` holds hit/stale/miss). Endpoints with `artifact_id` are changed in Datastudie only. Rate limits per endpoint, user and client: `mcp_endpoints.limits`, checked in `registry.invoke`.
+
 ## Files
 | File | What |
 | --- | --- |

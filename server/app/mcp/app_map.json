@@ -320,7 +320,27 @@
       ]
     },
     "/developer/api": {
-      "title": "API-studie",
+      "title": "API'er",
+      "anchors": []
+    },
+    "/developer/api/:id": {
+      "title": "API",
+      "anchors": []
+    },
+    "/developer/api/dokumentation": {
+      "title": "API-dokumentation",
+      "anchors": []
+    },
+    "/developer/api/drift": {
+      "title": "API-overvågning",
+      "anchors": []
+    },
+    "/developer/api/konsol": {
+      "title": "Testkonsol",
+      "anchors": []
+    },
+    "/developer/api/noegler": {
+      "title": "API-nøgler",
       "anchors": []
     },
     "/developer/artefakter/:id": {

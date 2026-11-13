@@ -40,7 +40,7 @@ herfra ind i sin fork.
 | `/user/mail`, `/admin/mail` | logget ind (`/admin/mail`: admin, Drift) | **Mail, kalender og kontakter**: personlig postkasse i Stalwart, fælles postkasser, kalendere og adressebøger med deling, udgående mail via Lettermint, mail slettes efter højst 30 dage. `/user/mail` til brugeren, `/admin/mail` til drift. |
 | `/beskeder`, `/samtaler`, `/admin/messages` | logget ind (`/admin/messages`: admin, Support, Privatliv og Drift) | **Beskeder** fra administrationen: udsendelse i to trin med overslag, indbakke på `/beskeder`, SMS kun med brugerens eget ja, e-mail, svar som privat tråd med administrationen. `/admin/messages` til afsendelse, svar, levering og regler. **Samtaler**: Fællessamtalen og direkte beskeder med anmeld, bloker og ordfilter; moderering i `/admin/messages/moderation`. |
 | `/forbind`, `/go` | logget ind | **MCP-samtykke** (`/forbind`: en klient beder om adgang; `mcp:admin` kræver frisk anden faktor) og **deep links** (`/go?path=…&focus=…`, også `/admin/go`), der åbner en side og fokuserer et `data-deeplink`-anker. |
-| `/developer/…` | admin med rollen Data eller Fuld | **Udviklerportal**: overblik over API-kilder, datakatalog, MCP-endpoints og værktøjer, og **Studio**. API Studio registrerer et API med en kildebeskrivelse (YAML, cURL eller OpenAPI), tester kaldet og udstiller datasættene i kataloget. MCP Studio definerer MCP-endpoints på `/mcp/<nøgle>` og vælger deres værktøjer. Desuden promptkataloget og træstrukturer. |
+| `/developer/…` | interne brugere med admin-rollen Udvikler eller Udvikler-admin (eller Data eller Fuld); /gaer/… for API-nøgler og tokens | **Gær Developer** (spec i `specs/developer/`): egen sidebar, brødkrumme og ⌘K. Fire studier på én kerne af versionerede artefakter med RACI-ejere og godkendelse: Datastudie, Pipeline, MCP-studie og API-studie, plus datakatalog, forbindelser, godkendelser og eksport/import. |
 | `/admin/…` | admin (+ MFA) | Administration — en selvstændig app (`web/admin.html`). Kræver anden faktor efter tre logins med engangskode. Alt logges. |
 | `/m/…` | logget ind | Mobil-app (PWA) med bundmenu, AI, klip, filer og profil. |
 | `/extension/…` | i browserudvidelsen | Sidepanelet: aktuel side, klip, tags for siden og AI med siden som kontekst. |
@@ -50,7 +50,7 @@ herfra ind i sin fork.
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP-klienter (OAuth) | MCP-servere: appen som den indloggede bruger, admin med kladder, og egne endpoints fra MCP Studio på `/mcp/<nøgle>`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. |
 | `/health` | udrulning | Sundhedstjek (database + version), bruges af `deploy/deploy.sh`. |
 
-<details><summary>Alle ruter (142)</summary>
+<details><summary>Alle ruter (148)</summary>
 
 | Sti | Svarer | Adgang | Side |
 | --- | --- | --- | --- |
@@ -86,7 +86,7 @@ herfra ind i sin fork.
 | `/developer/trae` | appen | admin | Træstrukturer |
 | `/developer/datastudie` | appen | admin | Endpoints i Datastudie |
 | `/developer/pipeline` | appen | admin | Pipelines |
-| `/developer/api` | appen | admin | API-studie |
+| `/developer/api` | appen | admin | API'er |
 | `/developer/forbindelser` | appen | admin | Dataforbindelser |
 | `/developer/eksport` | appen | admin | Eksport og import |
 | `/developer/katalog` | appen | admin | Datakatalog |
@@ -116,6 +116,12 @@ herfra ind i sin fork.
 | `/developer/mcp/drift` | appen | admin | MCP-overvågning |
 | `/developer/mcp/eksterne` | appen | admin | Eksterne MCP-servere |
 | `/developer/datastudie/multisource/:id` | appen | admin | Multisource-kilde |
+| `/developer/api/noegler` | appen | admin | API-nøgler |
+| `/developer/api/konsol` | appen | admin | Testkonsol |
+| `/developer/api/dokumentation` | appen | admin | API-dokumentation |
+| `/developer/api/drift` | appen | admin | API-overvågning |
+| `/developer/api/:id` | appen | admin | API |
+| `/gaer/{path}` | serveren | OAuth | API'er fra API-studie |
 | `/admin` | admin-appen | admin | Statistik |
 | `/admin/go` | admin-appen | admin | Deep link |
 | `/admin/users` | admin-appen | admin | Brugere og roller |

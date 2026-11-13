@@ -28,6 +28,7 @@ import DevHelp, { Soon } from "./developer/Help";
 import { PipelineEditor, PipelineList, PipelineNew, PlansPage, RunPage, RunsPage, SnapshotsPage } from "./developer/Pipeline";
 import { ConnectionList, ConnectionPage } from "./developer/Connections";
 import { MultisourceList, MultisourcePage } from "./developer/Multisource";
+import { ApiList, ApiMonitorPage, ApiPage, ConsolePage, DocsPage, ExportPage, KeysPage } from "./developer/ApiStudie";
 import { ClientsPage, McpOverview, MonitorPage, TestBench } from "./developer/McpStudie";
 import { CachePage, EndpointList, EndpointPage, Guide, OperationList, OperationPage } from "./developer/Datastudie";
 import StudioOverview from "./developer/StudioOverview";
@@ -189,11 +190,16 @@ export default function App() {
           <Route path="mcp/klienter" element={<ClientsPage />} />
           <Route path="mcp/drift" element={<MonitorPage />} />
           <Route path="mcp/eksterne" element={<Soon title="Eksterne MCP-servere" text="Eksterne MCP-servere udstillet gennem Gær, med godkendte tool-lister." />} />
-          <Route path="api" element={<Soon title="API-studie" text="REST-API'er over de samme operationer, med OpenAPI og nøgler." />} />
+          <Route path="api" element={<ApiList />} />
+          <Route path="api/noegler" element={<KeysPage />} />
+          <Route path="api/konsol" element={<ConsolePage />} />
+          <Route path="api/dokumentation" element={<DocsPage />} />
+          <Route path="api/drift" element={<ApiMonitorPage />} />
+          <Route path="api/:id" element={<ApiPage />} />
           <Route path="forbindelser" element={<ConnectionList />} />
           <Route path="forbindelser/cache" element={<CachePage />} />
           <Route path="forbindelser/:id" element={<ConnectionPage />} />
-          <Route path="eksport" element={<Soon title="Eksport og import" text="Flyt artefakter mellem instanser." />} />
+          <Route path="eksport" element={<ExportPage />} />
           <Route path="katalog" element={<CatalogList />} />
           <Route path="katalog/lineage" element={<CatalogLineage />} />
           <Route path="katalog/:id" element={<CatalogDataset />} />

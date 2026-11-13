@@ -94,10 +94,10 @@ ROLE_SECTIONS: dict[str, list[str]] = {
 }
 
 # Gær Developer: changes only Udvikler-admin (or Fuld) may make — connections, external MCP servers, giving the role
-# Udvikler, and API keys. Reading them is open to everyone with /developer.
+# Udvikler, API keys, known instances and imports. Reading them is open to everyone with /developer.
 DEVELOPERS = {"udvikler", "udvikler_admin", "data", FULL}
 DEV_ADMIN_ROLES = {"udvikler_admin", FULL}
-DEV_ADMIN_WRITES = [re.compile(r"^/api/admin/dev/(connections|upstreams|developers|api-keys)(/|$)")]
+DEV_ADMIN_WRITES = [re.compile(r"^/api/admin/dev/(connections|upstreams|developers|api-keys|instances|import)(/|$)")]
 
 # Only `fuld`, even for roles whose sections contain the path.
 FULL_ONLY = [re.compile(r"^/api/admin/users/\d+/(role|admin-roles)$")]
