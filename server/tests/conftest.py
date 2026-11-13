@@ -110,6 +110,18 @@ def clean_database():
                         mcp_clients, mcp_tokens, mcp_drafts, mcp_log,
                         data_sources, datasets, dataset_fields, events, kill_switches, meta_dimensions, meta_nodes, meta_objects
                         restart identity cascade""")
+        # Gær Developer: the ingest status, snapshots and the foreign tables of connections.
+        conn.execute("truncate ingest.load_status")
+        conn.execute("""do $$ declare r record; begin
+            for r in select matviewname from pg_matviews where schemaname = 'snapshots' loop
+                execute format('drop materialized view if exists snapshots.%I cascade', r.matviewname); end loop;
+            for r in select tablename from pg_tables where schemaname = 'snapshots' loop
+                execute format('drop table if exists snapshots.%I cascade', r.tablename); end loop;
+            for r in select nspname from pg_namespace where nspname like 'fdw\\_%' loop
+                execute format('drop schema %I cascade', r.nspname); end loop;
+            for r in select srvname from pg_foreign_server where srvname like 'gaer\\_conn\\_%' loop
+                execute format('drop server %I cascade', r.srvname); end loop;
+            end $$""")
         # The truncate cascades into mcp_endpoints (created_by → users): put the built-in /mcp and /mcp/admin rows back.
         from app.mcp.endpoints import BUILTIN_ROWS
         for key, name, description in BUILTIN_ROWS:

@@ -307,7 +307,12 @@ async def query(dataset_id: int, body: QueryIn, admin: Principal = Depends(requi
             raise HTTPException(422, f"{by_name[name]['label'] or name} er maskeret. Vis maskerede felter med en årsag "
                                      "for at filtrere eller sortere på det")
 
-    if d["source_id"] is None:
+    if d.get("kind") in ("foreign", "snapshot"):
+        # Gær Developer: foreign tables (fdw_<forbindelse>) and snapshots live in the analytics database.
+        from app.devkit.connections import table_ref
+        schema, table = table_ref(d, {"key": d["source_key"]} if d["source_id"] else None)
+        result = await _query_table(table, fields, body, sort_field, desc, schema=schema)
+    elif d["source_id"] is None:
         result = await _query_table(d["key"], fields, body, sort_field, desc)
     else:
         result = await _query_api(d, fields, body, sort_field, desc, admin)
@@ -318,7 +323,8 @@ async def query(dataset_id: int, body: QueryIn, admin: Principal = Depends(requi
     return {**result, "rows": rows, "columns": columns, "unmasked_until": until}
 
 
-async def _query_table(table: str, fields: list[dict], body: QueryIn, sort_field: str | None, desc: bool) -> dict:
+async def _query_table(table: str, fields: list[dict], body: QueryIn, sort_field: str | None, desc: bool,
+                       schema: str = "public") -> dict:
     by_name = {f["name"]: f for f in fields}
     conditions, params = [], []
     for flt in body.filters:
@@ -355,10 +361,11 @@ async def _query_table(table: str, fields: list[dict], body: QueryIn, sort_field
     else:
         order = sql.SQL("")
     columns = sql.SQL(", ").join(sql.Identifier(f["name"]) for f in fields)
-    select = sql.SQL("select {} from {}").format(columns, sql.Identifier(table)) + where + order + sql.SQL(" limit %s offset %s")
-    count = sql.SQL("select count(*) as n from {}").format(sql.Identifier(table)) + where
+    ident = sql.Identifier(table) if schema == "public" else sql.Identifier(schema, table)
+    select = sql.SQL("select {} from {}").format(columns, ident) + where + order + sql.SQL(" limit %s offset %s")
+    count = sql.SQL("select count(*) as n from {}").format(ident) + where
     try:
-        async with db.connection() as conn:
+        async with (db.connection() if schema == "public" else db.analytics_connection()) as conn:
             await conn.execute("set transaction read only")
             await conn.execute("set local statement_timeout = '5s'")
             rows = await db.fetch_all(conn, select, [*params, body.limit, body.offset])

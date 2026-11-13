@@ -279,8 +279,9 @@ async def submit(conn, artifact: dict, *, actor_id: int, meta: RequestMeta, note
     d = contracts.diff(cur["contract"] if cur else None, v["contract"])
     if d["downclassified"] and not (reason or v["reason"]).strip():
         raise HTTPException(422, "Nedklassificering kræver en begrundelse: " + ", ".join(d["downclassified"]))
-    if not await may_submit(conn, artifact):
-        raise HTTPException(409, "Gemte testcases skal bestå, før en major udgives")
+    problem = await gate_problem(conn, artifact, v)
+    if problem:
+        raise HTTPException(409, problem)
     await conn.execute("""update dev_artifact_versions set status = 'pending', submitted_at = now(), note = coalesce(nullif(%s, ''), note),
                           reason = coalesce(nullif(%s, ''), reason) where id = %s""", (note, reason, v["id"]))
     await audit(conn, "dev.version.submitted", actor_id=actor_id, meta=meta, table="dev_artifacts", row_id=artifact["id"],
@@ -308,13 +309,16 @@ async def submit(conn, artifact: dict, *, actor_id: int, meta: RequestMeta, note
     return await _maybe_publish(conn, artifact, v["id"], actor_id=actor_id, meta=meta)
 
 
-async def may_submit(conn, artifact: dict) -> bool:
-    """Hook for MCP-10: saved test cases must pass before a major. Replaced by app.devkit.testcases when loaded."""
-    gate = GATES.get(artifact["type"])
-    return True if gate is None else await gate(conn, artifact)
+async def gate_problem(conn, artifact: dict, v: dict) -> str | None:
+    """What stops a version from being submitted: each type may add a gate (PL-15 small groups, MCP-10 test cases)."""
+    for gate in GATES.get(artifact["type"], []):
+        problem = await gate(conn, artifact, v)
+        if problem:
+            return problem
+    return None
 
 
-GATES: dict[str, Callable[[object, dict], Awaitable[bool]]] = {}
+GATES: dict[str, list[Callable[[object, dict, dict], Awaitable[str | None]]]] = {}
 
 
 async def _maybe_publish(conn, artifact: dict, version_id: int, *, actor_id: int, meta: RequestMeta) -> dict:

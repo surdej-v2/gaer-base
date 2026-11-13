@@ -533,7 +533,7 @@
    "group": "developer",
    "app": "app",
    "access": "admin",
-   "title": "Pipeline"
+   "title": "Pipelines"
   },
   {
    "path": "/developer/api",
@@ -547,7 +547,7 @@
    "group": "developer",
    "app": "app",
    "access": "admin",
-   "title": "Forbindelser"
+   "title": "Dataforbindelser"
   },
   {
    "path": "/developer/eksport",
@@ -611,6 +611,62 @@
    "app": "app",
    "access": "admin",
    "title": "Om Developer"
+  },
+  {
+   "path": "/developer/pipeline/ny",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Ny pipeline"
+  },
+  {
+   "path": "/developer/pipeline/snapshots",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Snapshots"
+  },
+  {
+   "path": "/developer/pipeline/koersler",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Kørsler"
+  },
+  {
+   "path": "/developer/pipeline/koersler/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Kørsel"
+  },
+  {
+   "path": "/developer/pipeline/planer",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Planer"
+  },
+  {
+   "path": "/developer/pipeline/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Pipeline-editor"
+  },
+  {
+   "path": "/developer/forbindelser/cache",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Cache"
+  },
+  {
+   "path": "/developer/forbindelser/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Forbindelse"
   },
   {
    "path": "/admin",

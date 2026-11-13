@@ -336,7 +336,15 @@
       "anchors": []
     },
     "/developer/forbindelser": {
-      "title": "Forbindelser",
+      "title": "Dataforbindelser",
+      "anchors": []
+    },
+    "/developer/forbindelser/:id": {
+      "title": "Forbindelse",
+      "anchors": []
+    },
+    "/developer/forbindelser/cache": {
+      "title": "Cache",
       "anchors": []
     },
     "/developer/godkendelser": {
@@ -368,7 +376,31 @@
       "anchors": []
     },
     "/developer/pipeline": {
-      "title": "Pipeline",
+      "title": "Pipelines",
+      "anchors": []
+    },
+    "/developer/pipeline/:id": {
+      "title": "Pipeline-editor",
+      "anchors": []
+    },
+    "/developer/pipeline/koersler": {
+      "title": "Kørsler",
+      "anchors": []
+    },
+    "/developer/pipeline/koersler/:id": {
+      "title": "Kørsel",
+      "anchors": []
+    },
+    "/developer/pipeline/ny": {
+      "title": "Ny pipeline",
+      "anchors": []
+    },
+    "/developer/pipeline/planer": {
+      "title": "Planer",
+      "anchors": []
+    },
+    "/developer/pipeline/snapshots": {
+      "title": "Snapshots",
       "anchors": []
     },
     "/developer/prompts": {

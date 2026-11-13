@@ -50,7 +50,7 @@ herfra ind i sin fork.
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP-klienter (OAuth) | MCP-servere: appen som den indloggede bruger, admin med kladder, og egne endpoints fra MCP Studio på `/mcp/<nøgle>`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. |
 | `/health` | udrulning | Sundhedstjek (database + version), bruges af `deploy/deploy.sh`. |
 
-<details><summary>Alle ruter (123)</summary>
+<details><summary>Alle ruter (131)</summary>
 
 | Sti | Svarer | Adgang | Side |
 | --- | --- | --- | --- |
@@ -85,9 +85,9 @@ herfra ind i sin fork.
 | `/developer/prompts` | appen | admin | Promptkatalog |
 | `/developer/trae` | appen | admin | Træstrukturer |
 | `/developer/datastudie` | appen | admin | Datastudie |
-| `/developer/pipeline` | appen | admin | Pipeline |
+| `/developer/pipeline` | appen | admin | Pipelines |
 | `/developer/api` | appen | admin | API-studie |
-| `/developer/forbindelser` | appen | admin | Forbindelser |
+| `/developer/forbindelser` | appen | admin | Dataforbindelser |
 | `/developer/eksport` | appen | admin | Eksport og import |
 | `/developer/katalog` | appen | admin | Datakatalog |
 | `/developer/katalog/lineage` | appen | admin | Lineage |
@@ -97,6 +97,14 @@ herfra ind i sin fork.
 | `/developer/godkendelser/:id` | appen | admin | Godkendelse |
 | `/developer/artefakter/:id` | appen | admin | Artefakt |
 | `/developer/hjaelp` | appen | admin | Om Developer |
+| `/developer/pipeline/ny` | appen | admin | Ny pipeline |
+| `/developer/pipeline/snapshots` | appen | admin | Snapshots |
+| `/developer/pipeline/koersler` | appen | admin | Kørsler |
+| `/developer/pipeline/koersler/:id` | appen | admin | Kørsel |
+| `/developer/pipeline/planer` | appen | admin | Planer |
+| `/developer/pipeline/:id` | appen | admin | Pipeline-editor |
+| `/developer/forbindelser/cache` | appen | admin | Cache |
+| `/developer/forbindelser/:id` | appen | admin | Forbindelse |
 | `/admin` | admin-appen | admin | Statistik |
 | `/admin/go` | admin-appen | admin | Deep link |
 | `/admin/users` | admin-appen | admin | Brugere og roller |
