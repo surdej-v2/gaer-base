@@ -51,6 +51,8 @@ SECTIONS: dict[str, list[str]] = {
     "/data/explore": ["/api/admin/data"],
     "/data/connect": ["/api/admin/data"],
     "/data/tools": ["/api/admin/data"],
+    # Export and import of data: in no role but fuld (a package can carry everyone's data, an import change anything).
+    "/data/transfer": ["/api/admin/transfer"],
     # The developer portal on /developer (served by the app on /, not /admin): dashboard, API Studio, MCP Studio.
     "/developer": ["/api/admin/studio"],
     "/access": ["/api/admin/access"],

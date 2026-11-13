@@ -18,6 +18,11 @@ from app.security import phone_hash
 from app.storage import get_storage
 
 
+# Rows in data_transfer_changes about one user (three times the user id as text).
+TRANSFER_CHANGES_OF_USER = """(table_name = 'users' and row_key->>'id' = %s) or before->>'user_id' = %s
+                              or before->>'owner_id' = %s"""
+
+
 async def build_user_export(conn, user_id: int) -> dict:
     """Everything stored about one user, as data. Files are added to the zip by export_zip."""
     async def rows(sql, *params):
@@ -207,6 +212,9 @@ async def build_user_export(conn, user_id: int) -> dict:
                                  user_id),
         "ai_budget_alerts": await rows("""select month, kind, pct, used, limit_tokens, created_at, mailed_at from ai_budget_alerts
                                           where user_id = %s order by created_at""", user_id),
+        # Copies an import keeps for UNDO_DAYS so it can be undone (the user's row or rows they own, as they were).
+        "data_transfer_undo": await rows(f"""select table_name, op, before, created_at from data_transfer_changes
+                                             where {TRANSFER_CHANGES_OF_USER} order by id""", *[str(user_id)] * 3),
         "analytics_events": await rows("""select ts, kind, path, referrer, device, browser from analytics_events
                                           where user_id = %s or visitor_id = any(%s) order by ts limit 50000""",
                                        user_id, visitor_ids),
@@ -279,7 +287,8 @@ async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, r
     cascade; their mailbox rows cascade and the mailbox itself is removed in Stalwart by the job mail.principal.delete;
     review screenshots and audio are files; feature usage is purged with the logs; their files in Object Storage (their
     whole home and folders cascade; files they put in /shared stay, with the uploader link set to null); the contact
-    details on their GDPR requests, their unfinished uploads (rows cascade, objects removed), and
+    details on their GDPR requests, their unfinished uploads (rows cascade, objects removed), export and import
+    packages that may hold personal data plus the copies an import kept for undo (/admin/data/transfer), and
     log data about them (via the purge user). The erasure itself is logged without personal data."""
     async with db.connection() as conn:
         user = await ensure_can_erase(conn, user_id)
@@ -319,6 +328,16 @@ async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, r
                               (select conversation_id from conversation_members where user_id = %s)""", (user_id,))
         await conn.execute("""delete from conversation_messages x using conversations c
                               where c.id = x.conversation_id and c.kind = 'instance' and x.author_id = %s""", (user_id,))
+        # Export and import packages may hold their data: they are deleted now (they would expire within days), and
+        # the copies an import kept so it could be undone are removed.
+        await conn.execute(f"delete from data_transfer_changes where {TRANSFER_CHANGES_OF_USER}", [str(user_id)] * 3)
+        packages = await db.fetch_all(conn, """
+            update data_transfers d set storage_key = null, password_enc = null, updated_at = now(),
+                   status = case when status in ('ready', 'uploaded', 'dry_ready') then 'expired' else status end
+            from (select id, storage_key from data_transfers where storage_key is not null
+                  and status not in ('queued', 'running', 'dry_running', 'undoing')
+                  and (kind = 'import' or coalesce(manifest->>'personal', options->>'personal') <> 'without')) old
+            where d.id = old.id returning old.storage_key""")
         await conn.execute("delete from users where id = %s", (user_id,))
         await meta_tree.delete_orphan_objects(conn)  # objects tagged only in their private tree
         await audit(conn, "gdpr.erasure", actor_id=actor_id if actor_id != user_id else None, meta=meta,
@@ -332,6 +351,11 @@ async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, r
             pass  # the row is gone; an orphaned object is found by the storage overview
     for u in open_uploads:
         await uploads.discard(u)
+    for p in packages:
+        try:
+            await get_storage().delete(p["storage_key"])
+        except Exception:
+            pass
     counts = await retention.purge_user(user_id, logs=list(retention.LOGS),
                                         actor_id=actor_id if actor_id != user_id else None, meta=meta,
                                         reason=reason, contacts=[user["email"], user["phone"]])

@@ -850,6 +850,13 @@
    "title": "MCP-værktøjer"
   },
   {
+   "path": "/admin/data/transfer",
+   "group": "admin",
+   "app": "admin",
+   "access": "admin",
+   "title": "Eksport og import"
+  },
+  {
    "path": "/admin/data/:id",
    "group": "admin",
    "app": "admin",

@@ -1,6 +1,6 @@
 // Side menu of the /admin app. Paths are relative to the router basename "/admin".
 import {
-  Activity, Archive, ShieldAlert, BookOpen, LockKeyhole, MessageSquare, Reply, Send, SlidersHorizontal, LayoutDashboard, Route as RouteIcon, SquareTerminal, UsersRound, Waypoints, Mail, KeySquare, Network, Wrench, Bot, ChartColumn, Cookie, FileSearch, Flag, FolderOpen, Gauge, Globe, Library, LogIn, MousePointerClick, PlugZap, Puzzle, RadioTower, ScrollText, Server,
+  Activity, Archive, ArrowLeftRight, ShieldAlert, BookOpen, LockKeyhole, MessageSquare, Reply, Send, SlidersHorizontal, LayoutDashboard, Route as RouteIcon, SquareTerminal, UsersRound, Waypoints, Mail, KeySquare, Network, Wrench, Bot, ChartColumn, Cookie, FileSearch, Flag, FolderOpen, Gauge, Globe, Library, LogIn, MousePointerClick, PlugZap, Puzzle, RadioTower, ScrollText, Server,
   Settings, Smartphone, Table2, Plug, Timer, TrendingUp, Users, VenetianMask, Webhook, type LucideIcon,
 } from "lucide-react";
 
@@ -75,6 +75,7 @@ export const NAV: NavGroup[] = [
       { path: "/data/explore", label: "Udforsk", icon: Table2 },
       { path: "/data/connect", label: "Forbind API", icon: Plug },
       { path: "/data/tools", label: "MCP-værktøjer", icon: Wrench },
+      { path: "/data/transfer", label: "Eksport og import", icon: ArrowLeftRight },
     ],
   },
   {

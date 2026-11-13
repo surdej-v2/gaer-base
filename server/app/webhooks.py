@@ -87,6 +87,9 @@ EVENTS: dict[str, str] = {
     "secret.raci.changed": "RACI for en hemmelighed er ændret (hemmelighed-id, gruppe-id)",
     "secret.orphaned": "En hemmelighed har mistet sin ansvarlige (A) (hemmelighed-id, gruppe-id)",
     "secret.archived": "En hemmelighed er arkiveret (hemmelighed-id, gruppe-id)",
+    "data.exported": "En eksport fra /admin/data/transfer er klar til at blive hentet (id, områder, antal rækker)",
+    "data.imported": "En import er kørt (id, antal oprettet, antal opdateret)",
+    "data.import.undone": "En import er fortrudt (id)",
 }
 
 # Tests replace this with an httpx.MockTransport.

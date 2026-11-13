@@ -141,6 +141,10 @@ CLEANUP_SQL = {
     "sms_messages": "delete from sms_messages where created_at < now() - make_interval(days => %s)",
     "message_reports": """delete from message_reports where status <> 'pending'
                           and reviewed_at < now() - make_interval(days => %s)""",
+    # Packages are deleted by the job data.transfer_cleanup first; the history row goes after the policy's days.
+    "data_transfers": """delete from data_transfers where storage_key is null
+                         and status not in ('queued', 'running', 'dry_running', 'undoing')
+                         and created_at < now() - make_interval(days => %s)""",
     "review_orphans": """delete from review_sessions s where ended_at < now() - make_interval(days => %s)
                          and jsonb_array_length(pages) = 0
                          and not exists (select 1 from review_feedback r where r.session_id = s.id)""",

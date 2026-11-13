@@ -105,6 +105,10 @@
         "data-tools"
       ]
     },
+    "/admin/data/transfer": {
+      "title": "Eksport og import",
+      "anchors": []
+    },
     "/admin/features": {
       "title": "Features og ringe",
       "anchors": [
