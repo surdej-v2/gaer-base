@@ -27,6 +27,7 @@ import { ArtifactPage } from "./developer/devui";
 import DevHelp, { Soon } from "./developer/Help";
 import { PipelineEditor, PipelineList, PipelineNew, PlansPage, RunPage, RunsPage, SnapshotsPage } from "./developer/Pipeline";
 import { ConnectionList, ConnectionPage } from "./developer/Connections";
+import { ClientsPage, McpOverview, MonitorPage, TestBench } from "./developer/McpStudie";
 import { CachePage, EndpointList, EndpointPage, Guide, OperationList, OperationPage } from "./developer/Datastudie";
 import StudioOverview from "./developer/StudioOverview";
 import ApiStudio from "./developer/ApiStudio";
@@ -181,6 +182,11 @@ export default function App() {
           <Route path="pipeline/koersler/:id" element={<RunPage />} />
           <Route path="pipeline/planer" element={<PlansPage />} />
           <Route path="pipeline/:id" element={<PipelineEditor />} />
+          <Route path="mcp" element={<McpOverview />} />
+          <Route path="mcp/testbaenk" element={<TestBench />} />
+          <Route path="mcp/klienter" element={<ClientsPage />} />
+          <Route path="mcp/drift" element={<MonitorPage />} />
+          <Route path="mcp/eksterne" element={<Soon title="Eksterne MCP-servere" text="Eksterne MCP-servere udstillet gennem Gær, med godkendte tool-lister." />} />
           <Route path="api" element={<Soon title="API-studie" text="REST-API'er over de samme operationer, med OpenAPI og nøgler." />} />
           <Route path="forbindelser" element={<ConnectionList />} />
           <Route path="forbindelser/cache" element={<CachePage />} />

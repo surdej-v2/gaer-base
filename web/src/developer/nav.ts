@@ -24,8 +24,9 @@ export const NAV: NavGroup[] = [
         { path: "/developer/pipeline/koersler", label: "Kørsler" },
         { path: "/developer/pipeline/planer", label: "Planer" },
       ] },
-      { key: "mcp", path: "/developer/studio/mcp", label: "MCP-studie", icon: Plug, local: [
-        { path: "/developer/studio/mcp", label: "Endpoints" },
+      { key: "mcp", path: "/developer/mcp", label: "MCP-studie", icon: Plug, local: [
+        { path: "/developer/mcp", label: "Endpoints", end: true },
+        { path: "/developer/studio/mcp", label: "Endpoints i kode" },
         { path: "/developer/mcp/testbaenk", label: "Testbænk" },
         { path: "/developer/mcp/klienter", label: "Klienter" },
         { path: "/developer/mcp/eksterne", label: "Eksterne servere" },

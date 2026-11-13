@@ -704,6 +704,41 @@
    "title": "Multisource-kilder"
   },
   {
+   "path": "/developer/mcp",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "MCP-studie"
+  },
+  {
+   "path": "/developer/mcp/testbaenk",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Testbænk"
+  },
+  {
+   "path": "/developer/mcp/klienter",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Forbundne klienter"
+  },
+  {
+   "path": "/developer/mcp/drift",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "MCP-overvågning"
+  },
+  {
+   "path": "/developer/mcp/eksterne",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Eksterne MCP-servere"
+  },
+  {
    "path": "/admin",
    "group": "admin",
    "app": "admin",

@@ -206,6 +206,12 @@ async def invoke(server: str, name: str, raw_args: dict | None, caller: Caller) 
             decision = await toolmap.decide(conn, t, caller.user_id, caller.principal.session_id)
         if not decision["allowed"]:
             raise PermissionError(decision["message"])
+        if caller.via != "studio":
+            # MCP-15: rate limits per endpoint, user and client (Gær Developer, app/devkit/mcp_studio.py).
+            from app.devkit import mcp_studio
+            ok, retry = await mcp_studio.check_rate(server, caller.user_id, caller.client_id)
+            if not ok:
+                raise ToolError(f"For mange kald. Prøv igen om {retry} sekunder")
         spec = toolmap.spec_for(t, server)
         args = coerce_args(spec, raw_args)
         handler = HANDLERS.get((endpoints.handler_server(server), name))

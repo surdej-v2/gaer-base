@@ -395,6 +395,26 @@
       "title": "Lineage",
       "anchors": []
     },
+    "/developer/mcp": {
+      "title": "MCP-studie",
+      "anchors": []
+    },
+    "/developer/mcp/drift": {
+      "title": "MCP-overvågning",
+      "anchors": []
+    },
+    "/developer/mcp/eksterne": {
+      "title": "Eksterne MCP-servere",
+      "anchors": []
+    },
+    "/developer/mcp/klienter": {
+      "title": "Forbundne klienter",
+      "anchors": []
+    },
+    "/developer/mcp/testbaenk": {
+      "title": "Testbænk",
+      "anchors": []
+    },
     "/developer/pipeline": {
       "title": "Pipelines",
       "anchors": []
