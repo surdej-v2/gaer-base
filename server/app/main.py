@@ -26,6 +26,7 @@ from app.routes import (admin, admin_files, admin_ops, adoption, ai, app_store, 
                         security, studio, user_area, web)
 from app.routes import admin_mail
 from app.routes import admin_secrets
+from app.routes import login_providers as login_provider_routes
 from app.routes import groups as group_routes
 from app.routes import admin_messages
 from app.routes import messages as messages_routes
@@ -43,7 +44,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 # without a CORS preflight, which we never allow, so it stops CSRF together with SameSite cookies.
 CSRF_HEADER = "x-gaer"
 CSRF_EXEMPT = {"/api/collect"}  # sendBeacon cannot set headers; the endpoint only appends anonymous events
-CSRF_EXEMPT_PREFIXES = ("/api/hooks/in/",)  # incoming webhooks: other systems, no cookie, verified per endpoint
+CSRF_EXEMPT_PREFIXES = ("/api/hooks/in/",   # incoming webhooks: other systems, no cookie, verified per endpoint
+                        "/api/auth/saml/")  # SAML responses: a form the IdP posts (signed, bound to the login flow)
 
 # Who may embed us: the app itself (heatmap previews, the Office shell) and, for the embeddable
 # routes, the browser extension and the Office hosts (Office on the web runs add-ins in iframes).
@@ -201,6 +203,7 @@ def create_app() -> FastAPI:
               knowledge.router, knowledge_admin.router, group_routes.router, group_routes.me_router, admin_secrets.router,
               meta_routes.router, admin_meta.router,
               messages_routes.router, admin_messages.router,
+              login_provider_routes.router, login_provider_routes.me_router, login_provider_routes.admin_router,
               web.router, files.memory_router):
         app.include_router(r)
 
