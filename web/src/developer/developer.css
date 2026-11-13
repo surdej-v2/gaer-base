@@ -1,0 +1,102 @@
+/* Gær Developer: the shell (DeveloperShell.tsx) and shared bits of the studio pages. */
+.dev-root { display: flex; min-height: 100vh; background: #f8fafc; }
+.dev-side {
+  position: sticky; top: 0; height: 100vh; flex: none; display: flex; flex-direction: column; background: #ffffff;
+  border-right: 1px solid var(--hm-border); z-index: 30; transition: width 0.12s ease;
+}
+.dev-side.mobile { position: fixed; left: 0; transform: translateX(-100%); transition: transform 0.18s ease; box-shadow: var(--hm-shadow-lg); }
+.dev-side.mobile.open { transform: none; }
+.dev-scrim { position: fixed; inset: 0; background: rgb(15 23 42 / 0.35); z-index: 25; }
+.dev-side-top { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 14px 10px 10px; }
+.dev-brand { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.dev-side.narrow .dev-brand { flex-direction: column; }
+.dev-mark { width: 26px; height: 26px; flex: none; border-radius: 7px; display: inline-grid; place-items: center; font-weight: 800; font-size: 13px;
+  color: #1e3a8a; background: #dbeafe; border: 1px solid #93c5fd; }
+.dev-brand-text { flex: 1; font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; }
+.dev-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; border-radius: 7px;
+  background: transparent; color: var(--hm-muted-foreground); cursor: pointer; }
+.dev-icon-btn:hover, .dev-icon-btn:focus-visible { background: var(--hm-muted); color: var(--hm-foreground); }
+.dev-search { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border: 1px solid var(--hm-border); border-radius: 8px;
+  background: #fff; color: var(--hm-muted-foreground); font: 13px var(--hm-font-sans); cursor: pointer; text-align: left; }
+.dev-search span { flex: 1; }
+.dev-search.icon { justify-content: center; padding: 0; }
+.dev-search kbd, .dev-top-search kbd, .dev-palette kbd { font: 11px var(--hm-font-sans); padding: 1px 6px; border: 1px solid var(--hm-border); border-radius: 5px; color: var(--hm-muted-foreground); }
+.dev-nav { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 8px 8px; display: flex; flex-direction: column; gap: 10px;
+  scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; scroll-padding: 28px 0; }
+.dev-nav::-webkit-scrollbar { width: 6px; }
+.dev-nav::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
+.dev-nav.shadow-top { box-shadow: inset 0 8px 8px -8px rgb(15 23 42 / 0.18); }
+.dev-nav.shadow-bottom { box-shadow: inset 0 -8px 8px -8px rgb(15 23 42 / 0.18); }
+.dev-nav.shadow-top.shadow-bottom { box-shadow: inset 0 8px 8px -8px rgb(15 23 42 / 0.18), inset 0 -8px 8px -8px rgb(15 23 42 / 0.18); }
+.dev-group { display: flex; flex-direction: column; gap: 2px; }
+.dev-heading { position: sticky; top: 0; z-index: 1; background: #fff; padding: 6px 8px 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--hm-muted-foreground); }
+.dev-group-line { height: 1px; background: var(--hm-border); margin: 6px 6px; }
+.dev-item { position: relative; }
+.dev-link { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 8px; color: #334155; font-size: 13px;
+  text-decoration: none; white-space: nowrap; }
+.dev-side.narrow .dev-link { justify-content: center; }
+.dev-link:hover { background: var(--hm-muted); color: var(--hm-foreground); text-decoration: none; }
+.dev-link:focus-visible, .dev-local-link:focus-visible, .dev-handle:focus-visible { outline: 2px solid var(--hm-primary); outline-offset: 1px; }
+.dev-link.active { background: #e0ecff; color: #1e3a8a; font-weight: 600; }
+.dev-link-text { flex: 1; overflow: hidden; }
+.dev-dot { width: 7px; height: 7px; border-radius: 9999px; background: #f59e0b; flex: none; }
+.dev-side.narrow .dev-dot { position: absolute; right: 8px; top: 7px; }
+.dev-local { display: flex; flex-direction: column; margin: 2px 0 4px 17px; padding-left: 8px; border-left: 1px solid var(--hm-border); }
+.dev-local-link { display: block; padding: 5px 8px; border-radius: 6px; font-size: 13px; color: #475569; text-decoration: none; position: relative; white-space: nowrap; }
+.dev-local-link:hover { background: var(--hm-muted); text-decoration: none; }
+.dev-local-link.active { color: #0f172a; font-weight: 600; }
+.dev-local .dev-local-link.active::before { content: ""; position: absolute; left: -10px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: var(--hm-primary); }
+.dev-flyout { position: absolute; left: calc(100% + 6px); top: 0; min-width: 180px; padding: 8px; background: #fff; border: 1px solid var(--hm-border);
+  border-radius: 10px; box-shadow: var(--hm-shadow-lg); z-index: 40; display: flex; flex-direction: column; }
+.dev-flyout-title { font-size: 13px; font-weight: 700; padding: 2px 8px 6px; }
+.dev-side-bottom { flex: none; border-top: 1px solid var(--hm-border); padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+.dev-handle { position: absolute; top: 0; right: -4px; width: 8px; height: 100%; cursor: col-resize; z-index: 31; }
+.dev-handle::after { content: ""; position: absolute; left: 3px; top: 50%; width: 2px; height: 36px; margin-top: -18px; border-radius: 2px; background: transparent; }
+.dev-handle:hover::after, .dev-handle:focus-visible::after { background: #94a3b8; }
+.dev-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dev-top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 20px;
+  background: rgb(255 255 255 / 0.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--hm-border); }
+.dev-crumbs { flex: 1; min-width: 0; font-size: 13px; color: var(--hm-muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dev-crumbs a { color: var(--hm-muted-foreground); }
+.dev-crumbs [aria-current] { color: var(--hm-foreground); font-weight: 600; }
+.dev-crumbs .sep { margin: 0 6px; color: #cbd5e1; }
+.dev-top-search { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--hm-border); background: #fff; border-radius: 8px; height: 30px;
+  padding: 0 8px; color: var(--hm-muted-foreground); cursor: pointer; }
+.dev-content { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.dev-page { display: flex; flex-direction: column; gap: 16px; max-width: 1180px; width: 100%; }
+.dev-h1 { font-size: 24px; letter-spacing: -0.02em; }
+.dev-palette-backdrop { position: fixed; inset: 0; background: rgb(15 23 42 / 0.35); z-index: 60; display: flex; justify-content: center; padding-top: 12vh; }
+.dev-palette { width: min(620px, calc(100vw - 32px)); max-height: 60vh; display: flex; flex-direction: column; background: #fff; border-radius: 14px;
+  box-shadow: 0 24px 48px rgb(0 0 0 / 0.2); overflow: hidden; align-self: flex-start; }
+.dev-palette-input { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--hm-border); }
+.dev-palette-input input { flex: 1; border: 0; outline: none; font: 15px var(--hm-font-sans); }
+.dev-palette-list { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
+.dev-palette-list li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+.dev-palette-list li.active { background: #e0ecff; }
+.dev-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.dev-card { background: #fff; border: 1px solid var(--hm-border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.dev-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
+.dev-table th { text-align: left; font-weight: 600; color: #475569; background: #f1f5f9; padding: 8px 10px; white-space: nowrap; }
+.dev-table td { padding: 8px 10px; border-top: 1px solid var(--hm-border); vertical-align: top; }
+.dev-table tr.clickable { cursor: pointer; }
+.dev-table tr.clickable:hover td { background: #f8fafc; }
+.dev-wrap { border: 1px solid var(--hm-border); border-radius: 10px; overflow: auto; background: #fff; }
+.cls { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.cls::before { content: ""; width: 9px; height: 9px; border-radius: 9999px; background: var(--c, #e2e8f0); border: 1px solid rgb(0 0 0 / 0.12); }
+.cls.white { --c: #f8fafc; } .cls.green { --c: #16a34a; } .cls.yellow { --c: #f59e0b; } .cls.red { --c: #dc2626; }
+.dev-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--hm-border); }
+.dev-tabs button { border: 0; background: transparent; padding: 8px 12px; font: 600 13px var(--hm-font-sans); color: var(--hm-muted-foreground); cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.dev-tabs button[aria-selected="true"] { color: var(--hm-foreground); border-bottom-color: var(--hm-primary); }
+.dev-code { font: 12px/1.5 var(--hm-font-mono); background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 12px; overflow: auto; white-space: pre; margin: 0; }
+.dev-textarea { width: 100%; min-height: 260px; font: 12px/1.5 var(--hm-font-mono); border: 1px solid var(--hm-border); border-radius: 10px; padding: 10px; }
+.dev-input, .dev-select { height: 34px; padding: 0 10px; border: 1px solid var(--hm-border); border-radius: 8px; font: 14px var(--hm-font-sans); background: #fff; }
+.dev-change { font-size: 13px; padding: 2px 0; }
+.dev-steps { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.dev-step { padding: 6px 10px; border: 1px solid var(--hm-border); border-radius: 9999px; font-size: 12px; background: #fff; }
+.dev-step.on { border-color: var(--hm-primary); background: #e0ecff; font-weight: 600; }
+.dev-stage { text-align: left; border: 1px solid var(--hm-border); background: #fff; border-radius: 10px; padding: 8px 10px; cursor: pointer; font: 13px var(--hm-font-sans); }
+.dev-stage.on { border-color: var(--hm-primary); background: #eff6ff; }
+.dev-bar { height: 10px; border-radius: 4px; background: #93c5fd; }
+@media (max-width: 767px) { .dev-content { padding: 16px; } }

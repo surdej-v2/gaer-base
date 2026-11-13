@@ -50,7 +50,7 @@ herfra ind i sin fork.
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP-klienter (OAuth) | MCP-servere: appen som den indloggede bruger, admin med kladder, og egne endpoints fra MCP Studio på `/mcp/<nøgle>`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. |
 | `/health` | udrulning | Sundhedstjek (database + version), bruges af `deploy/deploy.sh`. |
 
-<details><summary>Alle ruter (110)</summary>
+<details><summary>Alle ruter (123)</summary>
 
 | Sti | Svarer | Adgang | Side |
 | --- | --- | --- | --- |
@@ -78,12 +78,25 @@ herfra ind i sin fork.
 | `/forbind` | appen | logget ind | Forbind MCP-klient |
 | `/godkend` | appen | logget ind | Godkend adgang |
 | `/go` | appen | alle | Deep link |
-| `/developer` | appen | admin | Udvikler |
+| `/developer` | appen | admin | Developer · eget layout |
 | `/developer/studio` | appen | admin | Studio |
 | `/developer/studio/api` | appen | admin | API Studio |
 | `/developer/studio/mcp` | appen | admin | MCP Studio |
 | `/developer/prompts` | appen | admin | Promptkatalog |
 | `/developer/trae` | appen | admin | Træstrukturer |
+| `/developer/datastudie` | appen | admin | Datastudie |
+| `/developer/pipeline` | appen | admin | Pipeline |
+| `/developer/api` | appen | admin | API-studie |
+| `/developer/forbindelser` | appen | admin | Forbindelser |
+| `/developer/eksport` | appen | admin | Eksport og import |
+| `/developer/katalog` | appen | admin | Datakatalog |
+| `/developer/katalog/lineage` | appen | admin | Lineage |
+| `/developer/katalog/:id` | appen | admin | Datasæt |
+| `/developer/godkendelser` | appen | admin | Venter på mig |
+| `/developer/godkendelser/historik` | appen | admin | Godkendelseshistorik |
+| `/developer/godkendelser/:id` | appen | admin | Godkendelse |
+| `/developer/artefakter/:id` | appen | admin | Artefakt |
+| `/developer/hjaelp` | appen | admin | Om Developer |
 | `/admin` | admin-appen | admin | Statistik |
 | `/admin/go` | admin-appen | admin | Deep link |
 | `/admin/users` | admin-appen | admin | Brugere og roller |

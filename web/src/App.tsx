@@ -18,8 +18,13 @@ import McpConsent from "./pages/McpConsent";
 import { DelegatedArea, UserHome, UserSettings, UserSharing } from "./pages/UserArea";
 import UserMail, { UserMailById } from "./pages/Mail";
 import Approve from "./pages/Approve";
-import DeveloperLayout, { StudioLayout } from "./developer/DeveloperLayout";
-import Dashboard from "./developer/Dashboard";
+import { StudioLayout } from "./developer/DeveloperLayout";
+import DeveloperShell from "./developer/DeveloperShell";
+import DevOverview from "./developer/Overview";
+import { ApprovalDetail, ApprovalsHistory, ApprovalsMine } from "./developer/Approvals";
+import { CatalogDataset, CatalogLineage, CatalogList } from "./developer/Catalog";
+import { ArtifactPage } from "./developer/devui";
+import DevHelp, { Soon } from "./developer/Help";
 import StudioOverview from "./developer/StudioOverview";
 import ApiStudio from "./developer/ApiStudio";
 import McpStudio from "./developer/McpStudio";
@@ -158,8 +163,21 @@ export default function App() {
         <Route path="/klip" element={<RequireUser><FeatureGate feature="klip"><ClipsPage /></FeatureGate></RequireUser>} />
         <Route path="/klip/:id" element={<RequireUser><FeatureGate feature="klip"><ClipsPage /></FeatureGate></RequireUser>} />
         <Route path="/go" element={<GoPage />} />
-        <Route path="/developer" element={<RequireUser><DeveloperLayout /></RequireUser>}>
-          <Route index element={<Dashboard />} />
+        <Route path="/developer" element={<RequireUser><DeveloperShell /></RequireUser>}>
+          <Route index element={<DevOverview />} />
+          <Route path="datastudie" element={<Soon title="Datastudie" text="Beskriv data med AI og udgiv som MCP-endpoint." />} />
+          <Route path="pipeline" element={<Soon title="Pipeline" text="Byg snapshots af data på forhånd." />} />
+          <Route path="api" element={<Soon title="API-studie" text="REST-API'er over de samme operationer, med OpenAPI og nøgler." />} />
+          <Route path="forbindelser" element={<Soon title="Forbindelser" text="Databaser via FDW eller direkte, live-kilder og cache." />} />
+          <Route path="eksport" element={<Soon title="Eksport og import" text="Flyt artefakter mellem instanser." />} />
+          <Route path="katalog" element={<CatalogList />} />
+          <Route path="katalog/lineage" element={<CatalogLineage />} />
+          <Route path="katalog/:id" element={<CatalogDataset />} />
+          <Route path="godkendelser" element={<ApprovalsMine />} />
+          <Route path="godkendelser/historik" element={<ApprovalsHistory />} />
+          <Route path="godkendelser/:id" element={<ApprovalDetail />} />
+          <Route path="artefakter/:id" element={<ArtifactPage />} />
+          <Route path="hjaelp" element={<DevHelp />} />
           <Route path="studio" element={<StudioLayout />}>
             <Route index element={<StudioOverview />} />
             <Route path="api" element={<ApiStudio />} />

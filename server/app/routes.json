@@ -477,7 +477,8 @@
    "group": "developer",
    "app": "app",
    "access": "admin",
-   "title": "Udvikler"
+   "title": "Developer",
+   "chrome": "own"
   },
   {
    "path": "/developer/studio",
@@ -513,6 +514,97 @@
    "app": "app",
    "access": "admin",
    "title": "Træstrukturer"
+  },
+  {
+   "path": "/developer/datastudie",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Datastudie"
+  },
+  {
+   "path": "/developer/pipeline",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Pipeline"
+  },
+  {
+   "path": "/developer/api",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "API-studie"
+  },
+  {
+   "path": "/developer/forbindelser",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Forbindelser"
+  },
+  {
+   "path": "/developer/eksport",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Eksport og import"
+  },
+  {
+   "path": "/developer/katalog",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Datakatalog"
+  },
+  {
+   "path": "/developer/katalog/lineage",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Lineage"
+  },
+  {
+   "path": "/developer/katalog/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Datasæt"
+  },
+  {
+   "path": "/developer/godkendelser",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Venter på mig"
+  },
+  {
+   "path": "/developer/godkendelser/historik",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Godkendelseshistorik"
+  },
+  {
+   "path": "/developer/godkendelser/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Godkendelse"
+  },
+  {
+   "path": "/developer/artefakter/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Artefakt"
+  },
+  {
+   "path": "/developer/hjaelp",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Om Developer"
   },
   {
    "path": "/admin",

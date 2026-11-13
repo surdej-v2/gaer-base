@@ -101,6 +101,16 @@ async def build_user_export(conn, user_id: int) -> dict:
                                                 where s.user_id = %s order by c.name""", user_id),
         "mail_availability": await rows("""select publish, working_hours, timezone, updated_at from mail_availability
                                            where user_id = %s""", user_id),
+        # Gær Developer: ownership (RACI), approvals given and messages.
+        "developer_roles": await rows("""select a.type, a.slug, a.name, r.role from dev_artifact_roles r
+                                          join dev_artifacts a on a.id = r.artifact_id where r.user_id = %s
+                                          order by a.type, a.slug, r.role""", user_id),
+        "developer_approvals": await rows("""select a.slug, v.major, v.minor, v.patch, p.role, p.decision, p.note, p.decided_at
+                                              from dev_artifact_approvals p join dev_artifact_versions v on v.id = p.version_id
+                                              join dev_artifacts a on a.id = v.artifact_id where p.user_id = %s
+                                              order by p.id""", user_id),
+        "developer_notifications": await rows("""select kind, title, body, link, created_at, read_at from dev_notifications
+                                                  where user_id = %s order by id""", user_id),
         "groups": await rows("""select g.name, g.slug, m.role, m.added_at from group_members m join groups g on g.id = m.group_id
                                 where m.user_id = %s order by g.name""", user_id),
         # The secret manager ("vault_*", so no export ever contains the word of the TOTP check): roles and access, never a value.

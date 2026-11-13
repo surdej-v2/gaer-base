@@ -87,6 +87,8 @@ EVENTS: dict[str, str] = {
     "secret.raci.changed": "RACI for en hemmelighed er ændret (hemmelighed-id, gruppe-id)",
     "secret.orphaned": "En hemmelighed har mistet sin ansvarlige (A) (hemmelighed-id, gruppe-id)",
     "secret.archived": "En hemmelighed er arkiveret (hemmelighed-id, gruppe-id)",
+    "developer.version.published": "En version af et artefakt i Developer er udgivet (artefakt-id, type, version, ændringstype)",
+    "developer.review.required": "Et artefakt kræver review, fordi noget det bruger har fået en major (artefakt-id, årsag-id, review-id)",
 }
 
 # Tests replace this with an httpx.MockTransport.

@@ -312,14 +312,64 @@
       "anchors": []
     },
     "/developer": {
-      "title": "Udvikler",
+      "title": "Developer",
       "anchors": [
         "developer-api-sources",
         "developer-mcp-endpoints",
-        "developer-prompts",
-        "developer-studio",
-        "developer-trees"
+        "developer-{x}"
       ]
+    },
+    "/developer/api": {
+      "title": "API-studie",
+      "anchors": []
+    },
+    "/developer/artefakter/:id": {
+      "title": "Artefakt",
+      "anchors": []
+    },
+    "/developer/datastudie": {
+      "title": "Datastudie",
+      "anchors": []
+    },
+    "/developer/eksport": {
+      "title": "Eksport og import",
+      "anchors": []
+    },
+    "/developer/forbindelser": {
+      "title": "Forbindelser",
+      "anchors": []
+    },
+    "/developer/godkendelser": {
+      "title": "Venter på mig",
+      "anchors": []
+    },
+    "/developer/godkendelser/:id": {
+      "title": "Godkendelse",
+      "anchors": []
+    },
+    "/developer/godkendelser/historik": {
+      "title": "Godkendelseshistorik",
+      "anchors": []
+    },
+    "/developer/hjaelp": {
+      "title": "Om Developer",
+      "anchors": []
+    },
+    "/developer/katalog": {
+      "title": "Datakatalog",
+      "anchors": []
+    },
+    "/developer/katalog/:id": {
+      "title": "Datasæt",
+      "anchors": []
+    },
+    "/developer/katalog/lineage": {
+      "title": "Lineage",
+      "anchors": []
+    },
+    "/developer/pipeline": {
+      "title": "Pipeline",
+      "anchors": []
     },
     "/developer/prompts": {
       "title": "Promptkatalog",
@@ -329,11 +379,7 @@
     },
     "/developer/studio": {
       "title": "Studio",
-      "anchors": [
-        "developer-prompts",
-        "developer-studio",
-        "developer-trees"
-      ]
+      "anchors": []
     },
     "/developer/studio/api": {
       "title": "API Studio",

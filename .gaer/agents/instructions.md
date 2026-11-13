@@ -97,7 +97,7 @@ They share the same login (session cookie), the same database and the same API.
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP clients (OAuth bearer) | **MCP servers** (Streamable HTTP): the app as the logged-in user, admin where every change is a draft, and the endpoints defined in `/developer/studio/mcp` on `/mcp/<key>` (as the user, with the tools chosen there). Consent page `/forbind`; deep links `/go` and `/admin/go`; hub in `/admin/mcp`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. | `server/app/mcp/`, skill `gaer-mcp`, `server/app/mcp/endpoints.py` |
 | `/health` | deploy | Database check + version; used by `deploy/deploy.sh` before switching versions. | `main.py` |
 
-<details><summary>All routes (110)</summary>
+<details><summary>All routes (123)</summary>
 
 | Path | Served by | Access | Page |
 | --- | --- | --- | --- |
@@ -125,12 +125,25 @@ They share the same login (session cookie), the same database and the same API.
 | `/forbind` | app (`index.html`) | logged in | Forbind MCP-klient |
 | `/godkend` | app (`index.html`) | logged in | Godkend adgang |
 | `/go` | app (`index.html`) | everyone | Deep link |
-| `/developer` | app (`index.html`) | admin | Udvikler |
+| `/developer` | app (`index.html`) | admin | Developer · own chrome |
 | `/developer/studio` | app (`index.html`) | admin | Studio |
 | `/developer/studio/api` | app (`index.html`) | admin | API Studio |
 | `/developer/studio/mcp` | app (`index.html`) | admin | MCP Studio |
 | `/developer/prompts` | app (`index.html`) | admin | Promptkatalog |
 | `/developer/trae` | app (`index.html`) | admin | Træstrukturer |
+| `/developer/datastudie` | app (`index.html`) | admin | Datastudie |
+| `/developer/pipeline` | app (`index.html`) | admin | Pipeline |
+| `/developer/api` | app (`index.html`) | admin | API-studie |
+| `/developer/forbindelser` | app (`index.html`) | admin | Forbindelser |
+| `/developer/eksport` | app (`index.html`) | admin | Eksport og import |
+| `/developer/katalog` | app (`index.html`) | admin | Datakatalog |
+| `/developer/katalog/lineage` | app (`index.html`) | admin | Lineage |
+| `/developer/katalog/:id` | app (`index.html`) | admin | Datasæt |
+| `/developer/godkendelser` | app (`index.html`) | admin | Venter på mig |
+| `/developer/godkendelser/historik` | app (`index.html`) | admin | Godkendelseshistorik |
+| `/developer/godkendelser/:id` | app (`index.html`) | admin | Godkendelse |
+| `/developer/artefakter/:id` | app (`index.html`) | admin | Artefakt |
+| `/developer/hjaelp` | app (`index.html`) | admin | Om Developer |
 | `/admin` | admin app (`admin.html`) | admin | Statistik |
 | `/admin/go` | admin app (`admin.html`) | admin | Deep link |
 | `/admin/users` | admin app (`admin.html`) | admin | Brugere og roller |
