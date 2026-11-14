@@ -40,6 +40,11 @@ async def build_user_export(conn, user_id: int) -> dict:
         "yubikey_enrollments": await rows("""select created_at, expires_at, used_at, created_by from yubikey_enrollments
                                              where user_id = %s order by created_at""", user_id),
         # Authenticator apps: only that they exist, never the secret.
+        # Logins at other providers you connected (Microsoft, Google, SAML …): which account there, never a token.
+        "login_identities": await rows("""select p.name as provider, p.kind, i.subject, i.email, i.linked_via, i.created_at,
+                                                 i.last_used_at
+                                          from user_identities i join login_providers p on p.id = i.provider_id
+                                          where i.user_id = %s order by i.created_at""", user_id),
         "totp_factors": await rows("""select id, name, created_at, confirmed_at, last_used_at from totp_factors
                                       where user_id = %s order by created_at""", user_id),
         "sessions": await rows("""select created_at, last_seen_at, expires_at, revoked_at, host(ip) as ip, user_agent,
@@ -215,7 +220,7 @@ async def build_user_export(conn, user_id: int) -> dict:
 
 README = """Indsigt i dine data
 
-data.json   alt, vi har gemt om dig: bruger og profil, passkeys og sikkerhedsnøgler, godkendelsesapps
+data.json   alt, vi har gemt om dig: bruger og profil, passkeys og sikkerhedsnøgler, forbundne logins, godkendelsesapps
             (uden den hemmelige nøgle), sessioner, klip, filer (oversigt), filer du har lagt i /shared
             (kun oversigt), hvem du har delt dit område med og hvis områder du har adgang til, tilladte domæner,
             din postkasse (adresse, aliasser, fælles postkasser, afsenderidentiteter, kalendere og adressebøger
@@ -272,7 +277,7 @@ async def ensure_can_erase(conn, user_id: int) -> dict:
 
 async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, reason: str,
                      gdpr_request: int | None = None) -> dict:
-    """The right to be forgotten. Deletes the user (passkeys, authenticator apps, sessions, clips, domain consents, AI usage,
+    """The right to be forgotten. Deletes the user (passkeys, authenticator apps, linked logins at providers, sessions, clips, domain consents, AI usage,
     AI budgets and their alerts, one-time codes, feature level, review sessions and notes, their private tree (meta_nodes with owner_id; shared nodes they made keep created_by = null), their test accounts, access to
     and from their area (/user), adoption visits, nudges and journey roles, group memberships and their roles, requests, approvals and grants
     for secrets (secrets where they were A are marked as without accountable person), Viden conversations and agent memberships

@@ -13,6 +13,9 @@ With SMS_LOGIN=1 a phone number + code sent by SMS works the same way (opt-in).
   3. POST /passkey/register/*  adds a passkey or security key (full session; see app.mfa for when a recent second
                           factor is needed first).
   4. POST /passkey/login/*     login with a passkey. Counts as MFA when the authenticator verified the user.
+  4b. Login providers (routes/login_providers.py): Microsoft, Google, GitHub, Amazon or SAML instead of the code; then
+                          the same as after a code (_after_first_factor). A domain can require its provider: then it
+                          gets no code (same answer), except the super admin (emergency access).
   5. POST /mfa/*               the second factor (passkey/security key with user verification, or an authenticator
                           app). Completes a pending login or steps up a full session; always issues a new session.
 
@@ -33,8 +36,8 @@ from webauthn.helpers.structs import (AttestationConveyancePreference, Authentic
                                       PublicKeyCredentialDescriptor, ResidentKeyRequirement,
                                       UserVerificationRequirement)
 
-from app import (access, admin_roles, captcha, config, db, demo_logins, events, mfa, outbound_mail, settings_store, signup,
-                 totp, webhooks, yubikey)
+from app import (access, admin_roles, captcha, config, db, demo_logins, events, login_providers, mfa, outbound_mail,
+                 settings_store, signup, totp, webhooks, yubikey)
 from app.logs import RequestMeta, audit, auth_event
 from app.mail import MailError, otp_mail, send_mail
 from app.security import (InvalidEmail, InvalidPhone, bootstrap_admin_email, bootstrap_admin_phone, new_otp_code,
@@ -245,7 +248,13 @@ async def otp_start(body: StartIn, request: Request):
                 await conn.commit()
                 raise HTTPException(400, "Robottjekket mangler eller er udløbet. Prøv igen.")
         await check_send_limits(conn, contact, meta)
-        user = await db.fetch_one(conn, f"select id, blocked_at from users where {channel} = %s", (contact,))
+        user = await db.fetch_one(conn, f"select id, blocked_at, super_admin from users where {channel} = %s", (contact,))
+        if channel == "email" and (required := await login_providers.required_for(conn, contact)) \
+                and not (user and user["super_admin"]):
+            # The domain logs in with a provider (/admin/login-providers); /login sends it there. Same answer as usual.
+            await auth_event(conn, "otp.sent", ok=False, meta=meta, contact=contact, user_id=user["id"] if user else None,
+                             reason="provider_required", provider=required["key"])
+            return {"ok": True, "expires_in": s.otp_ttl_seconds}
         if user and user["blocked_at"]:
             # Answer as usual so the endpoint does not reveal which contacts are blocked.
             await auth_event(conn, "otp.sent", ok=False, meta=meta, contact=contact, user_id=user["id"],
@@ -335,6 +344,16 @@ async def otp_link(body: LinkIn, request: Request, response: Response):
 async def _login_with_contact(conn, response: Response, channel: str, contact: str, meta: RequestMeta, *,
                               via: str) -> dict:
     """The contact proved it received the code (typed or as a link)."""
+    if channel == "email" and (required := await login_providers.required_for(conn, contact)):
+        # A code sent before the domain required a provider. Checked before any account is created; the super admin
+        # keeps the code as emergency access.
+        existing = await db.fetch_one(conn, "select id, super_admin from users where email = %s", (contact,))
+        if not (existing and existing["super_admin"]):
+            await auth_event(conn, "otp.verified", ok=False, meta=meta, contact=contact,
+                             user_id=existing["id"] if existing else None, reason="provider_required",
+                             provider=required["key"])
+            await conn.commit()
+            raise HTTPException(403, f"Dit domæne logger ind med {required['name']}. Brug knappen på login-siden.")
     user = await _get_or_create_user(conn, channel, contact, meta)
     if user["blocked_at"]:
         await auth_event(conn, "otp.verified", ok=False, meta=meta, contact=contact, user_id=user["id"],

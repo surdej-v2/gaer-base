@@ -36,6 +36,7 @@ DEFAULTS: dict = {
     "mail_last_backup": None,               # mail: {at, calendars, address_books, failures} from the nightly backup
     "messages": {},                         # Beskeder: channels, quiet hours, limits (app/messages/service.py DEFAULTS)
     "signup": {"mode": "open", "domains": [], "contact": ""},  # who may create an account by logging in (app/signup.py)
+    "login_providers": {"link": "verified_email", "new_users": "signup", "required": []},  # app/login_providers.py rules
 }
 
 PUBLIC_KEYS = ("app_name", "logo_key", "consent_version", "consent_title", "consent_text",
