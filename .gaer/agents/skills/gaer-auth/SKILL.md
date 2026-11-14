@@ -77,6 +77,28 @@ Frontend usage (components, step-up dialog, profile API): skill `gaer-profile`.
     user proved a YubiKey in the last `STEPUP_MINUTES`. Users without the requirement simply have their YubiKeys
     recorded as such. Nobody switches the requirement on for themselves without a YubiKey.
 
+14. **Login providers** (`app/login_providers.py`, `app/saml.py`, `routes/login_providers.py`, `/admin/login-providers`,
+    role Drift): Microsoft Entra ID and Google (OpenID Connect, code + PKCE + nonce), GitHub and Amazon (OAuth 2.0 + PKCE)
+    and SAML 2.0 connections. Each is **off until an admin switches it on** (step-up, audited, webhook `auth.provider.*`).
+    - **A provider replaces only the one-time code.** After it, `_after_first_factor` decides exactly as after a code:
+      "Kræv passkey" → pending `mfa` session; admins use grace logins and then need a second factor for /admin; a
+      passkey is offered. A provider never sets `mfa_at`, never counts as a step-up and **never makes anyone admin**
+      (new users are always `user`; bootstrap/first-user promotion only happens with a code).
+    - **Which account**: an identity is the provider's stable subject (`user_identities`, unique per provider and per
+      user). The first time it is linked on an e-mail the provider verified (setting `login_providers.link =
+      verified_email`) or only by the user from `/konto` (`user_linked`; linking/unlinking needs `mfa.require_recent_mfa`).
+      Entra and SAML e-mails count as verified only on the provider's listed domains; Amazon's never.
+    - **New people** only when the provider (`new_users = signup`), the rules (`new_users = signup`) and Tilmelding
+      (`app/signup.py`) all allow it, and the e-mail is verified.
+    - **Flows** (`login_flows`) are bound to the browser by the `gaer_login_flow` cookie (hash stored), single use (also
+      after a refusal), expire in 10 minutes. SAML: assertion signature always required (signxml, only the signed element
+      is read), destination/recipient/audience/time window/InResponseTo checked, assertion ids remembered against replay,
+      IdP-initiated only when allowed; XML parsed without entities or network. The ACS is CSRF-exempt (a form the IdP posts).
+    - **Required provider for a domain** (rule `required`): `otp/start` sends no code to that domain (same answer, auth
+      log `otp.sent` reason `provider_required`) and `otp/verify` refuses it — except for the **super admin** (emergency access).
+    - Client secrets and SAML SP keys are encrypted with `app.secrets_box`, write-only in the API, never logged or in webhooks.
+    - Auth log: `provider.login`, `provider.linked`, `provider.unlinked` (detail `provider`, `reason`).
+
 ## Administrative roles (`server/app/admin_roles.py`)
 An admin (`users.role = 'admin'`) also has one or more **admin roles** in `users.admin_roles`. They decide which parts
 of /admin the admin may use; they never widen anything a plain admin could not do before.
@@ -89,7 +111,7 @@ of /admin the admin may use; they never widen anything a plain admin could not d
 | `produkt` | Features og ringe, AI, Analytics, Heatmaps |
 | `data` | Data: Katalog, Udforsk, Forbind API |
 | `privatliv` | GDPR, Samtykke og cookies, Sletning af logdata, Audit-log, Auth-log |
-| `drift` | MCP-servere, Udvidelse og Office, Indstillinger |
+| `drift` | Login-udbydere, MCP-servere, Udvidelse og Office, Indstillinger |
 | `udvikler` | Gær Developer (`/developer`, `/api/admin/dev`, `/api/admin/studio`): drafts of datasets, pipelines, operations, endpoints, APIs |
 | `udvikler_admin` | as `udvikler`, plus connections, API keys, known instances, imports and giving the role `udvikler` (`DEV_ADMIN_WRITES`). External users can never hold either role (trigger `users_developer_roles`); see `specs/developer/ROLES.md` |
 
@@ -112,7 +134,8 @@ of /admin the admin may use; they never widen anything a plain admin could not d
 - Send a code to, or create, a contact that may not sign up, or answer `otp/start` differently for it.
 - Count a passkey, an app or a non-YubiKey key where the YubiKey requirement applies, or let a key an admin enrolled
   in person log a user in on its own.
-- Add a login path that skips the code, or a way to get a full session from a pending one without a second factor.
+- Add a login path that skips the code other than a login provider an admin switched on (rule 14), or a way to get a
+  full session from a pending one without a second factor. Let a provider count as a second factor or give the admin role.
 - Count a WebAuthn assertion without verified UV as MFA, or upgrade a session row in place instead of a new token.
 - Let a code-only session add a factor to an account that already has one, or accept a grace login for a
   security action.

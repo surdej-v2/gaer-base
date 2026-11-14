@@ -121,6 +121,9 @@ CLEANUP_SQL = {
     "captcha_spent": "delete from captcha_spent where expires_at < now() - make_interval(days => %s)",
     "adoption_visits": "delete from adoption_visits where at < now() - make_interval(days => %s)",
     "user_delegations": "delete from user_delegations where expires_at < now() - make_interval(days => %s)",
+    "login_flows": """with cutoff as (select now() - make_interval(days => %s) as t),
+                           seen as (delete from login_assertions_seen where expires_at < (select t from cutoff))
+                      delete from login_flows where expires_at < (select t from cutoff)""",
     "yubikey_enrollments": "delete from yubikey_enrollments where expires_at < now() - make_interval(days => %s)",
     "mcp_access_requests": """delete from mcp_access_requests where updated_at < now() - make_interval(days => %s)
                               and (status in ('denied', 'withdrawn', 'revoked')

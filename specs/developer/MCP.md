@@ -1,7 +1,7 @@
 # MCP-studie (fase 4): test, adgang og drift
 
 Code: `app/devkit/mcp_studio.py`, `app/routes/developer_mcp.py` (`/api/admin/dev/mcp`), `web/src/developer/McpStudie.tsx`,
-migration 0034.
+migration 0035.
 
 | Req | How |
 | --- | --- |

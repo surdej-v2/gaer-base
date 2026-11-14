@@ -29,7 +29,7 @@ What an admin with only `udvikler` sees in `/admin`: Statistik (open to every ad
 - **Udvikler-admin only** (`admin_roles.DEV_ADMIN_WRITES`): changes (not reads) under `/api/admin/dev/connections`,
   `/api/admin/dev/upstreams`, `/api/admin/dev/developers` and `/api/admin/dev/api-keys`.
 - **External users never get the roles.** `PUT /api/admin/dev/developers/{id}` refuses them, and a trigger
-  (`users_developer_roles`, migration 0031) refuses any write that gives an external user `udvikler` or
+  (`users_developer_roles`, migration 0032) refuses any write that gives an external user `udvikler` or
   `udvikler_admin` — also from /admin/users or SQL. To make a developer external, take the role first.
 - **Giving the role.** `PUT /api/admin/dev/developers/{id}` with `none | udvikler | udvikler_admin`, step-up (a second
   factor within `STEPUP_MINUTES`). A plain internal user who gets Udvikler becomes an admin with only that role;

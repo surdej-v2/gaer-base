@@ -42,11 +42,12 @@
     "da": "anonyme"
    },
    "what": {
-    "en": "E-mail → one-time code → second factor if \"Kræv passkey\" is on, else a passkey offer (see `gaer-auth`). Shows the first-user/admin notice when `first_user` is true. Also `/extension/login` and `/m/login` (same page, embedded layout).",
-    "da": "E-mail → engangskode → anden faktor, hvis „Kræv passkey“ er slået til, ellers tilbud om passkey. Viser, når man bliver den første admin. Også `/extension/login` og `/m/login`."
+    "en": "E-mail → one-time code (or a login provider from `/admin/login-providers`: Microsoft, Google, GitHub, Amazon, SAML — only those switched on; a domain can be sent straight to its provider) → second factor if \"Kræv passkey\" is on, else a passkey offer (see `gaer-auth`). Shows the first-user/admin notice when `first_user` is true. Also `/extension/login` and `/m/login` (same page, embedded layout).",
+    "da": "E-mail → engangskode (eller en login-udbyder, som en admin har slået til) → anden faktor, hvis „Kræv passkey“ er slået til, ellers tilbud om passkey. Viser, når man bliver den første admin. Også `/extension/login` og `/m/login`."
    },
    "code": [
-    "pages/Login.tsx"
+    "pages/Login.tsx",
+    "routes/login_providers.py"
    ]
   },
   {
@@ -57,8 +58,8 @@
     "da": "logget ind (privatliv: alle)"
    },
    "what": {
-    "en": "Clips, files in Object Storage, account (profile, avatar, passkeys, security keys, authenticator apps, \"Kræv passkey\", sessions), own AI consumption and budget (`/konto/forbrug`), privacy + consent + GDPR requests.",
-    "da": "Klip, filer, konto (profil, passkeys, sikkerhedsnøgler, godkendelsesapps, „Kræv passkey“, sessioner), eget AI-forbrug og budget, privatliv og GDPR."
+    "en": "Clips, files in Object Storage, account (profile, avatar, passkeys, security keys, authenticator apps, \"Kræv passkey\", linked logins at providers, sessions), own AI consumption and budget (`/konto/forbrug`), privacy + consent + GDPR requests.",
+    "da": "Klip, filer, konto (profil, passkeys, sikkerhedsnøgler, godkendelsesapps, „Kræv passkey“, forbundne logins, sessioner), eget AI-forbrug og budget, privatliv og GDPR."
    },
    "code": [
     "pages/",
@@ -167,7 +168,7 @@
     "da": "admin (+ MFA)"
    },
    "what": {
-    "en": "**Standalone admin app** (own Vite entry `web/admin.html`): statistics, users + impersonation, features and rings, App Stores, auth/audit log, analytics, heatmaps, GDPR, retention, consent, files, tree structures (`/admin/meta`), website (`/admin/web`), AI (`/admin/ai`), AI consumption and budgets (`/admin/consumption`), extension & Office (`/admin/integrations`), MCP servers (`/admin/mcp`), webhooks (`/admin/webhooks`), jobs and cleanup (`/admin/jobs`), NATS monitoring (`/admin/nats`), resources, kill switches and events (`/admin/resources`), mail (`/admin/mail`), secrets owned by groups with RACI and approved access (`/admin/secrets`), groups (`/admin/groups`), data catalog + Udforsk + API sources (`/admin/data`), adoption journeys measured by the routes users visit (`/admin/adoption`), settings. Every read and change is audited.",
+    "en": "**Standalone admin app** (own Vite entry `web/admin.html`): statistics, users + impersonation, login providers (`/admin/login-providers`: Microsoft Entra ID, Google, GitHub, Amazon, SAML 2.0 — each off until switched on), features and rings, App Stores, auth/audit log, analytics, heatmaps, GDPR, retention, consent, files, tree structures (`/admin/meta`), website (`/admin/web`), AI (`/admin/ai`), AI consumption and budgets (`/admin/consumption`), extension & Office (`/admin/integrations`), MCP servers (`/admin/mcp`), webhooks (`/admin/webhooks`), jobs and cleanup (`/admin/jobs`), NATS monitoring (`/admin/nats`), resources, kill switches and events (`/admin/resources`), mail (`/admin/mail`), secrets owned by groups with RACI and approved access (`/admin/secrets`), groups (`/admin/groups`), data catalog + Udforsk + API sources (`/admin/data`), adoption journeys measured by the routes users visit (`/admin/adoption`), settings. Every read and change is audited.",
     "da": "Administration — en selvstændig app (`web/admin.html`). Kræver anden faktor efter tre logins med engangskode. Alt logges."
    },
    "code": [
@@ -811,6 +812,20 @@
    "app": "admin",
    "access": "admin",
    "title": "Efterligning"
+  },
+  {
+   "path": "/admin/login-providers",
+   "group": "admin",
+   "app": "admin",
+   "access": "admin",
+   "title": "Login-udbydere"
+  },
+  {
+   "path": "/admin/login-providers/:key",
+   "group": "admin",
+   "app": "admin",
+   "access": "admin",
+   "title": "Login-udbyder"
   },
   {
    "path": "/admin/features",

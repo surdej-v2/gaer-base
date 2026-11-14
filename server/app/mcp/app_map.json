@@ -169,6 +169,14 @@
       "title": "Vidensrum",
       "anchors": []
     },
+    "/admin/login-providers": {
+      "title": "Login-udbydere",
+      "anchors": []
+    },
+    "/admin/login-providers/:key": {
+      "title": "Login-udbyder",
+      "anchors": []
+    },
     "/admin/logs/audit": {
       "title": "Audit-log",
       "anchors": []
@@ -585,6 +593,7 @@
       "title": "Konto",
       "anchors": [
         "account-ai-usage",
+        "account-linked-logins",
         "account-mcp",
         "account-profile",
         "account-ring",
@@ -640,6 +649,7 @@
       "title": "Profil",
       "anchors": [
         "account-ai-usage",
+        "account-linked-logins",
         "account-mcp",
         "account-profile",
         "account-ring",
@@ -678,6 +688,7 @@
       "title": "Mit område",
       "anchors": [
         "account-ai-usage",
+        "account-linked-logins",
         "account-mcp",
         "account-profile",
         "account-ring",
@@ -696,6 +707,7 @@
       "title": "Delt område",
       "anchors": [
         "account-ai-usage",
+        "account-linked-logins",
         "account-mcp",
         "account-profile",
         "account-ring",
@@ -714,6 +726,7 @@
       "title": "Mail",
       "anchors": [
         "account-ai-usage",
+        "account-linked-logins",
         "account-mcp",
         "account-profile",
         "account-ring",
@@ -735,6 +748,7 @@
       "title": "Deling",
       "anchors": [
         "account-ai-usage",
+        "account-linked-logins",
         "account-mcp",
         "account-profile",
         "account-ring",
@@ -753,6 +767,7 @@
       "title": "Indstillinger",
       "anchors": [
         "account-ai-usage",
+        "account-linked-logins",
         "account-mcp",
         "account-profile",
         "account-ring",
@@ -771,6 +786,7 @@
       "title": "Mail",
       "anchors": [
         "account-ai-usage",
+        "account-linked-logins",
         "account-mcp",
         "account-profile",
         "account-ring",

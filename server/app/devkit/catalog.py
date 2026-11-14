@@ -1,6 +1,6 @@
 """The data catalog in Gær Developer (F-5, F-7 … F-9): datasets and fields as versioned artifacts, and lineage.
 
-The tables are the ones /admin/data already uses (datasets, dataset_fields, migration 0012) with the columns from 0031:
+The tables are the ones /admin/data already uses (datasets, dataset_fields, migration 0012) with the columns from 0032:
 kind, personal data and sensitive marks, a chosen masking and lineage. A dataset gets an artifact of type `dataset`
 the first time it is changed from /developer; its definition is the dataset's description and fields. Changes go
 through the same flow as everything else: a description is a patch and is published at once, a new or stricter

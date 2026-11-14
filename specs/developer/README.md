@@ -44,7 +44,7 @@ the way. The repo's own rules win over the spec's technology choices (raw SQL, p
 | `INGEST_STATUS_TABLE` | `ingest.load_status` | The loader's status table |
 | `PIPELINE_PREVIEW_ROWS`, `PIPELINE_PREVIEW_TIMEOUT_MS` | 20, 5000 | Pipeline previews |
 | `DEV_CACHE_MAX_ENTRIES` | 20000 | Postgres cache size before the least recently used go |
-| Extensions | | `postgres_fdw` (installed by migration 0032 when allowed), `mysql_fdw` (by the database operator) |
+| Extensions | | `postgres_fdw` (installed by migration 0033 when allowed), `mysql_fdw` (by the database operator) |
 
 ## Map of the code
 
@@ -56,7 +56,7 @@ the way. The repo's own rules win over the spec's technology choices (raw SQL, p
 | `server/app/devkit/catalog.py` | datasets as versioned artifacts, lineage (F-5, F-7 … F-9) |
 | `server/app/devkit/assist.py` | AI suggestions and impact analysis through the instance's AI layer; heuristics without AI |
 | `server/app/routes/developer.py` | `/api/admin/dev`: overview, artifacts, approvals, reviews, messages, catalog, developers, search |
-| `server/app/migrations/0031_developer_foundation.sql` | artifact tables, catalog columns, lineage, roles |
+| `server/app/migrations/0032_developer_foundation.sql` | artifact tables, catalog columns, lineage, roles |
 | `web/src/developer/DeveloperShell.tsx`, `nav.ts`, `developer.css` | the shell: sidebar, top bar, palette |
 | `web/src/developer/Overview.tsx`, `Approvals.tsx`, `Catalog.tsx`, `devui.tsx`, `Help.tsx` | phase 1 pages |
 | `server/app/devkit/connections.py`, `secrets.py`, `pipelines.py`, `pipeline_runs.py`, `routes/developer_data.py` | phase 2 (DATA.md) |
@@ -64,7 +64,7 @@ the way. The repo's own rules win over the spec's technology choices (raw SQL, p
 | `server/app/devkit/mcp_studio.py`, `routes/developer_mcp.py` | phase 4 (MCP.md) |
 | `server/app/devkit/multisource.py` | phase 5 (RUNTIME.md) |
 | `server/app/devkit/apis.py`, `portability.py`, `routes/developer_api.py`, `routes/gaer_api.py` | phase 6 (API.md) |
-| `server/app/migrations/0031` … `0035` | the schema, one migration per phase (0034 is MCP-studie, 0035 API and export) |
+| `server/app/migrations/0032` … `0036` | the schema, one migration per phase (0035 is MCP-studie, 0036 API and export) |
 | `server/tests/test_developer_*.py` | the tests per phase |
 
 ## Decisions (phase 1)

@@ -24,7 +24,7 @@ ROLES: dict[str, dict] = {
     "privatliv": {"label": "Privatliv", "description": "GDPR-forespørgsler, samtykke, sletning af logdata, audit- og auth-log, godkendelse af adgang til fortrolige data og moderering af samtaler."},
     "udvikler": {"label": "Udvikler", "description": "Gær Developer (/developer): opretter og retter kladder af datasæt, pipelines, operationer, multisource-kilder, MCP-endpoints og API'er. Udgivelse går gennem godkendelse."},
     "udvikler_admin": {"label": "Udvikler-admin", "description": "Som Udvikler, og desuden dataforbindelser, eksterne MCP-servere og rollen Udvikler til andre."},
-    "drift": {"label": "Drift", "description": "Mail, kalendere og kontakter, hemmeligheder, MCP-servere, udvidelse og Office, webhooks, jobs, NATS, ressourcer og indstillinger; levering af beskeder og deres kanaler."},
+    "drift": {"label": "Drift", "description": "Login-udbydere, mail, kalendere og kontakter, hemmeligheder, MCP-servere, udvidelse og Office, webhooks, jobs, NATS, ressourcer og indstillinger; levering af beskeder og deres kanaler."},
 }
 
 # /admin section (path under the router basename) → the API path prefixes it uses.
@@ -38,6 +38,7 @@ SECTIONS: dict[str, list[str]] = {
     "/adoption/console": ["/api/admin/adoption"],
     "/adoption/access": ["/api/admin/adoption"],
     "/users": ["/api/admin/users"],
+    "/login-providers": ["/api/admin/login-providers"],
     "/impersonation": ["/api/impersonation"],
     "/logs/auth": ["/api/admin/logs/auth"],
     "/logs/audit": ["/api/admin/logs/audit"],
@@ -86,7 +87,7 @@ ROLE_SECTIONS: dict[str, list[str]] = {
                 "/adoption/routes", "/adoption/console", "/adoption/access"],
     "data": ["/data", "/data/explore", "/data/connect", "/data/tools", "/developer"],
     "privatliv": ["/gdpr", "/consent", "/retention", "/logs/audit", "/logs/auth", "/access", "/messages/moderation"],
-    "drift": ["/mail", "/secrets", "/mcp", "/integrations", "/webhooks", "/jobs", "/nats", "/resources", "/settings",
+    "drift": ["/login-providers", "/mail", "/secrets", "/mcp", "/integrations", "/webhooks", "/jobs", "/nats", "/resources", "/settings",
               "/messages", "/messages/delivery", "/messages/settings"],
     # Gær Developer (specs/developer/ROLES.md): both open /developer; what only Udvikler-admin may change is DEV_ADMIN.
     "udvikler": ["/developer"],

@@ -11,7 +11,7 @@
 | The role that creates foreign servers | | `DEV_FDW_ADMIN_URL` — default `MIGRATION_DATABASE_URL` while analytics is this database |
 | The load status | `ingest.load_status` | `INGEST_STATUS_TABLE` (`schema.tabel`): "Har indlæseren allerede en statustabel, bruges den i stedet" — it must have `source, load_date, status` |
 
-Migration 0032 creates `snapshots`, `ingest.load_status` (with a trigger that sends `NOTIFY load_status, '<kilde>'`),
+Migration 0033 creates `snapshots`, `ingest.load_status` (with a trigger that sends `NOTIFY load_status, '<kilde>'`),
 and installs `postgres_fdw` when the server has it and the migration role may (otherwise it says so in a notice, and
 Forbindelser shows "postgres_fdw mangler"). `mysql_fdw` is never installed by the app: when it is missing, a MySQL
 connection says so clearly and does nothing else.
