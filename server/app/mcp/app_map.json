@@ -320,14 +320,160 @@
       "anchors": []
     },
     "/developer": {
-      "title": "Udvikler",
+      "title": "Developer",
       "anchors": [
         "developer-api-sources",
         "developer-mcp-endpoints",
-        "developer-prompts",
-        "developer-studio",
-        "developer-trees"
+        "developer-{x}"
       ]
+    },
+    "/developer/api": {
+      "title": "API'er",
+      "anchors": []
+    },
+    "/developer/api/:id": {
+      "title": "API",
+      "anchors": []
+    },
+    "/developer/api/dokumentation": {
+      "title": "API-dokumentation",
+      "anchors": []
+    },
+    "/developer/api/drift": {
+      "title": "API-overvågning",
+      "anchors": []
+    },
+    "/developer/api/konsol": {
+      "title": "Testkonsol",
+      "anchors": []
+    },
+    "/developer/api/noegler": {
+      "title": "API-nøgler",
+      "anchors": []
+    },
+    "/developer/artefakter/:id": {
+      "title": "Artefakt",
+      "anchors": []
+    },
+    "/developer/datastudie": {
+      "title": "Endpoints i Datastudie",
+      "anchors": []
+    },
+    "/developer/datastudie/endpoints/:id": {
+      "title": "Endpoint",
+      "anchors": []
+    },
+    "/developer/datastudie/multisource": {
+      "title": "Multisource-kilder",
+      "anchors": []
+    },
+    "/developer/datastudie/multisource/:id": {
+      "title": "Multisource-kilde",
+      "anchors": []
+    },
+    "/developer/datastudie/ny": {
+      "title": "Nyt endpoint",
+      "anchors": []
+    },
+    "/developer/datastudie/operationer": {
+      "title": "Operationer",
+      "anchors": []
+    },
+    "/developer/datastudie/operationer/:id": {
+      "title": "Operation",
+      "anchors": []
+    },
+    "/developer/eksport": {
+      "title": "Eksport og import",
+      "anchors": []
+    },
+    "/developer/forbindelser": {
+      "title": "Dataforbindelser",
+      "anchors": []
+    },
+    "/developer/forbindelser/:id": {
+      "title": "Forbindelse",
+      "anchors": []
+    },
+    "/developer/forbindelser/cache": {
+      "title": "Cache",
+      "anchors": []
+    },
+    "/developer/godkendelser": {
+      "title": "Venter på mig",
+      "anchors": []
+    },
+    "/developer/godkendelser/:id": {
+      "title": "Godkendelse",
+      "anchors": []
+    },
+    "/developer/godkendelser/historik": {
+      "title": "Godkendelseshistorik",
+      "anchors": []
+    },
+    "/developer/hjaelp": {
+      "title": "Om Developer",
+      "anchors": []
+    },
+    "/developer/katalog": {
+      "title": "Datakatalog",
+      "anchors": []
+    },
+    "/developer/katalog/:id": {
+      "title": "Datasæt",
+      "anchors": []
+    },
+    "/developer/katalog/lineage": {
+      "title": "Lineage",
+      "anchors": []
+    },
+    "/developer/mcp": {
+      "title": "MCP-studie",
+      "anchors": []
+    },
+    "/developer/mcp/drift": {
+      "title": "MCP-overvågning",
+      "anchors": []
+    },
+    "/developer/mcp/eksterne": {
+      "title": "Eksterne MCP-servere",
+      "anchors": []
+    },
+    "/developer/mcp/klienter": {
+      "title": "Forbundne klienter",
+      "anchors": []
+    },
+    "/developer/mcp/testbaenk": {
+      "title": "Testbænk",
+      "anchors": []
+    },
+    "/developer/pipeline": {
+      "title": "Pipelines",
+      "anchors": []
+    },
+    "/developer/pipeline/:id": {
+      "title": "Pipeline-editor",
+      "anchors": []
+    },
+    "/developer/pipeline/koersler": {
+      "title": "Kørsler",
+      "anchors": []
+    },
+    "/developer/pipeline/koersler/:id": {
+      "title": "Kørsel",
+      "anchors": []
+    },
+    "/developer/pipeline/ny": {
+      "title": "Ny pipeline",
+      "anchors": []
+    },
+    "/developer/pipeline/planer": {
+      "title": "Planer",
+      "anchors": []
+    },
+    "/developer/pipeline/snapshots": {
+      "title": "Snapshots",
+      "anchors": []
     },
     "/developer/prompts": {
       "title": "Promptkatalog",
@@ -337,11 +483,7 @@
     },
     "/developer/studio": {
       "title": "Studio",
-      "anchors": [
-        "developer-prompts",
-        "developer-studio",
-        "developer-trees"
-      ]
+      "anchors": []
     },
     "/developer/studio/api": {
       "title": "API Studio",

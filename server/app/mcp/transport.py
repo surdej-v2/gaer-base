@@ -69,6 +69,11 @@ def build_server(server: str, info: dict | None = None) -> Server:
                 if t["kind"] == "code" and not toolmap.has_handler(server, t["name"]):
                     continue
                 spec = toolmap.spec_for(t, server)
+                if t["kind"] == "operation" and t["classification"] != "white" and caller.principal.role != "admin":
+                    # MCP-5: external users only see white tools from Gær Developer.
+                    who = await db.fetch_one(conn, "select audience from users where id = %s", (caller.user_id,))
+                    if not who or who["audience"] != "internal":
+                        continue
                 if t["classification"] != "white" and t["name"] not in toolmap.CORE:
                     d = await toolmap.decide(conn, t, caller.user_id, caller.principal.session_id)
                     if not d["allowed"]:

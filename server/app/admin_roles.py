@@ -22,6 +22,8 @@ ROLES: dict[str, dict] = {
     "produkt": {"label": "Produkt", "description": "Features og ringe, AI og AI-forbrug, analytics, heatmaps og adoptionsforløb."},
     "data": {"label": "Data", "description": "Datakatalog, Udforsk, API-kilder og MCP-værktøjer (hvem må bruge hvad), og udviklerportalen /developer (API Studio og MCP Studio)."},
     "privatliv": {"label": "Privatliv", "description": "GDPR-forespørgsler, samtykke, sletning af logdata, audit- og auth-log, godkendelse af adgang til fortrolige data og moderering af samtaler."},
+    "udvikler": {"label": "Udvikler", "description": "Gær Developer (/developer): opretter og retter kladder af datasæt, pipelines, operationer, multisource-kilder, MCP-endpoints og API'er. Udgivelse går gennem godkendelse."},
+    "udvikler_admin": {"label": "Udvikler-admin", "description": "Som Udvikler, og desuden dataforbindelser, eksterne MCP-servere og rollen Udvikler til andre."},
     "drift": {"label": "Drift", "description": "Login-udbydere, mail, kalendere og kontakter, hemmeligheder, MCP-servere, udvidelse og Office, webhooks, jobs, NATS, ressourcer og indstillinger; levering af beskeder og deres kanaler."},
 }
 
@@ -53,7 +55,7 @@ SECTIONS: dict[str, list[str]] = {
     "/data/connect": ["/api/admin/data"],
     "/data/tools": ["/api/admin/data"],
     # The developer portal on /developer (served by the app on /, not /admin): dashboard, API Studio, MCP Studio.
-    "/developer": ["/api/admin/studio"],
+    "/developer": ["/api/admin/studio", "/api/admin/dev"],
     "/access": ["/api/admin/access"],
     "/gdpr": ["/api/admin/gdpr"],
     "/consent": ["/api/admin/consent"],
@@ -87,7 +89,16 @@ ROLE_SECTIONS: dict[str, list[str]] = {
     "privatliv": ["/gdpr", "/consent", "/retention", "/logs/audit", "/logs/auth", "/access", "/messages/moderation"],
     "drift": ["/login-providers", "/mail", "/secrets", "/mcp", "/integrations", "/webhooks", "/jobs", "/nats", "/resources", "/settings",
               "/messages", "/messages/delivery", "/messages/settings"],
+    # Gær Developer (specs/developer/ROLES.md): both open /developer; what only Udvikler-admin may change is DEV_ADMIN.
+    "udvikler": ["/developer"],
+    "udvikler_admin": ["/developer"],
 }
+
+# Gær Developer: changes only Udvikler-admin (or Fuld) may make — connections, external MCP servers, giving the role
+# Udvikler, API keys, known instances and imports. Reading them is open to everyone with /developer.
+DEVELOPERS = {"udvikler", "udvikler_admin", "data", FULL}
+DEV_ADMIN_ROLES = {"udvikler_admin", FULL}
+DEV_ADMIN_WRITES = [re.compile(r"^/api/admin/dev/(connections|upstreams|developers|api-keys|instances|import)(/|$)")]
 
 # Only `fuld`, even for roles whose sections contain the path.
 FULL_ONLY = [re.compile(r"^/api/admin/users/\d+/(role|admin-roles)$")]
@@ -117,6 +128,8 @@ def allows(roles, method: str, path: str) -> bool:
         return True
     if any(p.match(path) for p in FULL_ONLY):
         return False
+    if method not in ("GET", "HEAD") and any(p.match(path) for p in DEV_ADMIN_WRITES) and not DEV_ADMIN_ROLES & set(roles):
+        return False
     open_sections = sections(roles)
     if method == "GET" and path == USER_LIST and USER_LIST_SECTIONS.intersection(open_sections):
         return True
@@ -125,6 +138,14 @@ def allows(roles, method: str, path: str) -> bool:
             if path == prefix or path.startswith(prefix + "/") or path.startswith(prefix + "."):
                 return True
     return False
+
+
+def is_developer(roles) -> bool:
+    return bool(DEVELOPERS & set(clean(roles)))
+
+
+def is_dev_admin(roles) -> bool:
+    return bool(DEV_ADMIN_ROLES & set(clean(roles)))
 
 
 def catalog() -> list[dict]:

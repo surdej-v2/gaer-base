@@ -149,15 +149,18 @@
    "id": "developer",
    "docs_path": "/developer/…",
    "who": {
-    "en": "admin with the role Data or Fuld",
-    "da": "admin med rollen Data eller Fuld"
+    "en": "internal users with the admin role Udvikler or Udvikler-admin (or Data or Fuld); /gaer/… for API keys and tokens",
+    "da": "interne brugere med admin-rollen Udvikler eller Udvikler-admin (eller Data eller Fuld); /gaer/… for API-nøgler og tokens"
    },
    "what": {
-    "en": "**Developer portal**: a dashboard over API sources, the data catalog, MCP endpoints and tools, and the **Studio**. `/developer/studio/api` (**API Studio**) registers an API with a source description (YAML, or imported from a cURL command or an OpenAPI document), tests the call and saves it so its datasets land in the data catalog (`/admin/data`). `/developer/studio/mcp` (**MCP Studio**) defines MCP endpoints on `/mcp/<key>` — name, audience, instructions and which tools they offer (the app's Code tools and Data tools from the catalog) — tries a tool, shows the log and what a client needs to connect. `/developer/prompts` is the **prompt catalogue** (ready-made prompts for Claude, in `developer/promptCatalog.ts`) and `/developer/trae` shows **tree structures** (`web/src/tree/`) against the real `/api/meta`. `/develop` redirects here.",
-    "da": "**Udviklerportal**: overblik over API-kilder, datakatalog, MCP-endpoints og værktøjer, og **Studio**. API Studio registrerer et API med en kildebeskrivelse (YAML, cURL eller OpenAPI), tester kaldet og udstiller datasættene i kataloget. MCP Studio definerer MCP-endpoints på `/mcp/<nøgle>` og vælger deres værktøjer. Desuden promptkataloget og træstrukturer."
+    "en": "**Gær Developer** (spec in `specs/developer/`): its own sidebar, breadcrumb and ⌘K palette. Four studios on one core of versioned artifacts with RACI owners and approval: **Datastudie** (a guide that turns a description into an MCP endpoint on `/mcp/<slug>` with tools built on operations; multisource sources that fetch live from several sources), **Pipeline** (MongoDB-style stages compiled to SQL, snapshots as materialized views in `snapshots`, runs that wait for `ingest.load_status`), **MCP-studie** (test bench, AI test, test cases, clients, monitoring, rate limits) and **API-studie** (REST on `/gaer/v<major>/<slug>` with keys, OpenAPI 3.1, console and phase-out of old majors). Shared: the data catalog with classification, personal data and lineage, connections (FDW or direct), approvals, export/import. Masking is one function in the runtime; cache in Redis or Postgres. The classic Studio (`/developer/studio/api`, `/developer/studio/mcp`), the prompt catalogue and the tree examples are still here.",
+    "da": "**Gær Developer** (spec i `specs/developer/`): egen sidebar, brødkrumme og ⌘K. Fire studier på én kerne af versionerede artefakter med RACI-ejere og godkendelse: Datastudie, Pipeline, MCP-studie og API-studie, plus datakatalog, forbindelser, godkendelser og eksport/import."
    },
    "code": [
     "developer/",
+    "server/app/devkit/",
+    "server/app/routes/developer*.py",
+    "server/app/routes/gaer_api.py",
     "server/app/routes/studio.py",
     "server/app/mcp/endpoints.py",
     "tree/"
@@ -484,7 +487,8 @@
    "group": "developer",
    "app": "app",
    "access": "admin",
-   "title": "Udvikler"
+   "title": "Developer",
+   "chrome": "own"
   },
   {
    "path": "/developer/studio",
@@ -520,6 +524,272 @@
    "app": "app",
    "access": "admin",
    "title": "Træstrukturer"
+  },
+  {
+   "path": "/developer/datastudie",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Endpoints i Datastudie"
+  },
+  {
+   "path": "/developer/pipeline",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Pipelines"
+  },
+  {
+   "path": "/developer/api",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "API'er"
+  },
+  {
+   "path": "/developer/forbindelser",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Dataforbindelser"
+  },
+  {
+   "path": "/developer/eksport",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Eksport og import"
+  },
+  {
+   "path": "/developer/katalog",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Datakatalog"
+  },
+  {
+   "path": "/developer/katalog/lineage",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Lineage"
+  },
+  {
+   "path": "/developer/katalog/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Datasæt"
+  },
+  {
+   "path": "/developer/godkendelser",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Venter på mig"
+  },
+  {
+   "path": "/developer/godkendelser/historik",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Godkendelseshistorik"
+  },
+  {
+   "path": "/developer/godkendelser/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Godkendelse"
+  },
+  {
+   "path": "/developer/artefakter/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Artefakt"
+  },
+  {
+   "path": "/developer/hjaelp",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Om Developer"
+  },
+  {
+   "path": "/developer/pipeline/ny",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Ny pipeline"
+  },
+  {
+   "path": "/developer/pipeline/snapshots",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Snapshots"
+  },
+  {
+   "path": "/developer/pipeline/koersler",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Kørsler"
+  },
+  {
+   "path": "/developer/pipeline/koersler/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Kørsel"
+  },
+  {
+   "path": "/developer/pipeline/planer",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Planer"
+  },
+  {
+   "path": "/developer/pipeline/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Pipeline-editor"
+  },
+  {
+   "path": "/developer/forbindelser/cache",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Cache"
+  },
+  {
+   "path": "/developer/forbindelser/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Forbindelse"
+  },
+  {
+   "path": "/developer/datastudie/ny",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Nyt endpoint"
+  },
+  {
+   "path": "/developer/datastudie/endpoints/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Endpoint"
+  },
+  {
+   "path": "/developer/datastudie/operationer",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Operationer"
+  },
+  {
+   "path": "/developer/datastudie/operationer/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Operation"
+  },
+  {
+   "path": "/developer/datastudie/multisource",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Multisource-kilder"
+  },
+  {
+   "path": "/developer/mcp",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "MCP-studie"
+  },
+  {
+   "path": "/developer/mcp/testbaenk",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Testbænk"
+  },
+  {
+   "path": "/developer/mcp/klienter",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Forbundne klienter"
+  },
+  {
+   "path": "/developer/mcp/drift",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "MCP-overvågning"
+  },
+  {
+   "path": "/developer/mcp/eksterne",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Eksterne MCP-servere"
+  },
+  {
+   "path": "/developer/datastudie/multisource/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Multisource-kilde"
+  },
+  {
+   "path": "/developer/api/noegler",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "API-nøgler"
+  },
+  {
+   "path": "/developer/api/konsol",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "Testkonsol"
+  },
+  {
+   "path": "/developer/api/dokumentation",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "API-dokumentation"
+  },
+  {
+   "path": "/developer/api/drift",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "API-overvågning"
+  },
+  {
+   "path": "/developer/api/:id",
+   "group": "developer",
+   "app": "app",
+   "access": "admin",
+   "title": "API"
+  },
+  {
+   "path": "/gaer/{path}",
+   "group": "developer",
+   "app": "server",
+   "access": "token",
+   "title": "API'er fra API-studie"
   },
   {
    "path": "/admin",

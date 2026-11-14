@@ -18,8 +18,19 @@ import McpConsent from "./pages/McpConsent";
 import { DelegatedArea, UserHome, UserSettings, UserSharing } from "./pages/UserArea";
 import UserMail, { UserMailById } from "./pages/Mail";
 import Approve from "./pages/Approve";
-import DeveloperLayout, { StudioLayout } from "./developer/DeveloperLayout";
-import Dashboard from "./developer/Dashboard";
+import { StudioLayout } from "./developer/DeveloperLayout";
+import DeveloperShell from "./developer/DeveloperShell";
+import DevOverview from "./developer/Overview";
+import { ApprovalDetail, ApprovalsHistory, ApprovalsMine } from "./developer/Approvals";
+import { CatalogDataset, CatalogLineage, CatalogList } from "./developer/Catalog";
+import { ArtifactPage } from "./developer/devui";
+import DevHelp, { Soon } from "./developer/Help";
+import { PipelineEditor, PipelineList, PipelineNew, PlansPage, RunPage, RunsPage, SnapshotsPage } from "./developer/Pipeline";
+import { ConnectionList, ConnectionPage } from "./developer/Connections";
+import { MultisourceList, MultisourcePage } from "./developer/Multisource";
+import { ApiList, ApiMonitorPage, ApiPage, ConsolePage, DocsPage, ExportPage, KeysPage } from "./developer/ApiStudie";
+import { ClientsPage, McpOverview, MonitorPage, TestBench } from "./developer/McpStudie";
+import { CachePage, EndpointList, EndpointPage, Guide, OperationList, OperationPage } from "./developer/Datastudie";
 import StudioOverview from "./developer/StudioOverview";
 import ApiStudio from "./developer/ApiStudio";
 import McpStudio from "./developer/McpStudio";
@@ -158,8 +169,45 @@ export default function App() {
         <Route path="/klip" element={<RequireUser><FeatureGate feature="klip"><ClipsPage /></FeatureGate></RequireUser>} />
         <Route path="/klip/:id" element={<RequireUser><FeatureGate feature="klip"><ClipsPage /></FeatureGate></RequireUser>} />
         <Route path="/go" element={<GoPage />} />
-        <Route path="/developer" element={<RequireUser><DeveloperLayout /></RequireUser>}>
-          <Route index element={<Dashboard />} />
+        <Route path="/developer" element={<RequireUser><DeveloperShell /></RequireUser>}>
+          <Route index element={<DevOverview />} />
+          <Route path="datastudie" element={<EndpointList />} />
+          <Route path="datastudie/ny" element={<Guide />} />
+          <Route path="datastudie/endpoints/:id" element={<EndpointPage />} />
+          <Route path="datastudie/operationer" element={<OperationList />} />
+          <Route path="datastudie/operationer/:id" element={<OperationPage />} />
+          <Route path="datastudie/multisource" element={<MultisourceList />} />
+          <Route path="datastudie/multisource/:id" element={<MultisourcePage />} />
+          <Route path="pipeline" element={<PipelineList />} />
+          <Route path="pipeline/ny" element={<PipelineNew />} />
+          <Route path="pipeline/snapshots" element={<SnapshotsPage />} />
+          <Route path="pipeline/koersler" element={<RunsPage />} />
+          <Route path="pipeline/koersler/:id" element={<RunPage />} />
+          <Route path="pipeline/planer" element={<PlansPage />} />
+          <Route path="pipeline/:id" element={<PipelineEditor />} />
+          <Route path="mcp" element={<McpOverview />} />
+          <Route path="mcp/testbaenk" element={<TestBench />} />
+          <Route path="mcp/klienter" element={<ClientsPage />} />
+          <Route path="mcp/drift" element={<MonitorPage />} />
+          <Route path="mcp/eksterne" element={<Soon title="Eksterne MCP-servere" text="Eksterne MCP-servere udstillet gennem Gær, med godkendte tool-lister." />} />
+          <Route path="api" element={<ApiList />} />
+          <Route path="api/noegler" element={<KeysPage />} />
+          <Route path="api/konsol" element={<ConsolePage />} />
+          <Route path="api/dokumentation" element={<DocsPage />} />
+          <Route path="api/drift" element={<ApiMonitorPage />} />
+          <Route path="api/:id" element={<ApiPage />} />
+          <Route path="forbindelser" element={<ConnectionList />} />
+          <Route path="forbindelser/cache" element={<CachePage />} />
+          <Route path="forbindelser/:id" element={<ConnectionPage />} />
+          <Route path="eksport" element={<ExportPage />} />
+          <Route path="katalog" element={<CatalogList />} />
+          <Route path="katalog/lineage" element={<CatalogLineage />} />
+          <Route path="katalog/:id" element={<CatalogDataset />} />
+          <Route path="godkendelser" element={<ApprovalsMine />} />
+          <Route path="godkendelser/historik" element={<ApprovalsHistory />} />
+          <Route path="godkendelser/:id" element={<ApprovalDetail />} />
+          <Route path="artefakter/:id" element={<ArtifactPage />} />
+          <Route path="hjaelp" element={<DevHelp />} />
           <Route path="studio" element={<StudioLayout />}>
             <Route index element={<StudioOverview />} />
             <Route path="api" element={<ApiStudio />} />

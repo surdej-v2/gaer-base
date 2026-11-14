@@ -182,6 +182,21 @@ class Settings:
     events_stream_max_mb: int = field(default_factory=lambda: _int("EVENTS_STREAM_MAX_MB", 1024))
     events_rules_seconds: float = field(default_factory=lambda: float(_env("EVENTS_RULES_SECONDS", "5")))
 
+    # Gær Developer (specs/developer/DATA.md, RUNTIME.md). All optional: without them everything runs in this database.
+    # ANALYTICS_DATABASE_URL: where snapshots (schema `snapshots`) and foreign tables live (gaer_analytics); default this
+    # database. PIPELINE_DATABASE_URL: the role pipelines write snapshots with. DEV_FDW_ADMIN_URL: a role that may create
+    # foreign servers, user mappings and import foreign schemas (default MIGRATION_DATABASE_URL in the same database).
+    analytics_database_url: str | None = field(default_factory=lambda: _env("ANALYTICS_DATABASE_URL"))
+    pipeline_database_url: str | None = field(default_factory=lambda: _env("PIPELINE_DATABASE_URL"))
+    dev_fdw_admin_url: str | None = field(default_factory=lambda: _env("DEV_FDW_ADMIN_URL"))
+    ingest_status_table: str = field(default_factory=lambda: _env("INGEST_STATUS_TABLE", "ingest.load_status"))
+    pipeline_preview_rows: int = field(default_factory=lambda: _int("PIPELINE_PREVIEW_ROWS", 20))
+    pipeline_preview_timeout_ms: int = field(default_factory=lambda: _int("PIPELINE_PREVIEW_TIMEOUT_MS", 5000))
+    # REDIS_URL (redis://[:password@]host:port/db): cache, rate limits and idempotency keys. Without it they live in
+    # Postgres (dev_cache, dev_rate_buckets, dev_idempotency) behind the same interface (app/devkit/cache.py).
+    redis_url: str | None = field(default_factory=lambda: _env("REDIS_URL"))
+    dev_cache_max_entries: int = field(default_factory=lambda: _int("DEV_CACHE_MAX_ENTRIES", 20000))
+
     # Mail, calendar and contacts (specs/mail): Stalwart holds the mailboxes, Lettermint relays all outbound mail.
     # MAILBOX_BACKEND: "off" (the module answers "not set up"), "stalwart", or "memory" (development and tests).
     mailbox_backend: str = field(default_factory=lambda: _env("MAILBOX_BACKEND", "off"))

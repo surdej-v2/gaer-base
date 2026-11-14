@@ -72,6 +72,7 @@ use `MAIL_PROVIDER=console` (and `SMS_PROVIDER=console`).
 | `mobile/` | Expo app (iOS + Android): native login, then `/m` in a WebView — spec in `specs/mobile/` |
 | `server/app/mcp/` | MCP servers: `/mcp` (appen, as the user) and `/mcp/admin` (admin, drafts) — spec in `specs/mcp/` |
 | `server/app/routes/studio.py`, `server/app/mcp/endpoints.py` | Developer portal `/developer` (admin section `/developer`, roles Data and Fuld; `web/src/developer/`): dashboard, **API Studio** (`/developer/studio/api`, the source description as YAML → `/api/admin/data/sources`, datasets in the catalog) and **MCP Studio** (`/developer/studio/mcp`): endpoints on `/mcp/<key>` in `mcp_endpoints` (0030) with audience, instructions and the tools from the endpoint map; `transport.DynamicEndpoints` serves them, `/api/admin/studio` governs them (step-up, audited) |
+| `server/app/devkit/`, `routes/developer*.py`, `routes/gaer_api.py` | **Gær Developer** (`/developer`, spec in `specs/developer/`): `artifacts.py` versioned artifacts with RACI, contract diff → patch/minor/major (`contracts.py`), opt-in approval, review on a major, messages (jobs `developer.mail`, `developer.impact`); `masking.py` the one masking function (every row before it is returned, cached, logged or previewed); `catalog.py` datasets as artifacts + lineage; `connections.py` + `secrets.py` (the one secrets interface) connections via postgres_fdw/mysql_fdw or direct; `pipelines.py`/`pipeline_runs.py` stages → CTE SQL, snapshots in schema `snapshots` (`ANALYTICS_DATABASE_URL`), jobs `pipeline.run`/`pipeline.schedule` waiting for `ingest.load_status`; `operations.py` the shared runtime for MCP tools (kind `operation`) and APIs; `multisource.py`; `cache.py` cache/rate limits/idempotency in Redis (`REDIS_URL`) or Postgres; `mcp_endpoints.py`, `mcp_studio.py` (test bench, metrics `developer.metrics`); `apis.py` + `gaer_api.py` REST on `/gaer/v<major>/<slug>` with keys; `portability.py` signed export/import. Roles `udvikler` and `udvikler_admin` are admin roles (`admin_roles.DEV_ADMIN_WRITES`) |
 | `server/app/access.py`, `mcp/toolmap.py` | the endpoint → tool map (Code and Data tools) governed from /admin/data, internal/external users, MCP access requests with approval from a list or an e-mail link — `specs/mcp/ACCESS.md` |
 
 ## Routes — one server, many surfaces
@@ -90,7 +91,7 @@ They share the same login (session cookie), the same database and the same API.
 | `/user/mail`, `/admin/mail` | logged in (`/admin/mail`: admin, section Drift) | **Mail, calendar and contacts** (spec in `specs/mail/`): one personal mailbox per user in **Stalwart** plus shared mailboxes (reader/sender/manager), calendars (CalDAV/JMAP) and address books (CardDAV) with sharing, all outbound mail relayed by **Lettermint**, mail kept at most **30 days**. `/user/mail` manages your mailbox, aliases, identities, app passwords, calendars, address books and client setup (`/user/<id>/mail` is the same page for your own id, 404 for anyone else); `/admin/mail` is the operator console (domains + DNS check, mailboxes, shared, calendars & contacts, sending, retention, health, audit) and `/admin/mail/users/<id>` one user's mail. Off unless `MAILBOX_BACKEND` is set. | `pages/Mail.tsx`, `admin-app/pages/mail/`, `mailbox/`, `routes/mail.py`, `routes/admin_mail.py` |
 | `/beskeder`, `/samtaler`, `/admin/messages` | logged in (`/admin/messages`: admin, sections Support, Privatliv and Drift) | **Beskeder** (spec in `specs/beskeder/`): broadcasts from the administration to an audience (everyone, admins, a feature ring, inactive users, chosen users), sent in two steps with an estimate ("X får SMS (ca. Y kr) · Z får e-mail") and a single-use confirmation token; a broadcast to everyone needs a step-up. Every message lands in the user's inbox on `/beskeder` (and `/m/beskeder`); per recipient it also goes by SMS (only with the user's own yes, never in quiet hours unless urgent; duplicates and an hourly cap) or e-mail. Recipients can reply: a private thread with the administration, answered in `/admin/messages/replies`. `/admin/messages` also has the delivery log and channels and rules. **Samtaler** (`/samtaler`, `/m/samtaler`, phase 2): Fællessamtalen (every user) and direct conversations between two users; users report messages and block each other (a block hides the other's messages and stops direct conversations both ways); a word filter rejects messages before they are stored. `/admin/messages/moderation` (Support, Privatliv) dismisses reports or removes the message, showing the three messages before it only while a report is open (audited); blocks only as counts. | `pages/Inbox.tsx`, `pages/Conversations.tsx`, `admin-app/pages/messages/`, `messages/`, `routes/messages.py`, `routes/admin_messages.py` |
 | `/forbind`, `/go` | logged in | **MCP consent** (`/forbind`: a client asks for access, `mcp:admin` needs a fresh second factor) and **deep links** (`/go?path=…&focus=…`, also `/admin/go`) that open a page and focus a `data-deeplink` anchor. | `pages/McpConsent.tsx`, `deeplink.tsx`, `admin-app/go.tsx` |
-| `/developer/…` | admin with the role Data or Fuld | **Developer portal**: a dashboard over API sources, the data catalog, MCP endpoints and tools, and the **Studio**. `/developer/studio/api` (**API Studio**) registers an API with a source description (YAML, or imported from a cURL command or an OpenAPI document), tests the call and saves it so its datasets land in the data catalog (`/admin/data`). `/developer/studio/mcp` (**MCP Studio**) defines MCP endpoints on `/mcp/<key>` — name, audience, instructions and which tools they offer (the app's Code tools and Data tools from the catalog) — tries a tool, shows the log and what a client needs to connect. `/developer/prompts` is the **prompt catalogue** (ready-made prompts for Claude, in `developer/promptCatalog.ts`) and `/developer/trae` shows **tree structures** (`web/src/tree/`) against the real `/api/meta`. `/develop` redirects here. | `developer/`, `server/app/routes/studio.py`, `server/app/mcp/endpoints.py`, `tree/` |
+| `/developer/…` | internal users with the admin role Udvikler or Udvikler-admin (or Data or Fuld); /gaer/… for API keys and tokens | **Gær Developer** (spec in `specs/developer/`): its own sidebar, breadcrumb and ⌘K palette. Four studios on one core of versioned artifacts with RACI owners and approval: **Datastudie** (a guide that turns a description into an MCP endpoint on `/mcp/<slug>` with tools built on operations; multisource sources that fetch live from several sources), **Pipeline** (MongoDB-style stages compiled to SQL, snapshots as materialized views in `snapshots`, runs that wait for `ingest.load_status`), **MCP-studie** (test bench, AI test, test cases, clients, monitoring, rate limits) and **API-studie** (REST on `/gaer/v<major>/<slug>` with keys, OpenAPI 3.1, console and phase-out of old majors). Shared: the data catalog with classification, personal data and lineage, connections (FDW or direct), approvals, export/import. Masking is one function in the runtime; cache in Redis or Postgres. The classic Studio (`/developer/studio/api`, `/developer/studio/mcp`), the prompt catalogue and the tree examples are still here. | `developer/`, `server/app/devkit/`, `server/app/routes/developer*.py`, `server/app/routes/gaer_api.py`, `server/app/routes/studio.py`, `server/app/mcp/endpoints.py`, `tree/` |
 | `/admin/…` | admin role (+ MFA) | **Standalone admin app** (own Vite entry `web/admin.html`): statistics, users + impersonation, login providers (`/admin/login-providers`: Microsoft Entra ID, Google, GitHub, Amazon, SAML 2.0 — each off until switched on), features and rings, App Stores, auth/audit log, analytics, heatmaps, GDPR, retention, consent, files, tree structures (`/admin/meta`), website (`/admin/web`), AI (`/admin/ai`), AI consumption and budgets (`/admin/consumption`), extension & Office (`/admin/integrations`), MCP servers (`/admin/mcp`), webhooks (`/admin/webhooks`), jobs and cleanup (`/admin/jobs`), NATS monitoring (`/admin/nats`), resources, kill switches and events (`/admin/resources`), mail (`/admin/mail`), secrets owned by groups with RACI and approved access (`/admin/secrets`), groups (`/admin/groups`), data catalog + Udforsk + API sources (`/admin/data`), adoption journeys measured by the routes users visit (`/admin/adoption`), settings. Every read and change is audited. | `admin-app/`, `routes/admin.py`, `impersonation.py`, `features.py`, `app_store.py`, `admin-app/pages/Meta.tsx` |
 | `/m/…` | logged in | **Mobile app (PWA)**: home, AI chat (if enabled), clips, files with camera upload, profile. Bottom tab bar, own manifest + service worker scoped to `/m/`. | `mobile/Mobile.tsx`, `public/m/` |
 | `/extension/…` | logged in, inside the browser extension | **Side panel** of the Chrome/Edge extension (iframe). Current page + per-domain consent + save as clip, AI chat with the page as context, clips, **tags** for the page (`/extension/meta`: what it is tagged with, tag it as the page, a folder pattern or the whole domain, browse a tag's context; the address is only looked up automatically on allowed domains), account. Talks to the panel over `gaer-bridge`. | `extension/`, `web/src/extension/`, `bridge/extension.ts`, `web/src/extension/ExtensionMeta.tsx` |
@@ -100,7 +101,7 @@ They share the same login (session cookie), the same database and the same API.
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP clients (OAuth bearer) | **MCP servers** (Streamable HTTP): the app as the logged-in user, admin where every change is a draft, and the endpoints defined in `/developer/studio/mcp` on `/mcp/<key>` (as the user, with the tools chosen there). Consent page `/forbind`; deep links `/go` and `/admin/go`; hub in `/admin/mcp`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. | `server/app/mcp/`, skill `gaer-mcp`, `server/app/mcp/endpoints.py` |
 | `/health` | deploy | Database check + version; used by `deploy/deploy.sh` before switching versions. | `main.py` |
 
-<details><summary>All routes (112)</summary>
+<details><summary>All routes (150)</summary>
 
 | Path | Served by | Access | Page |
 | --- | --- | --- | --- |
@@ -128,12 +129,50 @@ They share the same login (session cookie), the same database and the same API.
 | `/forbind` | app (`index.html`) | logged in | Forbind MCP-klient |
 | `/godkend` | app (`index.html`) | logged in | Godkend adgang |
 | `/go` | app (`index.html`) | everyone | Deep link |
-| `/developer` | app (`index.html`) | admin | Udvikler |
+| `/developer` | app (`index.html`) | admin | Developer · own chrome |
 | `/developer/studio` | app (`index.html`) | admin | Studio |
 | `/developer/studio/api` | app (`index.html`) | admin | API Studio |
 | `/developer/studio/mcp` | app (`index.html`) | admin | MCP Studio |
 | `/developer/prompts` | app (`index.html`) | admin | Promptkatalog |
 | `/developer/trae` | app (`index.html`) | admin | Træstrukturer |
+| `/developer/datastudie` | app (`index.html`) | admin | Endpoints i Datastudie |
+| `/developer/pipeline` | app (`index.html`) | admin | Pipelines |
+| `/developer/api` | app (`index.html`) | admin | API'er |
+| `/developer/forbindelser` | app (`index.html`) | admin | Dataforbindelser |
+| `/developer/eksport` | app (`index.html`) | admin | Eksport og import |
+| `/developer/katalog` | app (`index.html`) | admin | Datakatalog |
+| `/developer/katalog/lineage` | app (`index.html`) | admin | Lineage |
+| `/developer/katalog/:id` | app (`index.html`) | admin | Datasæt |
+| `/developer/godkendelser` | app (`index.html`) | admin | Venter på mig |
+| `/developer/godkendelser/historik` | app (`index.html`) | admin | Godkendelseshistorik |
+| `/developer/godkendelser/:id` | app (`index.html`) | admin | Godkendelse |
+| `/developer/artefakter/:id` | app (`index.html`) | admin | Artefakt |
+| `/developer/hjaelp` | app (`index.html`) | admin | Om Developer |
+| `/developer/pipeline/ny` | app (`index.html`) | admin | Ny pipeline |
+| `/developer/pipeline/snapshots` | app (`index.html`) | admin | Snapshots |
+| `/developer/pipeline/koersler` | app (`index.html`) | admin | Kørsler |
+| `/developer/pipeline/koersler/:id` | app (`index.html`) | admin | Kørsel |
+| `/developer/pipeline/planer` | app (`index.html`) | admin | Planer |
+| `/developer/pipeline/:id` | app (`index.html`) | admin | Pipeline-editor |
+| `/developer/forbindelser/cache` | app (`index.html`) | admin | Cache |
+| `/developer/forbindelser/:id` | app (`index.html`) | admin | Forbindelse |
+| `/developer/datastudie/ny` | app (`index.html`) | admin | Nyt endpoint |
+| `/developer/datastudie/endpoints/:id` | app (`index.html`) | admin | Endpoint |
+| `/developer/datastudie/operationer` | app (`index.html`) | admin | Operationer |
+| `/developer/datastudie/operationer/:id` | app (`index.html`) | admin | Operation |
+| `/developer/datastudie/multisource` | app (`index.html`) | admin | Multisource-kilder |
+| `/developer/mcp` | app (`index.html`) | admin | MCP-studie |
+| `/developer/mcp/testbaenk` | app (`index.html`) | admin | Testbænk |
+| `/developer/mcp/klienter` | app (`index.html`) | admin | Forbundne klienter |
+| `/developer/mcp/drift` | app (`index.html`) | admin | MCP-overvågning |
+| `/developer/mcp/eksterne` | app (`index.html`) | admin | Eksterne MCP-servere |
+| `/developer/datastudie/multisource/:id` | app (`index.html`) | admin | Multisource-kilde |
+| `/developer/api/noegler` | app (`index.html`) | admin | API-nøgler |
+| `/developer/api/konsol` | app (`index.html`) | admin | Testkonsol |
+| `/developer/api/dokumentation` | app (`index.html`) | admin | API-dokumentation |
+| `/developer/api/drift` | app (`index.html`) | admin | API-overvågning |
+| `/developer/api/:id` | app (`index.html`) | admin | API |
+| `/gaer/{path}` | server | OAuth bearer | API'er fra API-studie |
 | `/admin` | admin app (`admin.html`) | admin | Statistik |
 | `/admin/go` | admin app (`admin.html`) | admin | Deep link |
 | `/admin/users` | admin app (`admin.html`) | admin | Brugere og roller |

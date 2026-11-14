@@ -112,6 +112,8 @@ of /admin the admin may use; they never widen anything a plain admin could not d
 | `data` | Data: Katalog, Udforsk, Forbind API |
 | `privatliv` | GDPR, Samtykke og cookies, Sletning af logdata, Audit-log, Auth-log |
 | `drift` | Login-udbydere, MCP-servere, Udvidelse og Office, Indstillinger |
+| `udvikler` | Gær Developer (`/developer`, `/api/admin/dev`, `/api/admin/studio`): drafts of datasets, pipelines, operations, endpoints, APIs |
+| `udvikler_admin` | as `udvikler`, plus connections, API keys, known instances, imports and giving the role `udvikler` (`DEV_ADMIN_WRITES`). External users can never hold either role (trigger `users_developer_roles`); see `specs/developer/ROLES.md` |
 
 - Statistik (`/admin`) is open to every admin. Several roles add up.
 - One table (`SECTIONS` + `ROLE_SECTIONS`) drives both the menu (`/api/auth/me` → `admin_sections`) and the check in
