@@ -156,7 +156,7 @@ async def try_expression(body: ExprIn):
     try:
         value = expr.render(body.expression, ctx)
     except expr.ExprError as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": e.message}   # our own Danish message, never a stack trace
     clipped, truncated = flow_runs._clip(value)
     return {"ok": True, "value": clipped, "type": expr.type_name(value), "truncated": truncated}
 

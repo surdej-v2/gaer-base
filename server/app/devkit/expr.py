@@ -27,7 +27,6 @@ from urllib.parse import quote
 MAX_LENGTH = 4000
 MAX_DEPTH = 64
 TEMPLATE = re.compile(r"\{\{(.*?)\}\}", re.S)
-SINGLE = re.compile(r"^\s*\{\{((?:(?!\}\}).)*)\}\}\s*$", re.S)   # exactly one expression and nothing else
 _TOKEN = re.compile(r"""
     (?P<ws>\s+) |
     (?P<num>\d+(?:\.\d+)?) |
@@ -40,6 +39,10 @@ KEYWORDS = {"and", "or", "not", "in", "true", "false", "null"}
 
 class ExprError(ValueError):
     """A bad expression: syntax, an unknown function, or a value that cannot be used that way. The message is Danish."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
 
 
 # ── Tokens and parsing ──────────────────────────────────────────────────────
@@ -383,15 +386,24 @@ def _str(v) -> str:
     return str(v)
 
 
+def _single(value: str) -> str | None:
+    """The expression when the whole string is exactly one `{{ … }}` and nothing else (plain string checks, no regex)."""
+    text = value.strip()
+    if not (text.startswith("{{") and text.endswith("}}")) or len(text) < 4:
+        return None
+    inner = text[2:-2]
+    return None if "}}" in inner or "{{" in inner else inner
+
+
 def render(value, ctx: dict):
     """Fills `{{ … }}` into a value: strings are templated (one expression alone keeps its type), dicts and lists
     recursively. Everything else is returned as it is."""
     if isinstance(value, str):
         if "{{" not in value:
             return value
-        m = SINGLE.match(value)
-        if m:
-            return evaluate(m.group(1), ctx)
+        single = _single(value)
+        if single is not None:
+            return evaluate(single, ctx)
         return TEMPLATE.sub(lambda mm: _str(evaluate(mm.group(1), ctx)), value)
     if isinstance(value, dict):
         return {k: render(v, ctx) for k, v in value.items()}
