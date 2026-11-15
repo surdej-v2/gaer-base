@@ -13,8 +13,8 @@ With SMS_LOGIN=1 a phone number + code sent by SMS works the same way (opt-in).
   3. POST /passkey/register/*  adds a passkey or security key (full session; see app.mfa for when a recent second
                           factor is needed first).
   4. POST /passkey/login/*     login with a passkey. Counts as MFA when the authenticator verified the user.
-  4b. Login providers (routes/login_providers.py): Microsoft, Google, GitHub, Amazon or SAML instead of the code; then
-                          the same as after a code (_after_first_factor). A domain can require its provider: then it
+  4b. Login providers (routes/login_providers.py): Microsoft, Google, Apple, GitHub, Amazon or SAML instead of the code;
+                          then the same as after a code (_after_first_factor). A domain can require its provider: then it
                           gets no code (same answer), except the super admin (emergency access).
   5. POST /mfa/*               the second factor (passkey/security key with user verification, or an authenticator
                           app). Completes a pending login or steps up a full session; always issues a new session.

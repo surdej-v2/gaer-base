@@ -117,9 +117,9 @@ REGISTRY: tuple[Integration, ...] = (
         (Endpoint("GET", "/{x}z", "varz, jsz, connz …", "nats_monitor.py", r"^/[a-z]+z$"),), link="/nats",
         settings=("NATS_MONITOR_URL",)),
     Integration(
-        "login_providers", "Login-udbydere", "Login med Microsoft Entra ID, Google, GitHub, Amazon og SAML (kun de udbydere, "
-        "en admin har slået til).", ("server/app/login_providers.py", "server/app/saml.py"),
-        lambda: "login.microsoftonline.com · accounts.google.com · github.com · amazon.com · jeres SAML-IdP", (),
+        "login_providers", "Login-udbydere", "Login med Microsoft Entra ID, Google, Apple, GitHub, Amazon og SAML (kun de "
+        "udbydere, en admin har slået til).", ("server/app/login_providers.py", "server/app/saml.py"),
+        lambda: "login.microsoftonline.com · accounts.google.com · appleid.apple.com · github.com · amazon.com · jeres SAML-IdP", (),
         lambda: True,
         (Endpoint("GET", "/.well-known/openid-configuration", "OpenID Connect-opdagelse", "login_providers.py · discovery()",
                   r"/\.well-known/openid-configuration$"),

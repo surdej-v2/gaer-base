@@ -78,7 +78,10 @@ Frontend usage (components, step-up dialog, profile API): skill `gaer-profile`.
     recorded as such. Nobody switches the requirement on for themselves without a YubiKey.
 
 14. **Login providers** (`app/login_providers.py`, `app/saml.py`, `routes/login_providers.py`, `/admin/login-providers`,
-    role Drift): Microsoft Entra ID and Google (OpenID Connect, code + PKCE + nonce), GitHub and Amazon (OAuth 2.0 + PKCE)
+    role Drift): Microsoft Entra ID and Google (OpenID Connect, code + PKCE + nonce), Apple (Sign in with Apple: OpenID
+    Connect with code + nonce but no PKCE, scopes `name email`, the answer is a form Apple posts to
+    `POST /api/auth/oidc/apple/callback` — CSRF-exempt, flow cookie SameSite=None — and the client secret is a 5-minute
+    ES256 JWT signed with the team's .p8 key, which is what `client_secret_enc` holds), GitHub and Amazon (OAuth 2.0 + PKCE)
     and SAML 2.0 connections. Each is **off until an admin switches it on** (step-up, audited, webhook `auth.provider.*`).
     - **A provider replaces only the one-time code.** After it, `_after_first_factor` decides exactly as after a code:
       "Kræv passkey" → pending `mfa` session; admins use grace logins and then need a second factor for /admin; a
@@ -87,7 +90,10 @@ Frontend usage (components, step-up dialog, profile API): skill `gaer-profile`.
     - **Which account**: an identity is the provider's stable subject (`user_identities`, unique per provider and per
       user). The first time it is linked on an e-mail the provider verified (setting `login_providers.link =
       verified_email`) or only by the user from `/konto` (`user_linked`; linking/unlinking needs `mfa.require_recent_mfa`).
-      Entra and SAML e-mails count as verified only on the provider's listed domains; Amazon's never.
+      Entra and SAML e-mails count as verified only on the provider's listed domains; Amazon's never. Apple's always does,
+      also a "Skjul min e-mail" relay address (`@privaterelay.appleid.com`) — which matches no listed domain and no
+      existing account, so that person links the account from `/konto`. Apple sends the name (`user` form field) only on
+      the very first login; it is used only as the display name of a user created right then.
     - **New people** only when the provider (`new_users = signup`), the rules (`new_users = signup`) and Tilmelding
       (`app/signup.py`) all allow it, and the e-mail is verified.
     - **Flows** (`login_flows`) are bound to the browser by the `gaer_login_flow` cookie (hash stored), single use (also

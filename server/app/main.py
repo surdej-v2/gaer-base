@@ -52,6 +52,9 @@ CSRF_HEADER = "x-gaer"
 CSRF_EXEMPT = {"/api/collect"}  # sendBeacon cannot set headers; the endpoint only appends anonymous events
 CSRF_EXEMPT_PREFIXES = ("/api/hooks/in/",   # incoming webhooks: other systems, no cookie, verified per endpoint
                         "/api/auth/saml/")  # SAML responses: a form the IdP posts (signed, bound to the login flow)
+# Sign in with Apple answers with a form the browser posts (response_mode=form_post); the login flow it belongs to is
+# bound to the browser by state + cookie (routes/login_providers.py). Only the callback, no other /oidc/ path.
+CSRF_EXEMPT_RE = re.compile(r"^/api/auth/oidc/[a-z][a-z0-9-]{1,39}/callback$")
 
 # Who may embed us: the app itself (heatmap previews, the Office shell) and, for the embeddable
 # routes, the browser extension and the Office hosts (Office on the web runs add-ins in iframes).
@@ -162,6 +165,7 @@ def create_app() -> FastAPI:
         path = request.url.path
         if (path.startswith("/api/") and request.method not in ("GET", "HEAD", "OPTIONS")
                 and path not in CSRF_EXEMPT and not path.startswith(CSRF_EXEMPT_PREFIXES)
+                and not CSRF_EXEMPT_RE.match(path)
                 and request.headers.get(CSRF_HEADER) != "1"):
             return JSONResponse({"detail": "Mangler X-Gaer header"}, status_code=403)
         # Kill switches (app.killswitch): a closed part of the service answers 503; /admin and login never close.

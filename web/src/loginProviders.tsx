@@ -1,8 +1,9 @@
 // Login providers on the app side (server/app/login_providers.py): the buttons on /login and "Forbundne logins" on
 // /konto. A provider replaces only the one-time code; the second-factor rules after it are the same.
 import type { CSSProperties } from "react";
+import { Apple } from "lucide-react";
 
-export type ProviderKind = "entra" | "google" | "github" | "amazon" | "saml";
+export type ProviderKind = "entra" | "google" | "apple" | "github" | "amazon" | "saml";
 export type PublicProvider = { key: string; kind: ProviderKind; label: string; name: string };
 export type ProviderList = { providers: PublicProvider[]; required: (PublicProvider & { domain: string }) | null; sso: boolean };
 
@@ -41,6 +42,7 @@ export function ProviderIcon({ kind, size = 16 }: { kind: ProviderKind; size?: n
   }
   const letter: CSSProperties = { fontWeight: 700, fontSize: size, lineHeight: 1, width: size, textAlign: "center" };
   if (kind === "google") return <span aria-hidden="true" style={{ ...letter, color: "#1a73e8" }}>G</span>;
+  if (kind === "apple") return <Apple size={size} strokeWidth={2} aria-hidden="true" />;
   if (kind === "github") return <span aria-hidden="true" style={{ ...letter, fontSize: size * 0.75 }}>GH</span>;
   if (kind === "amazon") return <span aria-hidden="true" style={{ ...letter, color: "#c2410c" }}>a</span>;
   return (

@@ -14,7 +14,7 @@ import jwt
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.x509.oid import NameOID
 from lxml import etree
@@ -333,7 +333,7 @@ async def test_admin_api_is_guarded_and_never_returns_the_secret(make_client, ow
     assert detail["status"] == "ready"
     overview = (await boss.get("/api/admin/login-providers")).json()
     assert {c["kind"]: c["set_up"] for c in overview["catalog"]} == {
-        "entra": True, "google": False, "github": False, "amazon": False, "saml": False}
+        "entra": True, "google": False, "apple": False, "github": False, "amazon": False, "saml": False}
     audit = owner_conn.execute("select action, after::text, detail::text from audit_log where table_name = 'login_providers'"
                                " order by id").fetchall()
     assert [a[0] for a in audit] == ["login_provider.created", "login_provider.updated"]
@@ -414,6 +414,216 @@ async def test_group_mapping_adds_and_removes_only_its_own(make_client, owner_co
     actions = [r[0] for r in owner_conn.execute(
         "select action from audit_log where table_name = 'groups' and detail->>'via' = 'provider:entra' order by id")]
     assert actions == ["group.member_added", "group.member_removed"]
+
+
+# ── Sign in with Apple ──────────────────────────────────────────────────────
+
+APPLE = "https://appleid.apple.com"
+APPLE_TEAM, APPLE_KEY_ID, APPLE_SERVICE = "ABCDE12345", "KEY1234567", "dk.firma.gaer"
+
+
+class FakeApple(FakeIdP):
+    """Sign in with Apple behind httpx.MockTransport: discovery under appleid.apple.com, the client secret is a JWT
+    signed ES256 with the team's key, no PKCE, and the id_token says email_verified as the string "true"."""
+
+    def __init__(self):
+        super().__init__(issuer=APPLE, client_id=APPLE_SERVICE)
+        self.team_key = ec.generate_private_key(ec.SECP256R1())
+        self.secret_claims: dict | None = None
+
+    def p8(self) -> str:
+        return self.team_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                           serialization.NoEncryption()).decode()
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == f"{APPLE}/.well-known/openid-configuration":
+            return httpx.Response(200, json={"issuer": APPLE, "authorization_endpoint": f"{APPLE}/auth/authorize",
+                                             "token_endpoint": f"{APPLE}/auth/token", "jwks_uri": f"{APPLE}/auth/keys"})
+        if url == f"{APPLE}/auth/keys":
+            return httpx.Response(200, json={"keys": [self.jwk()]})
+        if url == f"{APPLE}/auth/token":
+            form = parse_qs(request.content.decode())
+            self.token_calls.append(form)
+            assert "code_verifier" not in form, "Apple does not support PKCE"
+            try:
+                header = jwt.get_unverified_header(form["client_secret"][0])
+                self.secret_claims = jwt.decode(form["client_secret"][0], self.team_key.public_key(), algorithms=["ES256"],
+                                                audience=APPLE, options={"require": ["exp", "iat", "iss", "sub"]})
+            except jwt.PyJWTError:
+                return httpx.Response(400, json={"error": "invalid_client"})
+            if (header.get("kid") != APPLE_KEY_ID or self.secret_claims["iss"] != APPLE_TEAM
+                    or self.secret_claims["sub"] != APPLE_SERVICE or form["client_id"][0] != APPLE_SERVICE
+                    or form["code"][0] != "the-code"):
+                return httpx.Response(400, json={"error": "invalid_grant"})
+            now = int(time.time())
+            claims = {"iss": APPLE, "aud": APPLE_SERVICE, "iat": now, "exp": now + 600, "nonce": self.nonce,
+                      "nonce_supported": True, "sub": "001234.abcdef0123456789.0987", "email_verified": "true", **self.claims}
+            token = jwt.encode(claims, self.key, algorithm="RS256", headers={"kid": "k1"})
+            return httpx.Response(200, json={"id_token": token, "access_token": "at", "refresh_token": "rt"})
+        return httpx.Response(404)
+
+
+@pytest.fixture
+def apple(monkeypatch):
+    fake = FakeApple()
+    lp._cache.clear()
+    monkeypatch.setattr(lp, "http_client", lambda: httpx.AsyncClient(transport=httpx.MockTransport(fake.handler)))
+    return fake
+
+
+async def _apple(boss, apple: FakeApple, *, domains=(), new_users="existing", enable=True, **extra):
+    r = await boss.post("/api/admin/login-providers", json={"kind": "apple"})
+    assert r.status_code == 200, r.text
+    assert r.json()["key"] == "apple"
+    r = await boss.put("/api/admin/login-providers/apple", json={
+        "name": "Apple", "client_secret": apple.p8(),
+        "config": {"client_id": APPLE_SERVICE, "team_id": APPLE_TEAM, "key_id": APPLE_KEY_ID, "domains": list(domains),
+                   "new_users": new_users, **extra}})
+    assert r.status_code == 200, r.text
+    if enable:
+        r = await boss.post("/api/admin/login-providers/apple/enabled", json={"enabled": True})
+        assert r.status_code == 200, r.text
+
+
+async def _apple_start(client, apple: FakeApple, next_path: str = "/klip") -> str:
+    r = await client.get("/api/auth/providers/apple/start", params={"next": next_path})
+    assert r.status_code == 302, r.text
+    target = urlparse(r.headers["location"])
+    q = parse_qs(target.query)
+    assert f"{target.scheme}://{target.netloc}{target.path}" == f"{APPLE}/auth/authorize"
+    # Apple's rules: only name and email as scopes, the answer posted, no PKCE; the nonce binds the id_token.
+    assert q["scope"] == ["name email"] and q["response_mode"] == ["form_post"] and q["response_type"] == ["code"]
+    assert "code_challenge" not in q and "prompt" not in q
+    apple.nonce = q["nonce"][0]
+    return q["state"][0]
+
+
+async def _apple_post(client, **fields):
+    """Apple's answer: a form the browser posts cross-site, so without the X-Gaer header."""
+    return await client.post("/api/auth/oidc/apple/callback", data=fields, headers={"x-gaer": "0"})
+
+
+async def test_apple_setup_posts_back_and_creates_or_links_users(make_client, owner_conn, apple):
+    boss = await _admin(make_client)
+    # Before the key and ids are there, the provider cannot be switched on; a bad key is refused.
+    assert (await boss.post("/api/admin/login-providers", json={"kind": "apple"})).status_code == 200
+    detail = (await boss.get("/api/admin/login-providers/apple")).json()
+    assert detail["missing"] == ["klient-id (Services ID)", "team-id", "nøgle-id", "privat nøgle (.p8)"]
+    assert detail["urls"]["redirect_uri"] == f"{ORIGIN}/api/auth/oidc/apple/callback" and detail["urls"]["domain"] == "localhost"
+    r = await boss.put("/api/admin/login-providers/apple", json={
+        "name": "Apple", "client_secret": "not a key",
+        "config": {"client_id": APPLE_SERVICE, "team_id": APPLE_TEAM, "key_id": APPLE_KEY_ID, "domains": []}})
+    assert r.status_code == 422 and "p8" in r.json()["detail"]
+    r = await boss.put("/api/admin/login-providers/apple", json={
+        "name": "Apple", "config": {"client_id": APPLE_SERVICE, "team_id": "too-long-team-id", "key_id": APPLE_KEY_ID}})
+    assert r.status_code == 422 and "Team-id" in r.json()["detail"]
+    # A key pasted into a field loses its line breaks: it is tidied before it is stored.
+    r = await boss.put("/api/admin/login-providers/apple", json={
+        "name": "Apple", "client_secret": apple.p8().replace("\n", " "),
+        "config": {"client_id": APPLE_SERVICE, "team_id": APPLE_TEAM.lower(), "key_id": APPLE_KEY_ID, "domains": [],
+                   "new_users": "signup"}})
+    assert r.status_code == 200, r.text
+    assert r.json()["config"]["team_id"] == APPLE_TEAM and r.json()["secret_set"] and "PRIVATE KEY" not in r.text
+    assert (await boss.post("/api/admin/login-providers/apple/enabled", json={"enabled": True})).status_code == 200
+    await _entra(boss, enable=False)   # a provider that redirects, for the POST check below
+
+    browser = make_client()
+    shown = (await browser.get("/api/auth/providers")).json()
+    assert [(p["key"], p["label"]) for p in shown["providers"]] == [("apple", "Fortsæt med Apple")]
+    # Apple only posts: a GET callback is not a thing, and the POST callback is only for providers that post.
+    assert (await browser.get("/api/auth/oidc/apple/callback", params={"code": "x", "state": "y"})).status_code == 404
+
+    # First login of a new person: Apple sends the name in `user` this one time; a user is created (role user).
+    state = await _apple_start(browser, apple)
+    apple.claims = {"email": "Jane@icloud.com"}
+    r = await _apple_post(browser, code="the-code", state=state, id_token="ignored",
+                          user='{"name":{"firstName":"Jane","lastName":"Appleseed"},"email":"jane@icloud.com"}')
+    assert r.status_code == 303, r.text
+    target = urlparse(r.headers["location"])
+    assert target.path == "/login" and parse_qs(target.query) == {"sso": ["offer"], "next": ["/klip"]}
+    me = (await browser.get("/api/auth/me")).json()
+    assert me["scope"] == "full" and me["user"]["role"] == "user" and me["user"]["email"] == "jane@icloud.com"
+    uid = me["user"]["id"]
+    assert owner_conn.execute("select display_name, super_admin from users where id = %s", (uid,)).fetchone() == ("Jane Appleseed", False)
+    row = owner_conn.execute("select subject, email, linked_via from user_identities where user_id = %s", (uid,)).fetchone()
+    assert row == ("001234.abcdef0123456789.0987", "jane@icloud.com", "signup")
+    assert apple.secret_claims["exp"] - apple.secret_claims["iat"] == lp.APPLE_SECRET_SECONDS
+    assert _auth_events(owner_conn, "provider.login") == [("ok", None, "apple")]
+    via = owner_conn.execute("select detail->>'via' from audit_log where action = 'create' and table_name = 'users' and row_id = %s",
+                             (str(uid),)).fetchone()
+    assert via == ("provider:apple",)
+
+    # An existing account is linked on the verified e-mail, even without `user` (later logins never carry it).
+    other_uid = _user(owner_conn, "ole@firma.dk", display_name="Ole")
+    again = make_client()
+    state = await _apple_start(again, apple)
+    apple.claims = {"email": "ole@firma.dk", "sub": "001234.ole"}
+    r = await _apple_post(again, code="the-code", state=state)
+    assert r.status_code == 303 and (await again.get("/api/auth/me")).json()["user"]["id"] == other_uid
+    assert owner_conn.execute("select linked_via from user_identities where user_id = %s", (other_uid,)).fetchone() == ("verified_email",)
+    assert owner_conn.execute("select display_name from users where id = %s", (other_uid,)).fetchone() == ("Ole",)
+
+    # The callback is CSRF-exempt only because the flow binds it: a stale or foreign state is refused, as always.
+    r = await _apple_post(make_client(), code="the-code", state=state)
+    assert "sso_error=expired" in r.headers["location"]
+    # A POST to a provider that redirects instead is not a thing.
+    assert (await browser.post("/api/auth/oidc/entra/callback", data={"code": "x"}, headers={"x-gaer": "0"})).status_code == 404
+
+
+async def test_apple_relay_mail_cancel_and_wrong_key(make_client, owner_conn, apple):
+    boss = await _admin(make_client)
+    await _apple(boss, apple, domains=("firma.dk",))
+    _user(owner_conn, "a@firma.dk")
+    browser = make_client()
+    # "Skjul min e-mail": the relay address is verified by Apple but belongs to no listed domain.
+    state = await _apple_start(browser, apple)
+    apple.claims = {"email": "x7y8z9@privaterelay.appleid.com", "is_private_email": "true"}
+    r = await _apple_post(browser, code="the-code", state=state)
+    assert "sso_error=domain" in r.headers["location"]
+    assert _auth_events(owner_conn, "provider.login")[-1] == ("fail", "domain", "apple")
+    # The person cancelled at Apple.
+    state = await _apple_start(browser, apple)
+    r = await _apple_post(browser, state=state, error="user_cancelled_authorize")
+    assert "sso_error=denied" in r.headers["location"]
+    # The team key does not match the one registered with Apple: the token call fails, nobody is logged in.
+    apple.team_key = ec.generate_private_key(ec.SECP256R1())
+    state = await _apple_start(browser, apple)
+    apple.claims = {"email": "a@firma.dk"}
+    r = await _apple_post(browser, code="the-code", state=state)
+    assert "sso_error=failed" in r.headers["location"]
+    assert (await browser.get("/api/auth/me")).json()["user"] is None
+    assert _auth_events(owner_conn, "provider.login")[-1][:2] == ("fail", "failed")
+    assert owner_conn.execute("select count(*) from user_identities").fetchone()[0] == 0
+
+
+async def test_apple_second_factor_rules_and_linking_from_konto(make_client, owner_conn, apple):
+    boss = await _admin(make_client)
+    await _apple(boss, apple)
+    # "Kræv passkey" still applies after Apple: a pending mfa session until the second factor.
+    uid = _user(owner_conn, "c@firma.dk", mfa_required=True)
+    browser = make_client()
+    state = await _apple_start(browser, apple)
+    apple.claims = {"email": "c@firma.dk"}
+    r = await _apple_post(browser, code="the-code", state=state)
+    target = urlparse(r.headers["location"])
+    assert target.path == "/login" and parse_qs(target.query)["sso"] == ["mfa"]
+    me = (await browser.get("/api/auth/me")).json()
+    assert me["scope"] == "mfa" and me["user"]["id"] == uid
+    assert (await browser.get("/api/me/security")).status_code == 403
+    # Linking from /konto goes through the same POST callback and ends on the account page.
+    unlinked = make_client()
+    await otp_login(unlinked, "44444444")
+    r = await unlinked.post("/api/me/identities/apple/link")
+    assert r.status_code == 200, r.text
+    q = parse_qs(urlparse(r.json()["url"]).query)
+    assert q["response_mode"] == ["form_post"] and "code_challenge" not in q
+    apple.nonce = q["nonce"][0]
+    apple.claims = {"email": "whatever@privaterelay.appleid.com", "sub": "001234.relay"}
+    r = await _apple_post(unlinked, code="the-code", state=q["state"][0])
+    assert r.headers["location"] == "/konto?linked=apple#forbundne-logins"
+    linked = (await unlinked.get("/api/me/identities")).json()["providers"][0]["linked"]
+    assert linked["via"] == "user" and linked["email"] == "whatever@privaterelay.appleid.com"
 
 
 # ── SAML 2.0 ────────────────────────────────────────────────────────────────

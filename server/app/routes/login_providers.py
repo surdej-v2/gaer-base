@@ -4,6 +4,7 @@
   GET  /api/auth/providers?email=           what /login offers (and whether the e-mail's domain must use a provider)
   GET  /api/auth/providers/{key}/start      → 302 to the provider (binds the flow to this browser)
   GET  /api/auth/oidc/{key}/callback        OpenID Connect / OAuth 2.0 → session → /login (second factor, passkey offer)
+  POST /api/auth/oidc/{key}/callback        the same for Sign in with Apple, which posts its answer (CSRF-exempt)
   POST /api/auth/saml/{key}/acs             SAML response (HTTP-POST, CSRF-exempt: it comes from the IdP)
   GET  /api/auth/saml/{key}/metadata|cert   what the IdP needs from Gær
 """
@@ -41,12 +42,17 @@ def _same_origin_path(value: str | None) -> str | None:
     return value
 
 
-def _set_flow_cookie(response: Response, value: str, *, saml_flow: bool) -> None:
+def _set_flow_cookie(response: Response, value: str, *, cross_site: bool) -> None:
     s = config.settings
-    # A SAML response arrives as a cross-site POST: the cookie must be SameSite=None to come along (https only).
-    samesite = "none" if saml_flow and s.secure_cookies else "lax"
+    # A SAML response or Apple's answer arrives as a cross-site POST: the cookie must be SameSite=None to come along
+    # (https only).
+    samesite = "none" if cross_site and s.secure_cookies else "lax"
     response.set_cookie(lp.FLOW_COOKIE, value, max_age=lp.FLOW_MINUTES * 60, httponly=True, secure=s.secure_cookies,
                         samesite=samesite, path="/api/auth/")
+
+
+def _posts_back(provider: dict) -> bool:
+    return lp.KINDS[provider["kind"]].post_back
 
 
 def _clear_flow_cookie(response: Response) -> None:
@@ -151,30 +157,47 @@ async def start(key: str, request: Request, next: str | None = Query(default=Non
         except lp.Refused as e:
             return await _refused(conn, provider, None, e, request_meta(request))
     response = RedirectResponse(url, status_code=302)
-    _set_flow_cookie(response, browser, saml_flow=provider["kind"] == "saml")
+    _set_flow_cookie(response, browser, cross_site=_posts_back(provider))
     return response
+
+
+async def _oidc_callback(key: str, request: Request, code: str | None, state: str | None, error: str | None,
+                         posted_user: str | None, *, posted: bool) -> RedirectResponse:
+    meta = request_meta(request)
+    async with db.connection() as conn:
+        provider = await _provider_or_404(conn, key)
+        # Apple posts its answer (response_mode=form_post); every other provider redirects with query parameters.
+        if provider["kind"] == "saml" or _posts_back(provider) != posted:
+            raise HTTPException(404)
+        flow = None
+        try:
+            flow = await lp.take_flow(conn, provider, state, request.cookies.get(lp.FLOW_COOKIE))
+            if error or not code:
+                denied = error in ("access_denied", "consent_required", "user_cancelled_authorize")
+                raise lp.Refused("denied" if denied else "failed", error or "no code")
+            identity = await lp.oidc_callback(conn, provider, flow, code, posted_user=posted_user)
+            return await _finish(conn, request, provider, flow, identity, meta)
+        except lp.Refused as e:
+            return await _refused(conn, provider, flow, e, meta)
+        except (httpx.HTTPError, KeyError, ValueError) as e:
+            return await _refused(conn, provider, flow, lp.Refused("failed", type(e).__name__), meta)
 
 
 @router.get("/oidc/{key}/callback")
 async def oidc_callback(key: str, request: Request, code: str | None = Query(default=None, max_length=4000),
                         state: str | None = Query(default=None, max_length=200),
                         error: str | None = Query(default=None, max_length=200)):
-    meta = request_meta(request)
-    async with db.connection() as conn:
-        provider = await _provider_or_404(conn, key)
-        if provider["kind"] == "saml":
-            raise HTTPException(404)
-        flow = None
-        try:
-            flow = await lp.take_flow(conn, provider, state, request.cookies.get(lp.FLOW_COOKIE))
-            if error or not code:
-                raise lp.Refused("denied" if error in ("access_denied", "consent_required") else "failed", error or "no code")
-            identity = await lp.oidc_callback(conn, provider, flow, code)
-            return await _finish(conn, request, provider, flow, identity, meta)
-        except lp.Refused as e:
-            return await _refused(conn, provider, flow, e, meta)
-        except (httpx.HTTPError, KeyError, ValueError) as e:
-            return await _refused(conn, provider, flow, lp.Refused("failed", type(e).__name__), meta)
+    return await _oidc_callback(key, request, code, state, error, None, posted=False)
+
+
+@router.post("/oidc/{key}/callback")
+async def oidc_callback_post(key: str, request: Request, code: str | None = Form(default=None, max_length=4000),
+                             state: str | None = Form(default=None, max_length=200),
+                             error: str | None = Form(default=None, max_length=200),
+                             user: str | None = Form(default=None, max_length=4000)):
+    """Sign in with Apple: the browser posts Apple's answer here (CSRF-exempt in main.py; the flow cookie and `state`
+    bind it to the login that was started). `user` carries the name, the first time only."""
+    return await _oidc_callback(key, request, code, state, error, user, posted=True)
 
 
 @router.get("/oidc/{key}/logout")
@@ -285,7 +308,7 @@ async def link_start(key: str, response: Response, principal: Principal = Depend
             url, browser = await lp.start_flow(conn, provider, "link", user_id=principal.user_id)
         except lp.Refused as e:
             raise HTTPException(502, lp.REFUSALS.get(e.code, lp.REFUSALS["failed"]))
-    _set_flow_cookie(response, browser, saml_flow=provider["kind"] == "saml")
+    _set_flow_cookie(response, browser, cross_site=_posts_back(provider))
     return {"url": url}
 
 
@@ -450,7 +473,7 @@ async def update(key: str, body: ProviderIn, admin: Principal = Depends(require_
         secret_changed = False
         if body.client_secret is not None and body.client_secret.strip() and lp.KINDS[p["kind"]].protocol != "saml":
             sets += ["client_secret_enc = %s", "client_secret_set_at = now()"]
-            params.append(lp.encrypt_client_secret(p["id"], body.client_secret.strip()))
+            params.append(lp.encrypt_client_secret(p["id"], lp.clean_secret(p["kind"], body.client_secret)))
             secret_changed = True
         if p["kind"] == "saml" and cfg["metadata_source"] == "manual" and (body.idp_sso_url or body.idp_entity_id):
             try:
@@ -515,7 +538,7 @@ async def test_login(key: str, response: Response, admin: Principal = Depends(re
             url, browser = await lp.start_flow(conn, p, "test", user_id=admin.user_id)
         except lp.Refused as e:
             raise HTTPException(502, f"Udbyderen svarede ikke som ventet ({e.detail[:120]})")
-    _set_flow_cookie(response, browser, saml_flow=p["kind"] == "saml")
+    _set_flow_cookie(response, browser, cross_site=_posts_back(p))
     return {"url": url}
 
 

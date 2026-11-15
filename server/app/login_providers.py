@@ -1,7 +1,9 @@
 """Login-udbydere: log ind med en konto, brugeren allerede har (/admin/login-providers).
 
-Providers: Microsoft Entra ID and Google (OpenID Connect, authorization code + PKCE), GitHub and Amazon (OAuth 2.0)
-and any number of SAML 2.0 connections (app/saml.py). Each is off until an admin switches it on.
+Providers: Microsoft Entra ID and Google (OpenID Connect, authorization code + PKCE), Apple (Sign in with Apple:
+OpenID Connect without PKCE, the answer is a form Apple posts back, and the client secret is a short-lived JWT signed
+with the team's .p8 key), GitHub and Amazon (OAuth 2.0) and any number of SAML 2.0 connections (app/saml.py). Each is
+off until an admin switches it on.
 
 The rules (also in the gaer-auth skill):
 
@@ -11,7 +13,8 @@ The rules (also in the gaer-auth skill):
 - **Which account.** An identity (the provider's stable subject) is linked to one user. The first time, it is linked
   on an e-mail the provider has verified (rule `link` = "verified_email"), or only when the user linked it themselves
   from /konto ("user_linked"). Entra's e-mail counts as verified only on a domain the admin listed for the provider;
-  Amazon's never does.
+  Amazon's never does. Apple's always is — also a "Skjul min e-mail" relay address (@privaterelay.appleid.com), which
+  matches no existing account and no listed domain, so such a user links the account from /konto.
 - **New people.** Only when both the provider and the rules allow it, the e-mail is verified, and Tilmelding
   (app/signup.py) allows the address. The role is always `user`.
 - **Allowed domains.** A provider with domains only accepts e-mails on them (subdomains included).
@@ -25,15 +28,19 @@ The rules (also in the gaer-auth skill):
 
 import base64
 import hashlib
+import json
 import re
 import secrets
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import httpx
 import jwt
+from cryptography.exceptions import UnsupportedAlgorithm
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import HTTPException
 from psycopg.types.json import Jsonb
 
@@ -48,6 +55,8 @@ SCOPES = "openid email profile"
 _DOMAIN = re.compile(r"^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
 _GUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 _KEY = re.compile(r"^[a-z][a-z0-9-]{1,39}$")
+_APPLE_ID = re.compile(r"^[A-Z0-9]{10}$")   # Apple's Team ID and Key ID
+_PEM = re.compile(r"-----BEGIN (?P<label>[A-Z ]*PRIVATE KEY)-----(?P<body>.*?)-----END (?P=label)-----", re.S)
 
 
 @dataclass(frozen=True)
@@ -59,6 +68,9 @@ class Kind:
     audience: str            # who typically uses it (shown in the overview)
     button: str              # default text of the button on /login
     groups: bool = False     # can map the provider's groups to Gær groups
+    pkce: bool = True        # authorization code with PKCE (Apple does not support it: state + nonce bind the login)
+    post_back: bool = False  # the answer is a form the browser posts cross-site (SAML, Apple): the callback is
+    #                          CSRF-exempt in main.py and the flow cookie must be SameSite=None
 
 
 KINDS: dict[str, Kind] = {
@@ -66,12 +78,14 @@ KINDS: dict[str, Kind] = {
                   "Ansatte i jeres Microsoft 365-tenant", "Fortsæt med Microsoft", groups=True),
     "google": Kind("google", "Google", "oidc", "OpenID Connect · Workspace",
                    "Et Google Workspace-domæne eller Google-konti", "Fortsæt med Google"),
+    "apple": Kind("apple", "Apple", "oidc", "Sign in with Apple · OpenID Connect",
+                  "Private Apple-konti · iPhone, iPad og Mac", "Fortsæt med Apple", pkce=False, post_back=True),
     "github": Kind("github", "GitHub", "oauth2", "OAuth 2.0 · GitHub App",
                    "Typisk: udviklere med en GitHub-konto", "Fortsæt med GitHub"),
     "amazon": Kind("amazon", "Amazon", "oauth2", "Login with Amazon · OAuth 2.0",
                    "Private Amazon-konti · e-mail skal være bekræftet", "Fortsæt med Amazon"),
     "saml": Kind("saml", "SAML 2.0", "saml", "SAML 2.0 · fx ADFS, Okta, Entra",
-                 "En organisation med egen IdP", "Log ind med virksomhedens SSO", groups=True),
+                 "En organisation med egen IdP", "Log ind med virksomhedens SSO", groups=True, post_back=True),
 }
 
 # OAuth 2.0 providers without OpenID Connect: fixed endpoints.
@@ -83,6 +97,11 @@ OAUTH = {
 }
 GOOGLE_ISSUER = "https://accounts.google.com"
 ENTRA_AUTHORITY = "https://login.microsoftonline.com"
+# Sign in with Apple: only `name` and `email` are valid scopes (no `openid`), and with any scope the answer must be
+# posted (response_mode=form_post). The client secret is a JWT signed ES256 with the team's key, made per token call.
+APPLE_ISSUER = "https://appleid.apple.com"
+APPLE_SCOPES = "name email"
+APPLE_SECRET_SECONDS = 300
 
 RULES_DEFAULT = {"link": "verified_email", "new_users": "signup", "required": []}
 LINK_MODES = ("verified_email", "user_linked")
@@ -192,6 +211,12 @@ def clean_config(kind: str, raw: dict, existing: dict | None = None) -> dict:
         if hd and not _DOMAIN.match(hd):
             raise HTTPException(422, "Ugyldigt Workspace-domæne")
         cfg["hosted_domain"] = hd
+    if kind == "apple":
+        for name, label in (("team_id", "Team-id"), ("key_id", "Nøgle-id")):
+            value = _text(raw.get(name), 10).upper()
+            if value and not _APPLE_ID.match(value):
+                raise HTTPException(422, f"{label} er de 10 tegn (bogstaver og tal) fra Apple Developer")
+            cfg[name] = value
     if k.groups:
         mapping = []
         for m in raw.get("group_map") or []:
@@ -281,7 +306,15 @@ def urls(provider: dict) -> dict:
         return {"entity_id": f"{o}/api/auth/saml/{key}", "acs": f"{o}/api/auth/saml/{key}/acs",
                 "slo": f"{o}/api/auth/saml/{key}/slo", "metadata": f"{o}/api/auth/saml/{key}/metadata",
                 "cert": f"{o}/api/auth/saml/{key}/cert"}
-    return {"redirect_uri": f"{o}/api/auth/oidc/{key}/callback", "logout": f"{o}/api/auth/oidc/{key}/logout"}
+    out = {"redirect_uri": f"{o}/api/auth/oidc/{key}/callback", "logout": f"{o}/api/auth/oidc/{key}/logout"}
+    if provider["kind"] == "apple":   # Apple registers the domain as well as the return URL
+        out["domain"] = urlparse(o).hostname or ""
+    return out
+
+
+def secret_label(kind: str) -> str:
+    """What the write-only secret is called for this kind (Danish, for missing() and the UI)."""
+    return "privat nøgle (.p8)" if kind == "apple" else "klienthemmelighed"
 
 
 def missing(provider: dict) -> list[str]:
@@ -301,9 +334,14 @@ def missing(provider: dict) -> list[str]:
             out.append("attributten for e-mail")
         return out
     if not cfg.get("client_id"):
-        out.append("klient-id")
+        out.append("klient-id (Services ID)" if kind == "apple" else "klient-id")
+    if kind == "apple":
+        if not cfg.get("team_id"):
+            out.append("team-id")
+        if not cfg.get("key_id"):
+            out.append("nøgle-id")
     if not provider.get("secret_set"):
-        out.append("klienthemmelighed")
+        out.append(secret_label(kind))
     if kind == "entra":
         if cfg.get("tenant_mode") == "single" and not cfg.get("tenant_id"):
             out.append("tenant-id")
@@ -327,6 +365,53 @@ def client_secret(provider_id: int, blob) -> str:
 
 def encrypt_client_secret(provider_id: int, value: str) -> bytes:
     return secrets_box.encrypt(value, f"login-provider:{provider_id}")
+
+
+def clean_secret(kind: str, value: str) -> str:
+    """The write-only secret as it is stored: Apple's is the team's private key (.p8), checked and tidied; the others
+    as typed. Raises 422 with a Danish message."""
+    return apple_private_key(value) if kind == "apple" else value.strip()
+
+
+def apple_private_key(raw: str) -> str:
+    """The content of the .p8 file from Apple Developer as a clean PEM. A key pasted into a field loses its line
+    breaks, so the base64 is re-wrapped; it must be an EC P-256 key, since Apple wants ES256."""
+    m = _PEM.search(raw or "")
+    label = m.group("label") if m else "PRIVATE KEY"
+    body = re.sub(r"\s+", "", m.group("body") if m else (raw or ""))
+    pem = f"-----BEGIN {label}-----\n" + "\n".join(body[i:i + 64] for i in range(0, len(body), 64)) + f"\n-----END {label}-----\n"
+    try:
+        key = serialization.load_pem_private_key(pem.encode(), password=None)
+    except (ValueError, TypeError, UnsupportedAlgorithm):
+        raise HTTPException(422, "Den private nøgle kunne ikke læses. Indsæt hele indholdet af .p8-filen fra Apple Developer.")
+    if not isinstance(key, ec.EllipticCurvePrivateKey) or not isinstance(key.curve, ec.SECP256R1):
+        raise HTTPException(422, "Nøglen skal være en Sign in with Apple-nøgle (EC P-256) fra Apple Developer.")
+    return pem
+
+
+def apple_client_secret(provider: dict, key_pem: str) -> str:
+    """Apple has no fixed client secret: every token call carries a short-lived JWT signed with the team's key
+    (iss = Team ID, sub = the Services ID used as client_id, aud = Apple, kid = the key's id)."""
+    cfg = provider["config"]
+    now = int(time.time())
+    return jwt.encode({"iss": cfg["team_id"], "iat": now, "exp": now + APPLE_SECRET_SECONDS, "aud": APPLE_ISSUER,
+                       "sub": cfg["client_id"]}, key_pem, algorithm="ES256", headers={"kid": cfg["key_id"]})
+
+
+def apple_user_name(raw: str | None) -> str | None:
+    """The name in Apple's `user` form field (JSON, sent only the first time the person signs in). It travels through
+    the browser, so it is only ever used as the display name of a user created right now."""
+    if not raw or len(raw) > 4000:
+        return None
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return None
+    name = data.get("name") if isinstance(data, dict) else None
+    if not isinstance(name, dict):
+        return None
+    parts = [_text(name.get(k), 40) for k in ("firstName", "lastName")]
+    return " ".join(p for p in parts if p)[:80] or None
 
 
 async def public_list(conn, email: str | None) -> dict:
@@ -441,6 +526,8 @@ def _entra_tenant(cfg: dict) -> str:
 def discovery_url(provider: dict) -> str:
     if provider["kind"] == "entra":
         return f"{ENTRA_AUTHORITY}/{_entra_tenant(provider['config'])}/v2.0/.well-known/openid-configuration"
+    if provider["kind"] == "apple":
+        return f"{APPLE_ISSUER}/.well-known/openid-configuration"
     return f"{GOOGLE_ISSUER}/.well-known/openid-configuration"
 
 
@@ -450,9 +537,11 @@ async def discovery(provider: dict) -> dict:
 
 async def authorize_url(provider: dict, *, state: str, nonce: str, verifier: str) -> str:
     cfg, kind = provider["config"], provider["kind"]
-    challenge = _b64url(hashlib.sha256(verifier.encode()).digest())
     params = {"client_id": cfg["client_id"], "redirect_uri": urls(provider)["redirect_uri"], "response_type": "code",
-              "state": state, "code_challenge": challenge, "code_challenge_method": "S256"}
+              "state": state}
+    if KINDS[kind].pkce:
+        challenge = _b64url(hashlib.sha256(verifier.encode()).digest())
+        params |= {"code_challenge": challenge, "code_challenge_method": "S256"}
     if KINDS[kind].protocol == "oidc":
         endpoint = (await discovery(provider))["authorization_endpoint"]
         params |= {"scope": SCOPES, "nonce": nonce, "response_mode": "query"}
@@ -462,6 +551,8 @@ async def authorize_url(provider: dict, *, state: str, nonce: str, verifier: str
             params["prompt"] = "select_account"
             if cfg.get("hosted_domain"):
                 params["hd"] = cfg["hosted_domain"]
+        if kind == "apple":
+            params |= {"scope": APPLE_SCOPES, "response_mode": "form_post"}
     else:
         endpoint = OAUTH[kind]["authorize"]
         params["scope"] = OAUTH[kind]["scope"]
@@ -472,11 +563,12 @@ async def authorize_url(provider: dict, *, state: str, nonce: str, verifier: str
 
 async def _token(provider: dict, endpoint: str, code: str, verifier: str, secret: str) -> dict:
     cfg = provider["config"]
+    form = {"grant_type": "authorization_code", "code": code, "redirect_uri": urls(provider)["redirect_uri"],
+            "client_id": cfg["client_id"], "client_secret": secret}
+    if KINDS[provider["kind"]].pkce:
+        form["code_verifier"] = verifier
     async with http_client() as client:
-        r = await client.post(endpoint, data={"grant_type": "authorization_code", "code": code,
-                                              "redirect_uri": urls(provider)["redirect_uri"], "client_id": cfg["client_id"],
-                                              "client_secret": secret, "code_verifier": verifier},
-                              headers={"Accept": "application/json"})
+        r = await client.post(endpoint, data=form, headers={"Accept": "application/json"})
     try:
         data = r.json()
     except ValueError:
@@ -513,6 +605,8 @@ async def _verify_id_token(provider: dict, token: str, nonce: str) -> dict:
     iss = claims.get("iss", "")
     if kind == "google":
         ok = iss in (GOOGLE_ISSUER, "accounts.google.com")
+    elif kind == "apple":
+        ok = iss == APPLE_ISSUER
     elif cfg.get("tenant_mode", "single") == "single":
         ok = iss == meta["issuer"]
     else:
@@ -523,7 +617,7 @@ async def _verify_id_token(provider: dict, token: str, nonce: str) -> dict:
     return claims
 
 
-def identity_from_claims(provider: dict, claims: dict) -> Identity:
+def identity_from_claims(provider: dict, claims: dict, *, name: str | None = None) -> Identity:
     cfg, kind = provider["config"], provider["kind"]
     names = sorted(claims)
     if kind == "entra":
@@ -536,10 +630,12 @@ def identity_from_claims(provider: dict, claims: dict) -> Identity:
                         email_verified=verified, name=claims.get("name"),
                         groups=[str(g) for g in groups_claim if isinstance(g, str)], claims=names, tenant=claims.get("tid"))
     email = (claims.get("email") or "").strip().lower() or None
+    # Apple writes email_verified (and is_private_email) as the string "true" rather than a boolean.
     verified = bool(email) and claims.get("email_verified") in (True, "true")
     if cfg.get("hosted_domain") and claims.get("hd") != cfg["hosted_domain"]:
         raise Refused("domain", "hd")
-    return Identity(subject=str(claims["sub"]), email=email, email_verified=verified, name=claims.get("name"), claims=names)
+    return Identity(subject=str(claims["sub"]), email=email, email_verified=verified, name=claims.get("name") or name,
+                    claims=names)
 
 
 async def _oauth_identity(provider: dict, access_token: str) -> Identity:
@@ -559,17 +655,21 @@ async def _oauth_identity(provider: dict, access_token: str) -> Identity:
                     name=profile.get("name"), claims=sorted(profile))
 
 
-async def oidc_callback(conn, provider: dict, flow: dict, code: str) -> Identity:
-    """Exchanges the code (with the PKCE verifier) and returns the verified identity."""
+async def oidc_callback(conn, provider: dict, flow: dict, code: str, *, posted_user: str | None = None) -> Identity:
+    """Exchanges the code (with the PKCE verifier) and returns the verified identity. `posted_user` is Apple's `user`
+    form field (the name, first login only)."""
     secret = client_secret(provider["id"], (await db.fetch_one(
         conn, "select client_secret_enc from login_providers where id = %s", (provider["id"],)))["client_secret_enc"])
     kind = provider["kind"]
+    if kind == "apple":   # the stored secret is the team's private key; Apple wants a JWT signed with it
+        secret = apple_client_secret(provider, secret)
     if KINDS[kind].protocol == "oidc":
         meta = await discovery(provider)
         tokens = await _token(provider, meta["token_endpoint"], code, flow["verifier"], secret)
         if not tokens.get("id_token"):
             raise Refused("failed", "no id_token")
-        return identity_from_claims(provider, await _verify_id_token(provider, tokens["id_token"], flow["nonce"]))
+        return identity_from_claims(provider, await _verify_id_token(provider, tokens["id_token"], flow["nonce"]),
+                                    name=apple_user_name(posted_user) if kind == "apple" else None)
     tokens = await _token(provider, OAUTH[kind]["token"], code, flow["verifier"], secret)
     if not tokens.get("access_token"):
         raise Refused("failed", "no access_token")

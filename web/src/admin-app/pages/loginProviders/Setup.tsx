@@ -1,6 +1,7 @@
-// /admin/login-providers/:key — setting up one provider: Microsoft Entra ID, Google, GitHub, Amazon (OpenID Connect /
-// OAuth 2.0) or a SAML 2.0 connection. Tabs: Opsætning, Koblede brugere, Log. Saving, the test login and switching on
-// need a step-up (the api client opens the dialog). The client secret is write-only: the page never sees its value.
+// /admin/login-providers/:key — setting up one provider: Microsoft Entra ID, Google, Apple, GitHub, Amazon (OpenID
+// Connect / OAuth 2.0) or a SAML 2.0 connection. Tabs: Opsætning, Koblede brugere, Log. Saving, the test login and
+// switching on need a step-up (the api client opens the dialog). The client secret (for Apple: the team's .p8 key) is
+// write-only: the page never sees its value.
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, Check, Copy, Download, ExternalLink, X } from "lucide-react";
@@ -165,19 +166,27 @@ function OidcSetup({ p, form, setForm, secret, setSecret, onTest }: {
   p: ProviderDetail; form: Config; setForm: (c: Config) => void; secret: string; setSecret: (s: string) => void; onTest: () => void;
 }) {
   const consoleLink = CONSOLE[p.kind];
-  const connected = !!form.client_id && p.secret_set && (p.kind !== "entra" || (form.tenant_mode === "multi" ? !!form.tenants?.length : !!form.tenant_id));
+  const idsDone = p.kind === "entra" ? (form.tenant_mode === "multi" ? !!form.tenants?.length : !!form.tenant_id)
+    : p.kind === "apple" ? !!form.team_id && !!form.key_id : true;
+  const connected = !!form.client_id && p.secret_set && idsDone;
   const [tenantDraft, setTenantDraft] = useState((form.tenants ?? []).join(", "));
+  const apple = p.kind === "apple";
+  const secretTitle = apple ? "Privat nøgle (.p8)" : "Klienthemmelighed";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
       <Step n={1} id="s1" done={!!form.client_id} title={`Registrér Gær hos ${KIND_LABEL[p.kind]}`}>
         <p style={hint}>
           {p.kind === "entra" && <>Opret en app under <em>App registrations</em> i Entra-portalen, og indsæt disse adresser. </>}
           {p.kind === "google" && <>Opret en OAuth-klient af typen <em>Web application</em>, og indsæt redirect-adressen. </>}
+          {apple && <>Opret et <em>App ID</em> med Sign in with Apple og et <em>Services ID</em> (det bliver klient-id'et), og indsæt domænet og return-adressen
+            under Sign in with Apple-konfigurationen — Apple kræver https og et rigtigt domæne, ikke localhost. Opret desuden en nøgle under <em>Keys</em> med
+            Sign in with Apple, og hent .p8-filen — den kan kun hentes én gang. </>}
           {p.kind === "github" && <>Opret en OAuth App (eller GitHub App) og indsæt callback-adressen. </>}
           {p.kind === "amazon" && <>Opret en sikkerhedsprofil i Login with Amazon, og indsæt adressen under Allowed Return URLs. </>}
           De er faste for denne instans.
         </p>
-        <CopyRow label={p.kind === "entra" ? "Redirect URI (Web)" : "Redirect URI"} value={p.urls.redirect_uri} />
+        {apple && p.urls.domain && <CopyRow label="Domæne (Domains and Subdomains)" value={p.urls.domain} />}
+        <CopyRow label={p.kind === "entra" ? "Redirect URI (Web)" : apple ? "Return URL" : "Redirect URI"} value={p.urls.redirect_uri} />
         {p.kind === "entra" && <CopyRow label="Front-channel logout URL" value={p.urls.logout} />}
         {consoleLink && (
           <a href={consoleLink[1]} target="_blank" rel="noreferrer noopener" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600 }}>
@@ -208,10 +217,24 @@ function OidcSetup({ p, form, setForm, secret, setSecret, onTest }: {
                      style={{ ...inputStyle, fontFamily: "var(--hm-font-mono)", fontSize: 13 }} />
             </label>
           )}
-          <label style={fieldLabel}>{p.kind === "entra" ? "Klient-id (Application ID)" : "Klient-id"}
-            <input value={form.client_id ?? ""} onChange={(e) => setForm({ ...form, client_id: e.target.value.trim() })}
+          <label style={fieldLabel}>{p.kind === "entra" ? "Klient-id (Application ID)" : apple ? "Klient-id (Services ID)" : "Klient-id"}
+            <input value={form.client_id ?? ""} placeholder={apple ? "dk.firma.gaer.web" : undefined} onChange={(e) => setForm({ ...form, client_id: e.target.value.trim() })}
                    style={{ ...inputStyle, fontFamily: "var(--hm-font-mono)", fontSize: 13 }} />
           </label>
+          {apple && (
+            <label style={fieldLabel}>Team-id
+              <input value={form.team_id ?? ""} placeholder="10 tegn, øverst til højre i Apple Developer" maxLength={10}
+                     onChange={(e) => setForm({ ...form, team_id: e.target.value.trim().toUpperCase() })}
+                     style={{ ...inputStyle, fontFamily: "var(--hm-font-mono)", fontSize: 13 }} />
+            </label>
+          )}
+          {apple && (
+            <label style={fieldLabel}>Nøgle-id (Key ID)
+              <input value={form.key_id ?? ""} placeholder="10 tegn fra nøglen under Keys" maxLength={10}
+                     onChange={(e) => setForm({ ...form, key_id: e.target.value.trim().toUpperCase() })}
+                     style={{ ...inputStyle, fontFamily: "var(--hm-font-mono)", fontSize: 13 }} />
+            </label>
+          )}
           {p.kind === "google" && (
             <label style={fieldLabel}>Workspace-domæne (valgfrit)
               <input value={form.hosted_domain ?? ""} placeholder="firma.dk" onChange={(e) => setForm({ ...form, hosted_domain: e.target.value.trim() })}
@@ -220,16 +243,27 @@ function OidcSetup({ p, form, setForm, secret, setSecret, onTest }: {
           )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={{ fontSize: 13, fontWeight: 500 }}>Klienthemmelighed</span>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>{secretTitle}</span>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", padding: "10px 12px", borderRadius: 10, border: "1px solid #e2e8f0", background: "#f8fafc" }}>
             <span style={{ display: "flex", flexDirection: "column", flex: "1 1 200px", minWidth: 0 }}>
               <span style={{ fontWeight: 600, fontSize: 13 }}>{p.secret_set ? "Gemt krypteret på serveren" : "Ikke sat endnu"}</span>
-              <span style={{ fontSize: 12, color: "#475569" }}>{p.client_secret_set_at ? `Sat ${fmtDate(p.client_secret_set_at)}` : "Kopiér værdien fra udbyderen"}</span>
+              <span style={{ fontSize: 12, color: "#475569" }}>
+                {p.client_secret_set_at ? `Sat ${fmtDate(p.client_secret_set_at)}` : apple ? "Indsæt indholdet af .p8-filen" : "Kopiér værdien fra udbyderen"}
+              </span>
             </span>
-            <input type="password" autoComplete="new-password" aria-label="Ny klienthemmelighed" placeholder={p.secret_set ? "Skift: indsæt ny værdi" : "Indsæt værdien"}
-                   value={secret} onChange={(e) => setSecret(e.target.value)} style={{ ...inputStyle, flex: "1 1 220px" }} />
+            {apple ? (
+              <textarea aria-label="Ny privat nøgle" placeholder={p.secret_set ? "Skift: indsæt en ny .p8-nøgle" : "-----BEGIN PRIVATE KEY-----"} rows={3}
+                        value={secret} onChange={(e) => setSecret(e.target.value)} spellCheck={false}
+                        style={{ ...inputStyle, flex: "1 1 260px", height: "auto", padding: "8px 10px", fontFamily: "var(--hm-font-mono)", fontSize: 12, resize: "vertical" }} />
+            ) : (
+              <input type="password" autoComplete="new-password" aria-label="Ny klienthemmelighed" placeholder={p.secret_set ? "Skift: indsæt ny værdi" : "Indsæt værdien"}
+                     value={secret} onChange={(e) => setSecret(e.target.value)} style={{ ...inputStyle, flex: "1 1 220px" }} />
+            )}
           </div>
-          <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>Værdien vises aldrig her og kommer aldrig i logs eller webhooks.</p>
+          <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>
+            {apple ? "Nøglen bruges kun til at signere det korte token, Apple kræver ved hvert login. Den vises aldrig her og kommer aldrig i logs eller webhooks."
+              : "Værdien vises aldrig her og kommer aldrig i logs eller webhooks."}
+          </p>
         </div>
       </Step>
 
@@ -240,6 +274,7 @@ function OidcSetup({ p, form, setForm, secret, setSecret, onTest }: {
           <span style={{ fontSize: 12, color: "#475569" }}>
             {p.kind === "entra" ? "Tom: alle e-mails i tenanten. E-mails på domænerne her regnes som bekræftede, så de kan kobles til en eksisterende konto." : "Tom: alle e-mails. Underdomæner tæller med."}
             {p.kind === "amazon" && " Amazon oplyser ikke, om e-mailen er bekræftet: brugerne forbinder selv kontoen under Konto."}
+            {apple && " Vælger brugeren »Skjul min e-mail«, får I en relay-adresse (@privaterelay.appleid.com). Den passer ikke til et domæne her og til ingen eksisterende konto — brugeren forbinder så selv kontoen under Konto."}
           </span>
         </div>
         <fieldset style={{ border: 0, margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -622,8 +657,9 @@ export default function LoginProviderSetup() {
           </div>
           {p.protocol !== "saml" && (
             <p style={{ margin: 0, color: "#475569" }}>
-              {p.protocol === "oidc" ? "OpenID Connect med authorization code + PKCE." : "OAuth 2.0 med authorization code + PKCE."} Gær beder kun om{" "}
-              <code>{p.kind === "github" ? "read:user user:email" : p.kind === "amazon" ? "profile" : "openid email profile"}</code>.
+              {p.kind === "apple" ? "Sign in with Apple: OpenID Connect med authorization code (Apple understøtter ikke PKCE; state og nonce binder login til browseren)."
+                : p.protocol === "oidc" ? "OpenID Connect med authorization code + PKCE." : "OAuth 2.0 med authorization code + PKCE."} Gær beder kun om{" "}
+              <code>{p.kind === "github" ? "read:user user:email" : p.kind === "amazon" ? "profile" : p.kind === "apple" ? "name email" : "openid email profile"}</code>.
             </p>
           )}
         </div>

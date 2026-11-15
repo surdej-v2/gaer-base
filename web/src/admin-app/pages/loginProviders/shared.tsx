@@ -1,8 +1,8 @@
 // Shared by /admin/login-providers and its setup pages (server/app/login_providers.py, routes/login_providers.py).
 import type { CSSProperties } from "react";
-import { KeyRound } from "lucide-react";
+import { Apple, KeyRound } from "lucide-react";
 
-export type Kind = "entra" | "google" | "github" | "amazon" | "saml";
+export type Kind = "entra" | "google" | "apple" | "github" | "amazon" | "saml";
 export type Status = "active" | "ready" | "incomplete";
 
 export type ProviderSummary = {
@@ -16,6 +16,7 @@ export type GroupMap = { claim: string; group_id: number };
 export type Config = {
   domains: string[]; new_users: "existing" | "signup"; button_label: string; only_matching_domain: boolean;
   client_id?: string; tenant_mode?: "single" | "multi"; tenant_id?: string; tenants?: string[]; hosted_domain?: string;
+  team_id?: string; key_id?: string;
   group_map?: GroupMap[];
   metadata_source?: "url" | "xml" | "manual"; metadata_url?: string; refresh?: boolean; attr_email?: string; attr_name?: string;
   attr_groups?: string; nameid_format?: "persistent" | "email"; want_encrypted?: boolean; allow_idp_initiated?: boolean;
@@ -40,7 +41,7 @@ export type ProviderDetail = ProviderSummary & {
 export type Rules = { link: "verified_email" | "user_linked"; new_users: "signup" | "never"; required: { domain: string; provider: string }[] };
 
 export const KIND_LABEL: Record<Kind, string> = {
-  entra: "Microsoft Entra ID", google: "Google", github: "GitHub", amazon: "Amazon", saml: "SAML 2.0",
+  entra: "Microsoft Entra ID", google: "Google", apple: "Apple", github: "GitHub", amazon: "Amazon", saml: "SAML 2.0",
 };
 
 export const STATUS: Record<Status, [string, string, string]> = {
@@ -53,6 +54,7 @@ export const STATUS: Record<Status, [string, string, string]> = {
 export const CONSOLE: Partial<Record<Kind, [string, string]>> = {
   entra: ["Åbn App registrations i Entra", "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade"],
   google: ["Åbn Credentials i Google Cloud", "https://console.cloud.google.com/apis/credentials"],
+  apple: ["Åbn Identifiers hos Apple Developer", "https://developer.apple.com/account/resources/identifiers/list/serviceId"],
   github: ["Åbn OAuth Apps på GitHub", "https://github.com/settings/developers"],
   amazon: ["Åbn Login with Amazon-konsollen", "https://developer.amazon.com/loginwithamazon/console/site/lwa/overview.html"],
 };
@@ -74,6 +76,7 @@ export function ProviderMark({ kind, size = 40 }: { kind: Kind; size?: number })
   };
   if (kind === "entra") return <span style={box}><MicrosoftMark size={Math.round(size * 0.45)} /></span>;
   if (kind === "google") return <span style={{ ...box, color: "#1a73e8", fontSize: size * 0.45 }} aria-hidden="true">G</span>;
+  if (kind === "apple") return <span style={{ ...box, background: "#0f172a", color: "#ffffff", border: 0 }}><Apple size={Math.round(size * 0.5)} strokeWidth={2} aria-hidden="true" /></span>;
   if (kind === "github") return <span style={{ ...box, background: "#0f172a", color: "#ffffff", border: 0, fontSize: size * 0.32 }} aria-hidden="true">GH</span>;
   if (kind === "amazon") return <span style={{ ...box, color: "#c2410c", fontSize: size * 0.42 }} aria-hidden="true">a</span>;
   return (
