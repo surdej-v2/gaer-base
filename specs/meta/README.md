@@ -34,6 +34,6 @@ renderings, single select, multi select, creating a node, component and API), bu
 - AI path suggestions for „Tag denne side“ (`/suggest`, optional through `ai.py`, only on allowed domains since it reads the page).
 - Live titles and deep links for Gær entities (`clip:`, `file:`), and tagging from those pages; `/sites` reverse-domain nodes with key/value data.
 - The generation DSL and YAML paste in `/admin/meta`, manual drag-and-drop ordering, merging nodes.
-- Labels per language (`labels`), `childSort` per parent (today: `sort_order`, then label).
+- Using `labels` and `child_sort` in the generic tree: migration 0041 stores labels per language (`labels`, e.g. `{"en": …}`), a `sort_key` and `child_sort` per parent (label / sort_key / manual; null = `sort_order`, then label) and a manual order of the objects at a node (`meta_assignments.sort_order`), editable through `PATCH /api/meta/nodes/{id}`; Mapper applies them, `/api/meta/tree` and `TreeView` still order by `sort_order`, then label.
 - Proposals from users who may not create (a „Foreslå til admin“ flow), MCP tools for search and tagging.
 - Visibility per branch beyond private trees.
