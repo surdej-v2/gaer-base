@@ -12,7 +12,7 @@ type Area = {
   rows: number | null; bytes: number;
 };
 type AreasResp = {
-  areas: Area[]; blobs: { n: number; bytes: number }; never: string[]; max_mb: number; download_hours: number;
+  areas: Area[]; blobs: { n: number; bytes: number; files_bytes: number; knowledge_bytes: number }; never: string[]; max_mb: number; download_hours: number;
   undo_days: number; migration: string | null;
 };
 type TableStat = {
@@ -186,7 +186,9 @@ function ExportTab({ onStarted }: { onStarted: () => void }) {
     return out;
   }, [areas]);
   const rows = chosen.reduce((n, a) => n + (a.rows ?? 0), 0);
-  const bytes = chosen.reduce((n, a) => n + a.bytes, 0) + (blobs && sel.has("files") ? data.data?.blobs.bytes ?? 0 : 0);
+  const withContent = (sel.has("files") || sel.has("knowledge")) && format === "json";
+  const contentBytes = (sel.has("files") ? data.data?.blobs.files_bytes ?? 0 : 0) + (sel.has("knowledge") ? data.data?.blobs.knowledge_bytes ?? 0 : 0);
+  const bytes = chosen.reduce((n, a) => n + a.bytes, 0) + (blobs && withContent ? contentBytes : 0);
   const anyPersonal = chosen.some((a) => a.personal);
   const toggle = (k: string) => setSel((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const passwordOk = !encrypt || password.trim().length >= 10;
@@ -286,11 +288,11 @@ function ExportTab({ onStarted }: { onStarted: () => void }) {
             </label>
           </div>
           <div className="table-wrap" style={{ borderRadius: 12 }}>
-            <Check checked={blobs && sel.has("files") && format === "json"} onChange={() => setBlobs(!blobs)}
-              disabled={!sel.has("files") || format !== "json"}
-              title="Medtag filernes indhold fra Object Storage"
-              help={`Ellers kun mapper og navne. Pakken må højst fylde ${fmtNumber(data.data.max_mb)} MB.`}
-              right={`+ ${fmtBytes(data.data.blobs.bytes)}`} />
+            <Check checked={blobs && withContent} onChange={() => setBlobs(!blobs)}
+              disabled={!withContent}
+              title="Medtag indholdet af filer og dokumenter i Viden"
+              help={`Fra Object Storage. Ellers kun mapper, navne og vidensrum; uden indhold kan filer og dokumenter ikke importeres. Pakken må højst fylde ${fmtNumber(data.data.max_mb)} MB.`}
+              right={`+ ${fmtBytes(contentBytes)}`} />
           </div>
           <div className="table-wrap" style={{ borderRadius: 12 }}>
             <Check checked={encrypt} onChange={() => setEncrypt(!encrypt)} title="Kryptér pakken med en adgangskode"
@@ -569,7 +571,7 @@ function ImportDetail({ id, open }: { id: number; open: (id: number | null) => v
           <strong className="mono small" style={{ wordBreak: "break-all" }}>{tr.filename}</strong>
           <span className="small muted">
             {fmtBytes(tr.size_bytes)} · {tr.has_password ? "låst op med adgangskode · " : ""}kontrolsummer stemmer
-            {m?.blobs?.count ? ` · ${fmtNumber(m.blobs.count)} filer med indhold` : ""}
+            {m?.blobs?.count ? ` · ${fmtNumber(m.blobs.count)} filer og dokumenter med indhold` : ""}
           </span>
           <div className="row" style={{ "--gap": "6px" } as CSSProperties}>
             <StatusPill status={tr.status} />
@@ -655,8 +657,8 @@ function ImportDetail({ id, open }: { id: number; open: (id: number | null) => v
                 title="Bevar tidsstempler og forfattere"
                 help="Oprettet- og ændret-tider og hvem der skrev rækken, som i kilden. Ellers står importen som forfatter." />
               <Check style={{ padding: "8px 0", borderTop: "1px solid #e2e8f0" }} checked={opts.file_blobs} onChange={() => set({ file_blobs: !opts.file_blobs })}
-                title="Læg filernes indhold i Object Storage"
-                help="Hvis pakken har det. Filer uden indhold i pakken springes over; eksisterende filer bliver stående." />
+                title="Læg indholdet af filer og dokumenter i Object Storage"
+                help="Hvis pakken har det. Filer og dokumenter uden indhold springes over; de, der findes her, bliver stående. Nye dokumenter i Viden indekseres igen." />
             </Fieldset>
           </div>
           <Alert kind="warn">

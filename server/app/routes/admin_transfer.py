@@ -75,8 +75,14 @@ async def areas():
             out.append({"key": a.key, "title": a.title, "description": a.description, "group": a.group,
                         "importable": a.importable, "personal": transfer.area_personal(a.key),
                         "rows": rows if a.key != "roles" else None, "bytes": size})
-        blobs = await db.fetch_one(conn, """select count(*) as n, coalesce(sum(size_bytes), 0) as bytes from files
-                                            where kind = 'file' and space in ('user', 'shared')""")
+        blobs = await db.fetch_one(conn, """
+            select count(*) as n, coalesce(sum(size_bytes), 0) as bytes,
+                   coalesce(sum(size_bytes) filter (where src = 'files'), 0) as files_bytes,
+                   coalesce(sum(size_bytes) filter (where src = 'knowledge'), 0) as knowledge_bytes
+            from (select 'files' as src, size_bytes from files where kind = 'file' and space in ('user', 'shared')
+                  union all
+                  select 'knowledge', d.size_bytes from knowledge_documents d join knowledge_spaces s on s.id = d.space_id
+                  where s.deleted_at is null) x""")
         migration = await db.fetch_one(conn, "select max(name) as name from schema_migrations")
     return {"areas": out, "blobs": blobs, "never": transfer.NEVER_EXPORTED, "max_mb": config.settings.transfer_max_mb,
             "download_hours": transfer.DOWNLOAD_HOURS, "undo_days": transfer.UNDO_DAYS,

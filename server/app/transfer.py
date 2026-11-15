@@ -116,6 +116,8 @@ class Table:
     lookup_only: bool = False                # exported to resolve references, never written
     importable: bool = True
     time_column: str | None = None           # the period filter for logs and clips
+    blob: str | None = None                  # rows have content in Object Storage: its name in the package is
+                                             # blobs/<blob><id> (only with "Medtag indholdet")
 
 
 NOT_TEST_USER = "(select id from users where not impersonation_only)"
@@ -153,7 +155,7 @@ TABLES: list[Table] = [
           key=("space", "user_id", "folder", "filename"),
           refs={"user_id": Ref("users"), "uploaded_by": Ref("users", "soft")},
           where=f"t.kind = 'file' and t.space in ('user', 'shared') and (t.user_id is null or t.user_id in {NOT_TEST_USER})",
-          updatable=False),
+          updatable=False, blob=""),
     Table("meta_dimensions", "Dimensioner", "meta", ("slug", "label", "description", "color", "locked", "created_by",
                                                      "created_at", "updated_at"),
           key=("slug",), refs={"created_by": Ref("users", "soft")}, copy={"slug": "slug", "label": "title"}),
@@ -210,6 +212,67 @@ TABLES: list[Table] = [
           key=("name",), refs={"created_by": Ref("users", "soft")}, copy={"name": "title"}),
     Table("adoption_steps", "Trin i forløb", "adoption", ("journey_id", "position", "label", "match_type", "pattern"),
           key=("journey_id", "position"), refs={"journey_id": Ref("adoption_journeys")}, insert_only=("journey_id",)),
+    Table("knowledge_spaces", "Vidensrum", "knowledge", ("name", "description", "created_by", "created_at",
+                                                        "updated_at"),
+          key=("name",), where="t.deleted_at is null", refs={"created_by": Ref("users", "soft")},
+          copy={"name": "title"}),
+    Table("knowledge_documents", "Dokumenter i Viden", "knowledge",
+          ("space_id", "filename", "path", "content_type", "size_bytes", "sha256", "uploaded_by", "created_at",
+           "updated_at"),
+          key=("space_id", "path", "filename"), refs={"space_id": Ref("knowledge_spaces"), "uploaded_by": Ref("users", "soft")},
+          where="t.space_id in (select id from knowledge_spaces where deleted_at is null)", updatable=False,
+          blob="knowledge/"),
+    Table("knowledge_agents", "Agenter", "knowledge", ("slug", "name", "description", "instructions", "welcome",
+                                                     "suggested_prompts", "space_ids", "access", "status",
+                                                     "version_major", "version_minor", "created_by", "created_at",
+                                                     "updated_at"),
+          key=("slug",), refs={"created_by": Ref("users", "soft")}, copy={"slug": "slug", "name": "title"}),
+    Table("knowledge_agent_versions", "Agentversioner", "knowledge", ("agent_id", "major", "minor", "snapshot", "note",
+                                                                     "created_by", "created_at"),
+          key=("agent_id", "major", "minor"), refs={"agent_id": Ref("knowledge_agents"), "created_by": Ref("users", "soft")},
+          updatable=False),
+    Table("knowledge_agent_members", "Agentmedlemmer", "knowledge", ("privilege", "added_by", "created_at"),
+          key=("agent_id", "user_id"), pk=("agent_id", "user_id"), serial=False, order="t.agent_id, t.user_id",
+          refs={"agent_id": Ref("knowledge_agents"), "user_id": Ref("users"), "added_by": Ref("users", "soft")},
+          where=f"t.user_id in {NOT_TEST_USER}", personal=True),
+    # Beskeder: sent broadcasts, the users' inboxes (deliveries in the app), reply threads with the administration and
+    # Fællessamtalen. Never direct conversations between two users, SMS rows, deliveries by other channels, reports,
+    # blocks or SMS consent. An import sends nothing.
+    Table("message_broadcasts", "Udsendte beskeder", "messages",
+          ("title", "body", "audience", "audience_label", "channels", "urgent", "allow_replies", "total", "push", "sms",
+           "mail", "app_only", "segments", "price_minor", "status", "actor_id", "send_at", "sent_at", "created_at"),
+          key=("title", "created_at"), where="t.status = 'sent'", refs={"actor_id": Ref("users", "soft")},
+          updatable=False),
+    Table("conversations", "Tråde", "messages", ("kind", "broadcast_id", "user_id", "created_at", "last_message_at",
+                                                 "last_from_admin", "closed_at", "closed_by", "title"),
+          key=("kind", "broadcast_id", "user_id"),
+          refs={"broadcast_id": Ref("message_broadcasts"), "user_id": Ref("users"), "closed_by": Ref("users", "soft")},
+          where=f"""t.kind in ('reply', 'instance') and (t.user_id is null or t.user_id in {NOT_TEST_USER})
+                    and (t.broadcast_id is null or t.broadcast_id in (select id from message_broadcasts
+                                                                       where status = 'sent'))""",
+          insert_only=("kind", "broadcast_id", "user_id")),
+    Table("conversation_members", "Deltagere i tråde", "messages", ("joined_at", "last_read_at"),
+          key=("conversation_id", "user_id"), pk=("conversation_id", "user_id"), serial=False,
+          order="t.conversation_id, t.user_id",
+          refs={"conversation_id": Ref("conversations"), "user_id": Ref("users")},
+          where=f"""t.user_id in {NOT_TEST_USER} and t.conversation_id in (select id from conversations
+                                                                         where kind in ('reply', 'instance'))""",
+          personal=True),
+    Table("conversation_messages", "Beskeder i tråde", "messages",
+          ("conversation_id", "author_id", "author_name", "from_admin", "body", "read_at", "created_at", "removed_at",
+           "removed_by"),
+          key=("conversation_id", "created_at", "author_id"),
+          refs={"conversation_id": Ref("conversations"), "author_id": Ref("users"), "removed_by": Ref("users", "soft")},
+          where="""t.conversation_id in (select id from conversations where kind in ('reply', 'instance'))""",
+          personal=True, personal_columns=("author_name",), updatable=False),
+    Table("message_deliveries", "Indbakker", "messages", ("broadcast_id", "user_id", "channel", "status", "reply_id",
+                                                          "created_at", "sent_at", "delivered_at", "read_at"),
+          key=("broadcast_id", "user_id", "channel"),
+          refs={"broadcast_id": Ref("message_broadcasts"), "user_id": Ref("users"),
+                "reply_id": Ref("conversation_messages", "soft")},
+          where=f"""t.channel = 'app' and t.user_id in {NOT_TEST_USER}
+                    and t.broadcast_id in (select id from message_broadcasts where status = 'sent')""",
+          personal=True),
     Table("audit_log", "Audit-log", "audit_log", ("ts", "actor_user_id", "action", "table_name", "row_id", "before",
                                                   "after", "ip", "detail"),
           key=("id",), refs={"actor_user_id": Ref("users", "soft")}, personal=True, importable=False,
@@ -247,6 +310,12 @@ AREAS: list[Area] = [
          "Konfiguration"),
     Area("mcp", "MCP-endpoints", "Endpoints fra MCP Studio og hvilke værktøjer de tilbyder.", "Konfiguration"),
     Area("adoption", "Adoption-forløb", "Forløb og trin, ikke besøgene.", "Konfiguration"),
+    Area("knowledge", "Viden",
+         "Vidensrum, dokumenter og agenter. Dokumenterne indekseres igen efter import; samtaler med agenter kommer ikke med.",
+         "Indhold"),
+    Area("messages", "Beskeder",
+         "Udsendte beskeder, brugernes indbakker, svartråde og Fællessamtalen. Direkte samtaler mellem brugere kommer "
+         "aldrig med, og en import sender intet ud.", "Indhold"),
     Area("audit_log", "Audit-log", "Kun til arkiv: logs kan ikke importeres.", "Logs", importable=False),
     Area("auth_log", "Auth-log", "Kun til arkiv: logs kan ikke importeres.", "Logs", importable=False),
 ]
@@ -288,7 +357,8 @@ def clean_export_options(o: dict) -> dict:
     if since is not None and not 1 <= since <= 3650:
         raise ValueError("Perioden skal være mellem 1 og 3650 dage")
     return {"areas": areas, "personal": personal, "format": fmt, "since_days": since,
-            "include_blobs": bool(o.get("include_blobs")) and "files" in areas and fmt == "json"}
+            "include_blobs": bool(o.get("include_blobs")) and bool({"files", "knowledge"} & set(areas))
+            and fmt == "json"}
 
 
 def clean_import_options(o: dict, manifest: dict) -> dict:
@@ -391,7 +461,7 @@ class _Exporter:
         self.manifest_tables: dict = {}
         self.user_ids_seen: set[int] = set()
         self.pseudonyms: dict[int, int] = {}
-        self.file_ids: list[str] = []
+        self.blob_ids: dict[str, list] = {}
 
     async def table_rows(self, t: Table, *, only_ids: set | None = None):
         where = [t.where] if t.where else []
@@ -437,8 +507,8 @@ class _Exporter:
         if t.name == "users" and "roles" not in self.o["areas"]:
             row.pop("role", None)
             row.pop("admin_roles", None)
-        if t.name == "files":
-            self.file_ids.append(row["id"])
+        if t.blob is not None:
+            self.blob_ids.setdefault(t.name, []).append(row["id"])
         return row
 
     async def write_table(self, zf: zipfile.ZipFile, t: Table, *, only_ids: set | None = None) -> None:
@@ -492,18 +562,20 @@ async def build_export(options: dict, path: str) -> dict:
             elif ex.user_ids_seen and options["personal"] != "without":
                 # The users the exported rows belong to, so they can be found (or created) on import.
                 await ex.write_table(zf, users, only_ids=ex.user_ids_seen)
-            if options.get("include_blobs") and ex.file_ids:
+            if options.get("include_blobs"):
                 store = get_storage()
-                for r in await db.fetch_all(conn, "select id, storage_key from files where id = any(%s::uuid[])",
-                                            (ex.file_ids,)):
-                    try:
-                        data, _ = await store.get(r["storage_key"])
-                    except Exception:  # noqa: BLE001 — a missing object is reported, not fatal
-                        log.warning("export: object for file %s is missing", r["id"])
-                        continue
-                    zf.writestr(f"blobs/{r['id']}", data)
-                    blobs["count"] += 1
-                    blobs["bytes"] += len(data)
+                for name, ids in ex.blob_ids.items():
+                    t = TABLE[name]
+                    for r in await db.fetch_all(conn, f"select id, storage_key from {name} where id::text = any(%s)",
+                                                ([str(i) for i in ids],)):
+                        try:
+                            data, _ = await store.get(r["storage_key"])
+                        except Exception:  # noqa: BLE001 — a missing object is reported, not fatal
+                            log.warning("export: object for %s %s is missing", name, r["id"])
+                            continue
+                        zf.writestr(f"blobs/{t.blob}{r['id']}", data)
+                        blobs["count"] += 1
+                        blobs["bytes"] += len(data)
             migration = await db.fetch_one(conn, "select max(name) as name from schema_migrations")
             manifest = {
                 "format": FORMAT, "version": VERSION, "kind": options["format"],
@@ -567,8 +639,14 @@ class Package:
             raise PackageError(f"{table} i pakken har ikke rækker")
         return rows
 
-    def blob(self, file_id) -> bytes | None:
-        return self.zip.read(f"blobs/{file_id}") if str(file_id) in self.blob_names else None
+    def blob(self, t: Table, row_id) -> bytes | None:
+        name = f"{t.blob or ''}{row_id}"
+        return self.zip.read(f"blobs/{name}") if name in self.blob_names else None
+
+    def has_blobs(self, t: Table) -> bool:
+        if t.blob == "":
+            return any("/" not in n for n in self.blob_names)
+        return any(n.startswith(t.blob or "\0") for n in self.blob_names)
 
     def close(self):
         self.zip.close()
@@ -626,8 +704,10 @@ def summary(pkg: Package) -> dict:
             n = sum(x["rows"] for x in tables)
             if n:
                 notes.append(f"{n} oprettes slået fra og uden hemmelighed")
-        if a.key == "files" and not pkg.blob_names:
+        if a.key == "files" and not pkg.has_blobs(TABLE["files"]):
             notes.append("Kun mapper: filernes indhold er ikke med")
+        if a.key == "knowledge" and not pkg.has_blobs(TABLE["knowledge_documents"]):
+            notes.append("Dokumenternes indhold er ikke med; de springes over")
         if a.key == "roles":
             notes.append("Kræver Fuld adgang")
         areas.append({"key": a.key, "title": a.title, "importable": a.importable, "personal": area_personal(a.key),
@@ -1086,7 +1166,7 @@ async def _insert_endpoint(imp: _Importer, t: Table, values: dict, src: dict) ->
 
 
 async def _insert_file(imp: _Importer, t: Table, values: dict, src: dict) -> str | None:
-    data = imp.pkg.blob(src.get("id")) if imp.o["file_blobs"] else None
+    data = imp.pkg.blob(t, src.get("id")) if imp.o["file_blobs"] else None
     if data is None:
         raise Skip("Filens indhold er ikke med i pakken")
     prefix = f"users/{values['user_id']}" if values.get("space") == "user" else "shared"
@@ -1102,10 +1182,61 @@ async def _insert_file(imp: _Importer, t: Table, values: dict, src: dict) -> str
     return key
 
 
+async def _insert_document(imp: _Importer, t: Table, values: dict, src: dict) -> str | None:
+    data = imp.pkg.blob(t, src.get("id")) if imp.o["file_blobs"] else None
+    if data is None:
+        raise Skip("Dokumentets indhold er ikke med i pakken")
+    key = f"knowledge/{uuid.uuid4()}"
+    values.update(storage_key=key, size_bytes=len(data), sha256=hashlib.sha256(data).hexdigest(), status="pending")
+    if not imp.dry_run:
+        await get_storage().put(key, data, values.get("content_type") or "application/octet-stream")
+        imp.stored.append(key)
+    return key
+
+
+async def _after_document(imp: _Importer, t: Table, row: dict, src: dict) -> None:
+    """A new document is indexed here, by the same job as an upload (text, chunks and embeddings are not moved)."""
+    key = imp.maps[t.name].get(_k([src["id"]]))
+    if key is not None and imp.last_outcome == "created":
+        await jobs.enqueue(imp.conn, "knowledge.ingest", {"document_id": key[0]}, max_attempts=4,
+                           dedupe_key=f"knowledge.ingest:{key[0]}")
+
+
+def _map_ids(imp: _Importer, table: str, ids) -> tuple[list, int]:
+    found = [imp.maps[table].get(_k([i])) for i in ids or []]
+    return sorted({f[0] for f in found if f}), sum(1 for f in found if not f)
+
+
+async def _prepare_agent(imp: _Importer, t: Table, row: dict) -> None:
+    row["space_ids"], lost = _map_ids(imp, "knowledge_spaces", row.get("space_ids"))
+    if lost:
+        imp.warn(t, "Vidensrum, som ikke er med i importen, er taget ud af agenten")
+
+
+async def _prepare_agent_version(imp: _Importer, t: Table, row: dict) -> None:
+    snap = row.get("snapshot")
+    if isinstance(snap, dict) and "space_ids" in snap:
+        row["snapshot"] = {**snap, "space_ids": _map_ids(imp, "knowledge_spaces", snap["space_ids"])[0]}
+
+
+async def _prepare_broadcast(imp: _Importer, t: Table, row: dict) -> None:
+    aud = row.get("audience")
+    if isinstance(aud, dict) and "user_ids" in aud:
+        row["audience"] = {**aud, "user_ids": _map_ids(imp, "users", aud["user_ids"])[0]}
+
+
+async def _prepare_conversation(imp: _Importer, t: Table, row: dict) -> None:
+    if row.get("kind") == "reply" and (row.get("broadcast_id") is None or row.get("user_id") is None):
+        raise Skip("Svartråden mangler sin besked eller sin bruger")
+
+
 PREPARE = {"settings": _prepare_settings, "webhook_endpoints": _prepare_endpoint, "data_sources": _prepare_source,
-           "adoption_journeys": _prepare_journey, "files": _prepare_file}
-ON_INSERT = {"webhooks": _insert_webhook, "webhook_endpoints": _insert_endpoint, "files": _insert_file}
-AFTER_WRITE = {"data_sources": _after_source}
+           "adoption_journeys": _prepare_journey, "files": _prepare_file, "knowledge_agents": _prepare_agent,
+           "knowledge_agent_versions": _prepare_agent_version, "message_broadcasts": _prepare_broadcast,
+           "conversations": _prepare_conversation}
+ON_INSERT = {"webhooks": _insert_webhook, "webhook_endpoints": _insert_endpoint, "files": _insert_file,
+             "knowledge_documents": _insert_document}
+AFTER_WRITE = {"data_sources": _after_source, "knowledge_documents": _after_document}
 
 
 async def apply_package(pkg: Package, options: dict, *, actor_id: int, transfer_id: int, dry_run: bool) -> dict:

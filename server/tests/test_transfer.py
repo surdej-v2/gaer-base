@@ -19,7 +19,8 @@ CONFIG_AREAS = ["web", "groups", "settings", "meta", "webhooks", "clips", "users
 @pytest.fixture(autouse=True)
 def clean_transfer_tables(owner_conn):
     """Tables this file fills that the shared clean-up leaves alone."""
-    owner_conn.execute("truncate web_pages, groups, webhooks, data_transfers restart identity cascade")
+    owner_conn.execute("""truncate web_pages, groups, webhooks, data_transfers, knowledge_spaces, knowledge_agents,
+                          message_broadcasts, conversations restart identity cascade""")
 
 
 async def admin(make_client):
@@ -518,3 +519,113 @@ async def test_upload_limits_and_server_fallback(make_client, owner_conn, monkey
     assert r.status_code == 404 and "Direkte upload" in r.json()["detail"]
     r = await c.post(f"{BASE}/imports", files={"file": ("x.zip", data)})
     assert r.status_code == 200 and r.json()["status"] == "uploaded" and r.json()["summary"]["areas"][0]["key"] == "web"
+
+
+async def test_knowledge_round_trip(make_client, owner_conn):
+    c = await admin(make_client)
+    await otp_login(make_client(), "22222222")
+    uid = owner_conn.execute("select id from users where phone = '+4522222222'").fetchone()[0]
+    sid = owner_conn.execute("insert into knowledge_spaces (name, description) values ('Håndbog', 'Interne regler') "
+                             "returning id").fetchone()[0]
+    owner_conn.execute("insert into knowledge_spaces (name, deleted_at) values ('I papirkurven', now())")
+    await get_storage().put("knowledge/doc-1", b"Ferie: 6 uger.", "text/plain")
+    owner_conn.execute("""insert into knowledge_documents (space_id, filename, path, content_type, size_bytes, storage_key,
+                                                           sha256, status)
+                          values (%s, 'ferie.txt', 'regler/ferie.txt', 'text/plain', 14, 'knowledge/doc-1', 'x', 'indexed')""",
+                       (sid,))
+    aid = owner_conn.execute("""insert into knowledge_agents (slug, name, space_ids, status)
+                                values ('hr', 'HR-hjælper', %s, 'published') returning id""", ([sid],)).fetchone()[0]
+    owner_conn.execute("""insert into knowledge_agent_versions (agent_id, major, minor, snapshot)
+                          values (%s, 1, 0, %s)""", (aid, json.dumps({"name": "HR-hjælper", "space_ids": [sid]})))
+    owner_conn.execute("insert into knowledge_agent_members (agent_id, user_id, privilege) values (%s, %s, 'use')",
+                       (aid, uid))
+    row = await export(c, areas=["knowledge"], include_blobs=True)
+    assert row["manifest"]["blobs"]["count"] == 1
+    zf = zipfile.ZipFile(io.BytesIO(package_bytes(owner_conn, row["id"])))
+    assert "blobs/knowledge/1" in zf.namelist()
+    assert [s["name"] for s in json.loads(zf.read("data/knowledge_spaces.json"))] == ["Håndbog"]   # not the bin
+    data = package_bytes(owner_conn, row["id"])
+
+    owner_conn.execute("truncate knowledge_spaces, knowledge_agents restart identity cascade")
+    owner_conn.execute("insert into knowledge_spaces (name) values ('Noget andet')")   # new ids differ from the source
+    up = await upload(c, data)
+    assert {a["key"] for a in up["summary"]["areas"]} == {"knowledge"}
+    rep = (await dry_run(c, up["id"], areas=["knowledge"]))["report"]
+    assert totals(rep, "knowledge_documents")["created"] == 1 and totals(rep, "knowledge_agent_members")["created"] == 1
+    assert (await c.post(f"{BASE}/{up['id']}/run", json={"areas": ["knowledge"]})).status_code == 200
+    await jobs.run_pending()
+    new_sid = owner_conn.execute("select id from knowledge_spaces where name = 'Håndbog'").fetchone()[0]
+    assert new_sid != sid
+    space_ids, = owner_conn.execute("select space_ids from knowledge_agents where slug = 'hr'").fetchone()
+    assert space_ids == [new_sid]
+    snap, = owner_conn.execute("select snapshot from knowledge_agent_versions").fetchone()
+    assert snap["space_ids"] == [new_sid]
+    key, status = owner_conn.execute("select storage_key, status from knowledge_documents").fetchone()
+    assert key != "knowledge/doc-1" and get_storage().objects[key][0] == b"Ferie: 6 uger."
+    assert status != "pending"                              # the knowledge.ingest job has picked it up
+    assert owner_conn.execute("select count(*) from jobs where kind = 'knowledge.ingest'").fetchone()[0] == 1
+
+
+async def test_messages_round_trip_without_direct_conversations(make_client, owner_conn):
+    c = await admin(make_client)
+    await otp_login(make_client(), "22222222")
+    await otp_login(make_client(), "44444444")
+    me = owner_conn.execute("select id from users where phone = '+4511111111'").fetchone()[0]
+    uid = owner_conn.execute("select id from users where phone = '+4522222222'").fetchone()[0]
+    other = owner_conn.execute("select id from users where phone = '+4544444444'").fetchone()[0]
+    bid = owner_conn.execute("""insert into message_broadcasts (title, body, audience, audience_label, status, actor_id,
+                                                                sent_at)
+                                values ('Driftsstop', 'Systemet er nede i aften', %s, 'Valgte brugere', 'sent', %s, now())
+                                returning id""", (json.dumps({"kind": "users", "user_ids": [uid]}), me)).fetchone()[0]
+    owner_conn.execute("""insert into message_broadcasts (title, body, audience, audience_label, status)
+                          values ('Senere', 'Planlagt', '{"kind": "all"}', 'Alle', 'scheduled')""")
+    owner_conn.execute("""insert into message_deliveries (broadcast_id, user_id, channel, status)
+                          values (%s, %s, 'app', 'read'), (%s, %s, 'sms', 'sent')""", (bid, uid, bid, uid))
+    reply = owner_conn.execute("""insert into conversations (kind, broadcast_id, user_id) values ('reply', %s, %s)
+                                  returning id""", (bid, uid)).fetchone()[0]
+    owner_conn.execute("""insert into conversation_messages (conversation_id, author_id, author_name, from_admin, body)
+                          values (%s, %s, 'Bo Bruger', false, 'Hvornår er det forbi?'),
+                                 (%s, %s, 'Admin', true, 'Kl. 22')""", (reply, uid, reply, me))
+    hall = owner_conn.execute("insert into conversations (kind, title) values ('instance', 'Fællessamtalen') returning id"
+                              ).fetchone()[0]
+    owner_conn.execute("insert into conversation_messages (conversation_id, author_id, body) values (%s, %s, 'Hej alle')",
+                       (hall, uid))
+    direct = owner_conn.execute("""insert into conversations (kind, pair_key) values ('direct', %s) returning id""",
+                                (f"{uid}:{other}",)).fetchone()[0]
+    owner_conn.execute("insert into conversation_messages (conversation_id, author_id, body) values (%s, %s, 'Privat')",
+                       (direct, uid))
+
+    row = await export(c, areas=["messages"])
+    zf = zipfile.ZipFile(io.BytesIO(package_bytes(owner_conn, row["id"])))
+    titles = [b["title"] for b in json.loads(zf.read("data/message_broadcasts.json"))]
+    assert titles == ["Driftsstop"]                         # only what was sent
+    kinds = sorted(x["kind"] for x in json.loads(zf.read("data/conversations.json")))
+    assert kinds == ["instance", "reply"]                   # never a direct conversation
+    bodies = [m["body"] for m in json.loads(zf.read("data/conversation_messages.json"))]
+    assert "Privat" not in bodies and len(bodies) == 3
+    assert [d["channel"] for d in json.loads(zf.read("data/message_deliveries.json"))] == ["app"]
+    assert "confirmation_hash" not in json.loads(zf.read("data/message_broadcasts.json"))[0]
+    pseudo = zipfile.ZipFile(io.BytesIO(package_bytes(owner_conn, (await export(c, areas=["messages"],
+                                                                                personal="pseudo"))["id"])))
+    assert {m["author_name"] for m in json.loads(pseudo.read("data/conversation_messages.json"))} == {None}
+    data = package_bytes(owner_conn, row["id"])
+
+    owner_conn.execute("truncate message_broadcasts, conversations restart identity cascade")
+    owner_conn.execute("delete from jobs")
+    owner_conn.execute("insert into conversations (kind, title) values ('instance', 'Fællessamtalen')")
+    up = await upload(c, data)
+    opts = {"areas": ["messages"]}
+    rep = (await dry_run(c, up["id"], **opts))["report"]
+    assert totals(rep, "conversations")["unchanged"] == 1   # Fællessamtalen exists here: the same thread
+    assert (await c.post(f"{BASE}/{up['id']}/run", json=opts)).status_code == 200
+    await jobs.run_pending()
+    b = owner_conn.execute("select id, audience, status from message_broadcasts").fetchall()
+    assert len(b) == 1 and b[0][1]["user_ids"] == [uid] and b[0][2] == "sent"
+    assert owner_conn.execute("select channel, user_id, status from message_deliveries").fetchall() == [("app", uid, "read")]
+    assert owner_conn.execute("select count(*) from conversations where kind = 'reply' and broadcast_id = %s",
+                              (b[0][0],)).fetchone()[0] == 1
+    assert owner_conn.execute("select count(*) from conversations where kind = 'instance'").fetchone()[0] == 1
+    assert sorted(x for (x,) in owner_conn.execute("select body from conversation_messages")) == \
+        ["Hej alle", "Hvornår er det forbi?", "Kl. 22"]
+    sent = owner_conn.execute("select count(*) from jobs where kind like 'messages.%'").fetchone()[0]
+    assert sent == 0                                        # an import sends nothing
