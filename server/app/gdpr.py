@@ -359,7 +359,7 @@ async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, r
             update data_transfers d set storage_key = null, password_enc = null, updated_at = now(),
                    status = case when status in ('ready', 'uploaded', 'dry_ready') then 'expired' else status end
             from (select id, storage_key from data_transfers where storage_key is not null
-                  and status not in ('queued', 'running', 'dry_running', 'undoing')
+                  and status not in ('queued', 'running', 'uploading', 'checking', 'dry_running', 'undoing')
                   and (kind = 'import' or coalesce(manifest->>'personal', options->>'personal') <> 'without')) old
             where d.id = old.id returning old.storage_key""")
         # Action-studie: they are taken off the approver lists of waiting flow approvals (decisions keep decided_by = null).

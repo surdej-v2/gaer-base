@@ -3,9 +3,22 @@
 Only admins with Fuld adgang (the section is in no other role). Starting an export, downloading it, running an
 import and undoing one need a recent second factor (require_admin_stepup): a package can carry everyone's data out
 of the app, and an import can change anything. The upload and the dry run change nothing but the transfer row.
+
+A package is uploaded the way files are (app/uploads.py): straight from the browser to Object Storage, so neither the
+server nor Cloudflare (100 MB per request) is in the way:
+
+    POST   …/uploads                  {filename, size} → one presigned PUT link, or multipart: part_size + parts
+    POST   …/uploads/{id}/parts       {numbers} → a presigned link per part
+    PUT    <link>                     the browser sends the bytes to the bucket
+    POST   …/uploads/{id}/complete    {parts, password} → status 'checking'; the job data.import_check reads the package
+    DELETE …/uploads/{id}             aborts it
+    POST   …/{id}/check               {password} → reads it again (after a wrong password)
+
+POST …/imports takes the package through the server instead, when the browser cannot reach the bucket.
 """
 
 import hashlib
+import math
 import os
 import uuid
 from typing import Literal
@@ -15,7 +28,7 @@ from pydantic import BaseModel, Field
 
 from psycopg.types.json import Jsonb
 
-from app import admin_roles, config, db, jobs, secrets_box, transfer
+from app import admin_roles, config, db, jobs, secrets_box, transfer, uploads
 from app.logs import audit
 from app.sessions import Principal, require_admin, require_admin_stepup
 from app.storage import get_storage
@@ -166,7 +179,7 @@ async def delete_package(transfer_id: int, admin: Principal = Depends(require_ad
         row = await db.fetch_one(conn, "select * from data_transfers where id = %s for update", (transfer_id,))
         if row is None:
             raise HTTPException(404, "Eksporten eller importen findes ikke")
-        if row["status"] in ("queued", "running", "dry_running", "undoing"):
+        if row["status"] in transfer.BUSY:
             raise HTTPException(409, "Vent til jobbet er færdigt")
         if not row["storage_key"]:
             raise HTTPException(409, "Pakken er allerede slettet")
@@ -181,30 +194,174 @@ async def delete_package(transfer_id: int, admin: Principal = Depends(require_ad
 
 # ── Import ──────────────────────────────────────────────────────────────────
 
+class UploadStartIn(BaseModel):
+    filename: str = Field(min_length=1, max_length=200)
+    size: int = Field(ge=1)
+
+
+class PartsIn(BaseModel):
+    numbers: list[int] = Field(min_length=1, max_length=100)
+
+
+class PartIn(BaseModel):
+    number: int = Field(ge=1, le=uploads.MAX_PARTS)
+    etag: str = Field(min_length=1, max_length=200)
+
+
+class UploadCompleteIn(BaseModel):
+    parts: list[PartIn] = Field(default_factory=list, max_length=uploads.MAX_PARTS)
+    password: str = Field(default="", max_length=200)
+
+
+class CheckIn(BaseModel):
+    password: str = Field(default="", max_length=200)
+
+
+def _too_big(size: int) -> None:
+    if size > transfer.max_bytes():
+        raise HTTPException(413, f"Pakken er større end {config.settings.transfer_max_mb} MB")
+
+
+async def _upload_row(conn, transfer_id: int, admin: Principal) -> dict:
+    row = await db.fetch_one(conn, "select * from data_transfers where id = %s and kind = 'import' for update",
+                             (transfer_id,))
+    if row is None or row["created_by"] != admin.user_id:
+        raise HTTPException(404, "Uploaden findes ikke")
+    return row
+
+
+async def _enqueue_check(conn, transfer_id: int, password: str, admin: Principal) -> None:
+    password = password.strip()
+    job_id = await jobs.enqueue(conn, "data.import_check", {"transfer_id": transfer_id}, max_attempts=1,
+                                dedupe_key=f"data.import_check:{transfer_id}")
+    await conn.execute("""update data_transfers set status = 'checking', error = null, job_id = %s, updated_at = now(),
+                          password_enc = %s where id = %s""",
+                       (job_id, secrets_box.encrypt(password, transfer.PASSWORD_PURPOSE) if password else None,
+                        transfer_id))
+
+
+@router.post("/uploads")
+async def start_upload(body: UploadStartIn, admin: Principal = Depends(require_admin)):
+    """Starts a direct upload: the browser sends the package straight to Object Storage on presigned links (one PUT,
+    or multipart for big packages), past Cloudflare's 100 MB limit. Nothing is read or imported yet."""
+    if not config.settings.direct_upload:
+        raise HTTPException(404, "Direkte upload er slået fra – pakken sendes via serveren")
+    _too_big(body.size)
+    key = f"transfers/{uuid.uuid4()}"
+    content_type = "application/octet-stream"
+    storage = get_storage()
+    out: dict = {"content_type": content_type}
+    multipart_id = part_size = None
+    if body.size > uploads.SINGLE_PUT_MAX:
+        part_size = max(uploads.PART_SIZE, math.ceil(body.size / uploads.MAX_PARTS / uploads.MB) * uploads.MB)
+        multipart_id = await storage.start_multipart(key, content_type)
+        out.update(multipart=True, part_size=part_size, parts=math.ceil(body.size / part_size))
+    else:
+        out.update(multipart=False, url=await storage.presign_put(key, content_type))
+    async with db.connection() as conn:
+        row = await db.fetch_one(conn, """
+            insert into data_transfers (kind, status, options, storage_key, multipart_id, part_size, filename,
+                                        size_bytes, created_by)
+            values ('import', 'uploading', '{}', %s, %s, %s, %s, %s, %s) returning id""",
+            (key, multipart_id, part_size, _filename(body.filename, "pakke.zip"), body.size, admin.user_id))
+        await audit(conn, "transfer.upload_started", actor_id=admin.user_id, meta=admin.meta, table="data_transfers",
+                    row_id=row["id"], bytes=body.size, multipart=bool(multipart_id))
+    return {"id": row["id"], **out}
+
+
+@router.post("/uploads/{transfer_id}/parts")
+async def upload_parts(transfer_id: int, body: PartsIn, admin: Principal = Depends(require_admin)):
+    async with db.connection() as conn:
+        row = await _upload_row(conn, transfer_id, admin)
+    if row["status"] != "uploading" or not row["multipart_id"]:
+        raise HTTPException(409, "Uploaden tager ikke imod flere dele")
+    count = math.ceil(row["size_bytes"] / row["part_size"])
+    if any(n < 1 or n > count for n in body.numbers):
+        raise HTTPException(400, f"Delene hedder 1 til {count}")
+    storage = get_storage()
+    return {"urls": {str(n): await storage.presign_part(row["storage_key"], row["multipart_id"], n)
+                     for n in sorted(set(body.numbers))}}
+
+
+@router.post("/uploads/{transfer_id}/complete")
+async def complete_upload(transfer_id: int, body: UploadCompleteIn, admin: Principal = Depends(require_admin)):
+    """The bytes are in the bucket: the parts are joined, the size checked, and the job data.import_check reads and
+    verifies the package (password, manifest, checksums)."""
+    async with db.connection() as conn:
+        row = await _upload_row(conn, transfer_id, admin)
+        if row["status"] != "uploading":
+            return _public(await _get(conn, transfer_id))   # completed twice (a retry): the same answer
+        storage = get_storage()
+        if row["multipart_id"]:
+            count = math.ceil(row["size_bytes"] / row["part_size"])
+            if sorted(x.number for x in body.parts) != list(range(1, count + 1)):
+                raise HTTPException(400, f"Alle {count} dele skal være med")
+            try:
+                await storage.complete_multipart(row["storage_key"], row["multipart_id"],
+                                                 [{"PartNumber": x.number, "ETag": x.etag}
+                                                  for x in sorted(body.parts, key=lambda x: x.number)])
+            except Exception:  # noqa: BLE001 — a part is missing or its ETag is wrong; the browser may try again
+                raise HTTPException(400, "Delene kunne ikke samles – prøv at uploade igen")
+        size = await storage.head(row["storage_key"])
+        if size is None:
+            raise HTTPException(400, "Pakken er ikke kommet frem til Object Storage endnu")
+        if size != row["size_bytes"]:
+            await conn.execute("""update data_transfers set status = 'failed', storage_key = null, multipart_id = null,
+                                  error = 'Pakken har ikke den størrelse, der blev meldt', updated_at = now()
+                                  where id = %s""", (transfer_id,))
+            await transfer.discard_upload({**row, "multipart_id": None})
+            return _public(await _get(conn, transfer_id))
+        await conn.execute("update data_transfers set multipart_id = null where id = %s", (transfer_id,))
+        await _enqueue_check(conn, transfer_id, body.password, admin)
+        await audit(conn, "transfer.uploaded", actor_id=admin.user_id, meta=admin.meta, table="data_transfers",
+                    row_id=transfer_id, bytes=size, via="direct")
+        return _public(await _get(conn, transfer_id))
+
+
+@router.delete("/uploads/{transfer_id}")
+async def abort_upload(transfer_id: int, admin: Principal = Depends(require_admin)):
+    async with db.connection() as conn:
+        row = await _upload_row(conn, transfer_id, admin)
+        if row["status"] != "uploading":
+            return _public(await _get(conn, transfer_id))
+        await conn.execute("""update data_transfers set status = 'cancelled', storage_key = null, multipart_id = null,
+                              updated_at = now() where id = %s""", (transfer_id,))
+        await audit(conn, "transfer.cancelled", actor_id=admin.user_id, meta=admin.meta, table="data_transfers",
+                    row_id=transfer_id)
+        out = _public(await _get(conn, transfer_id))
+    await transfer.discard_upload(row)
+    return out
+
+
+@router.post("/{transfer_id}/check")
+async def check_again(transfer_id: int, body: CheckIn, admin: Principal = Depends(require_admin)):
+    """Reads an uploaded package again, e.g. with another password after 'Forkert adgangskode'."""
+    async with db.connection() as conn:
+        row = await _upload_row(conn, transfer_id, admin)
+        if row["status"] != "failed" or row["manifest"] is not None or not row["storage_key"]:
+            raise HTTPException(409, "Pakken kan ikke kontrolleres igen. Upload den igen.")
+        await _enqueue_check(conn, transfer_id, body.password, admin)
+        return _public(await _get(conn, transfer_id))
+
+
 @router.post("/imports")
 async def upload_package(file: UploadFile = File(...), password: str = Form(default="", max_length=200),
                          admin: Principal = Depends(require_admin)):
-    """Stores an uploaded package and reads its manifest. Nothing is imported yet."""
+    """Through the server: the fallback when the browser cannot reach the bucket (direct upload off, or the bucket's
+    CORS not set). Behind Cloudflare a request is at most 100 MB. The package is stored and read at once."""
     path = transfer._temp(".pkg")
-    temps = [path]
-    pkg = None
     try:
         size, digest = 0, hashlib.sha256()
         with open(path, "wb") as f:
             while chunk := await file.read(1 << 20):
                 size += len(chunk)
-                if size > transfer.max_bytes():
-                    raise HTTPException(413, f"Pakken er større end {config.settings.transfer_max_mb} MB")
+                _too_big(size)
                 digest.update(chunk)
                 f.write(chunk)
-        encrypted = transfer.is_encrypted(path)
         try:
-            pkg, more = transfer.open_package(path, password.strip() or None)
+            manifest, encrypted = transfer.check_file(path, password.strip() or None)
         except transfer.PackageError as e:
             raise HTTPException(400, str(e))
-        temps += more
-        manifest = dict(pkg.manifest)
-        manifest["_summary"] = transfer.summary(pkg)
         key = f"transfers/{uuid.uuid4()}"
         with open(path, "rb") as f:
             await get_storage().put_stream(key, f, "application/octet-stream")
@@ -216,17 +373,14 @@ async def upload_package(file: UploadFile = File(...), password: str = Form(defa
                 (secrets_box.encrypt(password.strip(), transfer.PASSWORD_PURPOSE) if encrypted else None, key,
                  _filename(file.filename or "", "pakke.zip"), size, Jsonb(manifest), admin.user_id))
             await audit(conn, "transfer.uploaded", actor_id=admin.user_id, meta=admin.meta, table="data_transfers",
-                        row_id=row["id"], bytes=size, sha256=digest.hexdigest(), encrypted=encrypted,
+                        row_id=row["id"], bytes=size, sha256=digest.hexdigest(), encrypted=encrypted, via="server",
                         source=manifest.get("source"), areas=manifest.get("areas"), personal=manifest.get("personal"))
             out = _public(await _get(conn, row["id"]))
         out["summary"] = manifest["_summary"]
         return out
     finally:
-        if pkg:
-            pkg.close()
-        for p in temps:
-            if os.path.exists(p):
-                os.unlink(p)
+        if os.path.exists(path):
+            os.unlink(path)
 
 
 class ImportIn(BaseModel):

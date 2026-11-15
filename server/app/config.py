@@ -120,9 +120,9 @@ class Settings:
     unzip_max_files: int = field(default_factory=lambda: _int("UNZIP_MAX_FILES", 5000))
     unzip_max_mb: int = field(default_factory=lambda: _int("UNZIP_MAX_MB", 10240))
     download_link_seconds: int = field(default_factory=lambda: _int("DOWNLOAD_LINK_SECONDS", 300))
-    # Data export and import (/admin/data/transfer): the largest package, built or uploaded (the upload goes through
-    # the server, so behind Cloudflare it is also limited to 100 MB).
-    transfer_max_mb: int = field(default_factory=lambda: _int("TRANSFER_MAX_MB", 1024))
+    # Data export and import (/admin/data/transfer): the largest package, built or uploaded. An import package goes from
+    # the browser straight to Object Storage (like DIRECT_UPLOAD), so Cloudflare's 100 MB limit does not apply.
+    transfer_max_mb: int = field(default_factory=lambda: _int("TRANSFER_MAX_MB", 5120))
 
     # Set to 1 when running behind the proxy in deploy/ (cloudflared), so client IPs come from X-Forwarded-For.
     trust_proxy: bool = field(default_factory=lambda: _env("TRUST_PROXY", "0") == "1")

@@ -4,10 +4,11 @@ import hashlib
 import io
 import json
 import zipfile
+from urllib.parse import urlsplit
 
 import pytest
 
-from app import jobs, transfer
+from app import jobs, transfer, uploads
 from app.storage import get_storage
 from tests.helpers import full_user, otp_login, stepup
 
@@ -43,11 +44,38 @@ def package_bytes(owner_conn, transfer_id: int) -> bytes:
     return get_storage().objects[key][0]
 
 
-async def upload(c, data: bytes, password: str = "") -> dict:
-    r = await c.post(f"{BASE}/imports", files={"file": ("pakke.zip", data, "application/zip")},
-                     data={"password": password})
+async def put(c, url: str, data: bytes) -> str | None:
+    """What the browser does with a presigned link (the memory backend's links point at the server)."""
+    parts = urlsplit(url)
+    r = await c.put(parts.path + ("?" + parts.query if parts.query else ""), content=data)
     assert r.status_code == 200, r.text
-    return r.json()
+    return r.headers.get("etag")
+
+
+async def send(c, data: bytes, password: str = "", filename: str = "pakke.zip") -> dict:
+    """A direct upload to the bucket and its check job; returns the transfer as the page then sees it."""
+    start = await c.post(f"{BASE}/uploads", json={"filename": filename, "size": len(data)})
+    assert start.status_code == 200, start.text
+    s = start.json()
+    parts = []
+    if s["multipart"]:
+        urls = (await c.post(f"{BASE}/uploads/{s['id']}/parts", json={"numbers": list(range(1, s["parts"] + 1))})).json()
+        for n in range(1, s["parts"] + 1):
+            etag = await put(c, urls["urls"][str(n)], data[(n - 1) * s["part_size"]:n * s["part_size"]])
+            parts.append({"number": n, "etag": etag})
+    else:
+        await put(c, s["url"], data)
+    r = await c.post(f"{BASE}/uploads/{s['id']}/complete", json={"parts": parts, "password": password})
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "checking"
+    await jobs.run_pending()
+    return (await c.get(f"{BASE}/{s['id']}")).json()
+
+
+async def upload(c, data: bytes, password: str = "") -> dict:
+    row = await send(c, data, password)
+    assert row["status"] == "uploaded", row
+    return row
 
 
 async def dry_run(c, tid: int, **options) -> dict:
@@ -194,11 +222,20 @@ async def test_round_trip_dry_run_import_and_undo(make_client, owner_conn):
     owner_conn.execute("delete from meta_dimensions")
     owner_conn.execute("delete from webhooks")
 
+    row = await send(c, data)
+    assert row["status"] == "failed" and "krypteret" in row["error"] and row["manifest"] is None
+    r = await c.post(f"{BASE}/{row['id']}/check", json={"password": "forkert-kode-123"})
+    assert r.status_code == 200 and r.json()["status"] == "checking"
+    await jobs.run_pending()
+    row = (await c.get(f"{BASE}/{row['id']}")).json()
+    assert row["status"] == "failed" and "Forkert adgangskode" in row["error"]
+    assert (await c.post(f"{BASE}/{row['id']}/check", json={"password": "hemmelig-kode-123"})).status_code == 200
+    await jobs.run_pending()
+    up = (await c.get(f"{BASE}/{row['id']}")).json()
+    assert up["status"] == "uploaded" and up["has_password"]
+    # The server path (the fallback) says the same at once.
     r = await c.post(f"{BASE}/imports", files={"file": ("pakke.gaerx", data)})
     assert r.status_code == 400 and "krypteret" in r.json()["detail"]
-    r = await c.post(f"{BASE}/imports", files={"file": ("pakke.gaerx", data)}, data={"password": "forkert-kode-123"})
-    assert r.status_code == 400 and "Forkert adgangskode" in r.json()["detail"]
-    up = await upload(c, data, "hemmelig-kode-123")
     assert up["status"] == "uploaded"
     assert {a["key"] for a in up["summary"]["areas"]} == set(CONFIG_AREAS)
 
@@ -420,3 +457,64 @@ async def test_export_password_rules(make_client, password):
     c = await admin(make_client)
     r = await c.post(f"{BASE}/exports", json={"areas": ["web"], "password": password})
     assert r.status_code == (200 if not password else 400)
+
+
+async def test_direct_upload_multipart_abort_and_cleanup(make_client, owner_conn, monkeypatch):
+    c = await admin(make_client)
+    owner_conn.execute("insert into web_pages (slug, lang, title, description, body) values ('a', 'da', 'A', '', '')")
+    data = package_bytes(owner_conn, (await export(c, areas=["web"]))["id"])
+    owner_conn.execute("delete from web_pages")
+
+    # Big packages go in parts (made small here), straight to the bucket.
+    monkeypatch.setattr(uploads, "SINGLE_PUT_MAX", 100)
+    monkeypatch.setattr(uploads, "PART_SIZE", 400)
+    monkeypatch.setattr(uploads, "MB", 1)
+    row = await upload(c, data)
+    assert row["summary"]["areas"][0]["key"] == "web"
+    actions = [a for (a,) in owner_conn.execute("select action from audit_log where table_name = 'data_transfers' "
+                                                 "and row_id = %s order by id", (str(row["id"]),))]
+    assert actions == ["transfer.upload_started", "transfer.uploaded", "transfer.checked"]
+    await dry_run(c, row["id"], areas=["web"])
+    assert (await c.post(f"{BASE}/{row['id']}/run", json={"areas": ["web"]})).status_code == 200
+    await jobs.run_pending()
+    assert owner_conn.execute("select count(*) from web_pages").fetchone()[0] == 1
+
+    # Missing parts, another admin, a wrong size and an abort.
+    s = (await c.post(f"{BASE}/uploads", json={"filename": "x.zip", "size": len(data)})).json()
+    r = await c.post(f"{BASE}/uploads/{s['id']}/complete", json={"parts": [{"number": 1, "etag": "x"}]})
+    assert r.status_code == 400
+    other = make_client()
+    await full_user(other, "33333333")
+    owner_conn.execute("update users set role = 'admin', admin_roles = '{fuld}' where phone = '+4533333333'")
+    assert (await other.post(f"{BASE}/uploads/{s['id']}/parts", json={"numbers": [1]})).status_code in (403, 404)
+    r = await c.delete(f"{BASE}/uploads/{s['id']}")
+    assert r.status_code == 200 and r.json()["status"] == "cancelled"
+    assert not [u for u in get_storage().multipart.values() if u["key"].startswith("transfers/")]
+
+    monkeypatch.setattr(uploads, "SINGLE_PUT_MAX", 10 ** 9)
+    s = (await c.post(f"{BASE}/uploads", json={"filename": "x.zip", "size": len(data) + 5})).json()
+    await put(c, s["url"], data)
+    r = await c.post(f"{BASE}/uploads/{s['id']}/complete", json={})
+    assert r.json()["status"] == "failed" and "størrelse" in r.json()["error"]
+
+    # An upload never completed is cleaned up after 24 hours.
+    s = (await c.post(f"{BASE}/uploads", json={"filename": "x.zip", "size": 10})).json()
+    owner_conn.execute("update data_transfers set created_at = now() - interval '25 hours' where id = %s", (s["id"],))
+    result = await transfer.cleanup_job({}, {})
+    assert result["abandoned_uploads"] == 1
+    assert (await c.get(f"{BASE}/{s['id']}")).json()["status"] == "expired"
+
+
+async def test_upload_limits_and_server_fallback(make_client, owner_conn, monkeypatch):
+    import dataclasses
+    from app import config
+    c = await admin(make_client)
+    owner_conn.execute("insert into web_pages (slug, lang, title, description, body) values ('a', 'da', 'A', '', '')")
+    data = package_bytes(owner_conn, (await export(c, areas=["web"]))["id"])
+    big = config.settings.transfer_max_mb * 1024 * 1024 + 1
+    assert (await c.post(f"{BASE}/uploads", json={"filename": "x.zip", "size": big})).status_code == 413
+    monkeypatch.setattr(config, "settings", dataclasses.replace(config.settings, direct_upload=False))
+    r = await c.post(f"{BASE}/uploads", json={"filename": "x.zip", "size": 10})
+    assert r.status_code == 404 and "Direkte upload" in r.json()["detail"]
+    r = await c.post(f"{BASE}/imports", files={"file": ("x.zip", data)})
+    assert r.status_code == 200 and r.json()["status"] == "uploaded" and r.json()["summary"]["areas"][0]["key"] == "web"

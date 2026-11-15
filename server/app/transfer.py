@@ -51,6 +51,8 @@ FORMAT = "gaer-transfer"
 VERSION = 1
 DOWNLOAD_HOURS = 24          # an export can be downloaded this long, then the package is deleted
 IMPORT_PACKAGE_DAYS = 7      # an uploaded package is kept this long for dry runs and the import
+UPLOAD_HOURS = 24            # a direct upload not completed by then is aborted
+BUSY = ("queued", "running", "uploading", "checking", "dry_running", "undoing")
 UNDO_DAYS = 7                # an import can be undone this long
 MAX_DIFFERENCES = 50
 MAX_ERRORS = 200
@@ -592,6 +594,22 @@ def open_package(path: str, password: str | None) -> tuple[Package, list[str]]:
         for p in temps:
             os.unlink(p)
         raise
+
+
+def check_file(path: str, password: str | None) -> tuple[dict, bool]:
+    """Opens and verifies the package at path. Returns its manifest (with "_summary" for the import page) and whether it
+    is encrypted. Raises PackageError."""
+    encrypted = is_encrypted(path)
+    pkg, temps = open_package(path, password)
+    try:
+        manifest = dict(pkg.manifest)
+        manifest["_summary"] = summary(pkg)
+        return manifest, encrypted
+    finally:
+        pkg.close()
+        for p in temps:
+            if os.path.exists(p):
+                os.unlink(p)
 
 
 def summary(pkg: Package) -> dict:
@@ -1318,6 +1336,40 @@ async def import_job(payload: dict, job: dict) -> dict:
                 os.unlink(p)
 
 
+@jobs.handler("data.import_check")
+async def import_check_job(payload: dict, job: dict) -> dict:
+    """Reads and verifies a package the browser uploaded straight to the bucket. A wrong password or a damaged package
+    leaves it 'failed' with the reason; the package stays, so the admin can try another password."""
+    tid = payload["transfer_id"]
+    async with db.connection() as conn:
+        row = await _transfer(conn, tid, lock=True)
+        if row is None or row["status"] != "checking":
+            return {"skipped": True}
+    path = None
+    try:
+        path = await _download(row)
+        password = _password(row)
+        manifest, encrypted = check_file(path, password)
+    except PackageError as e:
+        await _set(tid, status="failed", error=str(e)[:500])
+        return {"error": str(e)[:500]}
+    except Exception as e:  # noqa: BLE001
+        log.warning("import check %s failed: %s", tid, e)
+        await _set(tid, status="failed", error="Pakken kunne ikke læses. Upload den igen.")
+        return {"error": str(e)[:500]}
+    finally:
+        if path and os.path.exists(path):
+            os.unlink(path)
+    async with db.connection() as conn:
+        await conn.execute("""update data_transfers set status = 'uploaded', manifest = %s, error = null,
+                              password_enc = case when %s then password_enc end, updated_at = now() where id = %s""",
+                           (Jsonb(manifest), encrypted, tid))
+        await audit(conn, "transfer.checked", actor_id=row["created_by"], meta=RequestMeta(), table="data_transfers",
+                    row_id=tid, encrypted=encrypted, source=manifest.get("source"), areas=manifest.get("areas"),
+                    personal=manifest.get("personal"))
+    return {"areas": manifest.get("areas")}
+
+
 @jobs.handler("data.undo")
 async def undo_job(payload: dict, job: dict) -> dict:
     tid = payload["transfer_id"]
@@ -1344,7 +1396,8 @@ async def cleanup_job(payload: dict, job: dict) -> dict:
     async with db.connection() as conn:
         rows = await db.fetch_all(conn, """
             select id, storage_key from data_transfers
-            where storage_key is not null and status not in ('queued', 'running', 'dry_running', 'undoing')
+            where storage_key is not null
+              and status not in ('queued', 'running', 'uploading', 'checking', 'dry_running', 'undoing')
               and ((kind = 'export' and coalesce(expires_at, created_at) < now())
                    or (kind = 'import' and created_at < now() - make_interval(days => %s)))
             for update skip locked""", (IMPORT_PACKAGE_DAYS,))
@@ -1353,13 +1406,34 @@ async def cleanup_job(payload: dict, job: dict) -> dict:
                 update data_transfers set storage_key = null, password_enc = null, updated_at = now(),
                        status = case when status in ('ready', 'uploaded', 'dry_ready') then 'expired' else status end
                 where id = any(%s)""", ([r["id"] for r in rows],))
+        stale = await db.fetch_all(conn, """
+            select id, storage_key, multipart_id from data_transfers
+            where status = 'uploading' and created_at < now() - make_interval(hours => %s) for update skip locked""",
+                                   (UPLOAD_HOURS,))
+        if stale:
+            await conn.execute("""update data_transfers set status = 'expired', storage_key = null, multipart_id = null,
+                                  password_enc = null, error = 'Uploaden blev ikke gjort færdig', updated_at = now()
+                                  where id = any(%s)""", ([r["id"] for r in stale],))
         undo_rows = await db.fetch_all(conn, """update data_transfers set undo_until = null, updated_at = now()
                                                 where undo_until < now() returning id""")
         if undo_rows:
             await conn.execute("delete from data_transfer_changes where transfer_id = any(%s)",
                                ([r["id"] for r in undo_rows],))
     await delete_package_objects([r["storage_key"] for r in rows])
-    return {"packages": len(rows), "undo_windows": len(undo_rows)}
+    for r in stale:
+        await discard_upload(r)
+    return {"packages": len(rows), "undo_windows": len(undo_rows), "abandoned_uploads": len(stale)}
+
+
+async def discard_upload(row: dict) -> None:
+    """Removes what an unfinished direct upload left in the bucket (an open multipart upload and/or the object)."""
+    storage = get_storage()
+    if row.get("multipart_id"):
+        try:
+            await storage.abort_multipart(row["storage_key"], row["multipart_id"])
+        except Exception:  # noqa: BLE001 — already completed or gone
+            pass
+    await delete_package_objects([row["storage_key"]] if row.get("storage_key") else [])
 
 
 async def delete_package_objects(keys: list[str]) -> None:

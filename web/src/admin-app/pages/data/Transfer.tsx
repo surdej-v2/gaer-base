@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, errorText } from "../../../api";
+import { sendToBucket, sendViaServerInstead, type BucketStart } from "../../../upload";
 import { Alert, download, fmtBytes, fmtDate, fmtNumber, Loading, PageHeader, useLoad } from "../../ui";
 
 type Area = {
@@ -43,9 +44,10 @@ type ImportOptions = {
 };
 
 const BASE = "/api/admin/transfer";
-const BUSY = new Set(["queued", "running", "dry_running", "undoing"]);
+const BUSY = new Set(["queued", "running", "uploading", "checking", "dry_running", "undoing"]);
 const STATUS: Record<string, [string, string]> = {
-  queued: ["Venter", "blue"], running: ["Kører", "blue"], ready: ["Klar", "green"], uploaded: ["Uploadet", ""],
+  queued: ["Venter", "blue"], running: ["Kører", "blue"], ready: ["Klar", "green"], uploading: ["Uploader", "blue"],
+  checking: ["Kontrolleres", "blue"], uploaded: ["Uploadet", ""],
   dry_running: ["Tørkører", "blue"], dry_ready: ["Tørkørt", "amber"], done: ["Importeret", "green"],
   failed: ["Fejlet", "red"], cancelled: ["Annulleret", ""], expired: ["Udløbet", ""], undoing: ["Fortryder", "blue"],
   undone: ["Fortrudt", ""],
@@ -366,23 +368,48 @@ function Upload({ open }: { open: (id: number | null) => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<[number, number] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const recent = useLoad(() => api.get<{ items: Transfer[] }>(`${BASE}?kind=import&limit=10`));
 
+  /** Straight to Object Storage (past Cloudflare's 100 MB limit); through the server only if the bucket cannot be reached. */
+  const direct = async (f: File): Promise<number> => {
+    const start = await api.post<BucketStart & { id: number }>(`${BASE}/uploads`, { filename: f.name, size: f.size });
+    try {
+      const parts = await sendToBucket(f, start, `${BASE}/uploads/${start.id}/parts`, (sent, total) => setProgress([sent, total]));
+      const t = await api.post<Transfer>(`${BASE}/uploads/${start.id}/complete`, { parts, password });
+      if (t.status === "failed") throw new Error(t.error ?? "Uploaden blev ikke gennemført");
+      return t.id;
+    } catch (e) {
+      api.del(`${BASE}/uploads/${start.id}`).catch(() => {});
+      throw e;
+    }
+  };
+  const viaServer = async (f: File): Promise<number> => {
+    const body = new FormData();
+    body.append("file", f);
+    body.append("password", password);
+    setProgress([0, f.size]);
+    return (await api.post<Transfer>(`${BASE}/imports`, body)).id;
+  };
   const send = async () => {
     if (!file) return;
     setError(null);
     setBusy(true);
     try {
-      const body = new FormData();
-      body.append("file", file);
-      body.append("password", password);
-      const t = await api.post<Transfer>(`${BASE}/imports`, body);
-      open(t.id);
+      let id: number;
+      try {
+        id = await direct(file);
+      } catch (e) {
+        if (!sendViaServerInstead(e, file.size)) throw e;
+        id = await viaServer(file);
+      }
+      open(id);
     } catch (e) {
       setError(errorText(e));
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -392,8 +419,8 @@ function Upload({ open }: { open: (id: number | null) => void }) {
       <div className="card" style={{ gap: 16, maxWidth: 640 }}>
         <h3>Upload en pakke</h3>
         <p className="small muted">
-          En Gær-pakke (.zip eller krypteret .gaerx) fra Eksport. Pakken bliver læst og kontrolleret, men intet bliver
-          importeret, før du har set en tørkørsel.
+          En Gær-pakke (.zip eller krypteret .gaerx) fra Eksport. Pakken sendes direkte til Object Storage og bliver
+          derefter læst og kontrolleret, men intet bliver importeret, før du har set en tørkørsel.
         </p>
         <label className="field">Pakke
           <input type="file" accept=".zip,.gaerx,application/zip" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
@@ -403,8 +430,17 @@ function Upload({ open }: { open: (id: number | null) => void }) {
         </label>
         <Alert>{error}</Alert>
         <div className="row">
-          <button className="btn btn-primary" disabled={!file || busy} onClick={send}>{busy ? "Læser pakken …" : "Upload og læs pakken"}</button>
+          <button className="btn btn-primary" disabled={!file || busy} onClick={send}>{busy ? "Uploader …" : "Upload og læs pakken"}</button>
+          {file && <span className="small muted">{fmtBytes(file.size)}</span>}
         </div>
+        {progress && (
+          <div className="stack" style={{ "--gap": "6px" } as CSSProperties}>
+            <div className="bar" role="progressbar" aria-label="Upload" aria-valuemin={0} aria-valuemax={progress[1]} aria-valuenow={progress[0]}>
+              <div style={{ width: `${progress[1] ? Math.round((progress[0] / progress[1]) * 100) : 0}%` }} />
+            </div>
+            <span className="tiny muted">{fmtBytes(progress[0])} af {fmtBytes(progress[1])} · direkte til Object Storage</span>
+          </div>
+        )}
       </div>
       {recent.data && recent.data.items.length > 0 && (
         <section className="stack">
@@ -412,6 +448,45 @@ function Upload({ open }: { open: (id: number | null) => void }) {
           <TransferTable items={recent.data.items} onOpen={(t) => open(t.id)} />
         </section>
       )}
+    </>
+  );
+}
+
+/** A package that is being uploaded or checked, or whose check failed (e.g. a wrong password: try another). */
+function Checking({ tr, open, reload }: { tr: Transfer; open: (id: number | null) => void; reload: () => Promise<void> }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const retry = async () => {
+    setError(null);
+    try {
+      await api.post(`${BASE}/${tr.id}/check`, { password });
+      await reload();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  const canRetry = tr.status === "failed" && tr.has_package;
+  return (
+    <>
+      <div className="spread">
+        <Steps current={1} />
+        <button className="btn btn-ghost btn-sm" onClick={() => open(null)}>Upload en anden pakke</button>
+      </div>
+      <div className="card" style={{ gap: 14, maxWidth: 640 }}>
+        <strong className="mono small" style={{ wordBreak: "break-all" }}>{tr.filename}</strong>
+        <span className="row small" style={{ "--gap": "8px" } as CSSProperties}><StatusPill status={tr.status} />{fmtBytes(tr.size_bytes)}</span>
+        {BUSY.has(tr.status) && <span className="small muted">Pakken kontrolleres: adgangskode, manifest og kontrolsummer. Siden opdaterer sig selv.</span>}
+        {tr.error && <Alert>{tr.error}</Alert>}
+        {canRetry && (
+          <>
+            <label className="field">Adgangskode
+              <input type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} maxLength={200} />
+            </label>
+            <Alert>{error}</Alert>
+            <div className="row"><button className="btn btn-primary" onClick={retry}>Kontrollér igen</button></div>
+          </>
+        )}
+      </div>
     </>
   );
 }
@@ -449,7 +524,7 @@ function ImportDetail({ id, open }: { id: number; open: (id: number | null) => v
   const tr = t.data;
   const importable = (tr?.summary?.areas ?? []).filter((a) => a.importable);
   useEffect(() => {
-    if (!tr || opts) return;
+    if (!tr || opts || !tr.manifest) return;
     const saved = tr.options as Partial<ImportOptions>;
     setOpts({
       areas: saved.areas ?? importable.map((a) => a.key).filter((k) => k !== "roles"),
@@ -458,6 +533,7 @@ function ImportDetail({ id, open }: { id: number; open: (id: number | null) => v
     });
   }, [tr, opts, importable]);
 
+  if (tr && !tr.manifest) return <Checking tr={tr} open={open} reload={t.reload} />;
   if (!tr || !opts) return t.error ? <Alert>{t.error}</Alert> : <Loading />;
   const m = tr.manifest;
   const set = (patch: Partial<ImportOptions>) => setOpts({ ...opts, ...patch });

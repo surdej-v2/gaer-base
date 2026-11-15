@@ -2,18 +2,22 @@
 --
 -- An export is a package (zip with manifest.json and one JSON or CSV file per table, optionally the files' content
 -- and optionally encrypted with a password) built by the job data.export and kept in Object Storage for a while.
--- An import is a package uploaded by an admin: a dry run (data.import with dry_run) reports what would happen with the
--- chosen options, the real run applies it, and for UNDO_DAYS the rows it created or changed are kept in
--- data_transfer_changes so the import can be undone.
+-- An import is a package the admin's browser uploads straight to Object Storage (presigned links, multipart for big
+-- packages, so Cloudflare's 100 MB limit does not apply); the job data.import_check reads and verifies it. A dry run
+-- (data.import with dry_run) reports what would happen with the chosen options, the real run applies it, and for
+-- UNDO_DAYS the rows it created or changed are kept in data_transfer_changes so the import can be undone.
 
 create table data_transfers (
     id            bigserial primary key,
     kind          text not null check (kind in ('export', 'import')),
-    status        text not null check (status in ('queued', 'running', 'ready', 'uploaded', 'dry_running', 'dry_ready',
-                                                  'done', 'failed', 'cancelled', 'expired', 'undoing', 'undone')),
+    status        text not null check (status in ('queued', 'running', 'ready', 'uploading', 'checking', 'uploaded',
+                                                  'dry_running', 'dry_ready', 'done', 'failed', 'cancelled', 'expired',
+                                                  'undoing', 'undone')),
     options       jsonb not null default '{}',     -- export: areas, personal, format …; import: the last options run
     password_enc  bytea,                           -- secrets_box, purpose "transfer.password"; cleared when done
     storage_key   text,                            -- the package in Object Storage (null once deleted)
+    multipart_id  text,                            -- import: the browser uploads straight to the bucket (multipart)
+    part_size     integer,
     filename      text not null default '' check (length(filename) <= 200),
     size_bytes    bigint,
     manifest      jsonb,                           -- the package's manifest (import: as read; export: as written)

@@ -1,6 +1,7 @@
 // Upload to the file tree straight to Object Storage (server/app/uploads.py), shared by /filer, /m/filer and
 // /admin/files. The bytes go from the browser to the bucket on presigned links — one PUT, or multipart in parts for
-// big files — so Cloudflare's request limit (100 MB) and the app server are not in the way. Only when the bucket
+// big files — so Cloudflare's request limit (100 MB) and the app server are not in the way. sendToBucket is also
+// used by /admin/data/transfer for import packages. Only when the bucket
 // cannot be reached (direct upload off, or its CORS not set) does the file go through the server (MAX_UPLOAD_MB).
 //
 // A zip can be kept as it is or unpacked (unzip): the server's job files.unzip then puts every file in it into the
@@ -24,7 +25,7 @@ export type UploadOptions = {
   onProgress?: (sent: number, total: number) => void;
 };
 
-type Start = { id: string; content_type: string; multipart: boolean; url?: string; part_size?: number; parts?: number };
+type Start = BucketStart & { id: string };
 
 export const isZip = (f: File) => /\.zip$/i.test(f.name);
 export const zipStem = (name: string) => name.replace(/\.zip$/i, "").trim() || "zip";
@@ -65,46 +66,65 @@ async function putWithRetry(url: () => Promise<string>, body: Blob, contentType:
   }
 }
 
+/** A started direct upload: one presigned PUT link, or multipart (part_size, parts) with links asked for as it goes. */
+export type BucketStart = { id: string | number; content_type: string; multipart: boolean; url?: string; part_size?: number; parts?: number };
+
+/**
+ * Sends a file's bytes to the bucket on the links of a started upload (`partsUrl` gives the links of multipart parts).
+ * Returns the parts with their ETags for the complete call (empty after a single PUT).
+ */
+export async function sendToBucket(file: File, start: BucketStart, partsUrl: string,
+  onProgress: (sent: number, total: number) => void = () => {}): Promise<{ number: number; etag: string }[]> {
+  if (!start.multipart) {
+    await putWithRetry(async () => start.url!, file, start.content_type, (sent) => onProgress(sent, file.size));
+    onProgress(file.size, file.size);
+    return [];
+  }
+  const size = start.part_size!;
+  const count = start.parts!;
+  const sent = new Array<number>(count + 1).fill(0);
+  const report = () => onProgress(sent.reduce((a, b) => a + b, 0), file.size);
+  const urls = new Map<number, string>();
+  const urlFor = async (n: number) => {
+    if (!urls.has(n)) {
+      const numbers = Array.from({ length: Math.min(50, count - n + 1) }, (_, i) => n + i);
+      const got = await api.post<{ urls: Record<string, string> }>(partsUrl, { numbers });
+      for (const [k, v] of Object.entries(got.urls)) urls.set(Number(k), v);
+    }
+    return urls.get(n)!;
+  };
+  const etags: { number: number; etag: string }[] = [];
+  let next = 1;
+  const worker = async () => {
+    while (next <= count) {
+      const n = next++;
+      const blob = file.slice((n - 1) * size, Math.min(file.size, n * size));
+      const etag = await putWithRetry(() => urlFor(n), blob, null, (s) => { sent[n] = s; report(); });
+      if (!etag) throw new Error("Object Storage sendte ikke ETag tilbage – bucketens CORS skal vise ETag-headeren");
+      sent[n] = blob.size;
+      report();
+      etags.push({ number: n, etag });
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(PARALLEL, count) }, worker));
+  return etags;
+}
+
+/** Whether to fall back to sending the file through the server: direct upload is off, or the bucket cannot be reached
+ * from the browser (and the file fits through Cloudflare). */
+export function sendViaServerInstead(e: unknown, size: number): boolean {
+  const off = e instanceof ApiError && e.status === 404 && /Direkte upload/.test(e.message);
+  return off || (e instanceof PutError && e.status === 0 && size <= SERVER_MAX);
+}
+
 async function direct(file: File, o: UploadOptions): Promise<UploadStatus> {
   const start = await api.post<Start>(`${o.base}/uploads`, {
     path: o.path, filename: file.name, size: file.size, content_type: file.type || null,
     overwrite: !!o.overwrite, unzip: !!o.unzip, into_folder: !!o.intoFolder,
   });
-  const progress = o.onProgress ?? (() => {});
   try {
-    if (!start.multipart) {
-      await putWithRetry(async () => start.url!, file, start.content_type, (sent) => progress(sent, file.size));
-      progress(file.size, file.size);
-      return await api.post<UploadStatus>(`${o.base}/uploads/${start.id}/complete`, {});
-    }
-    const size = start.part_size!;
-    const count = start.parts!;
-    const sent = new Array<number>(count + 1).fill(0);
-    const report = () => progress(sent.reduce((a, b) => a + b, 0), file.size);
-    const urls = new Map<number, string>();
-    const urlFor = async (n: number) => {
-      if (!urls.has(n)) {
-        const numbers = Array.from({ length: Math.min(50, count - n + 1) }, (_, i) => n + i);
-        const got = await api.post<{ urls: Record<string, string> }>(`${o.base}/uploads/${start.id}/parts`, { numbers });
-        for (const [k, v] of Object.entries(got.urls)) urls.set(Number(k), v);
-      }
-      return urls.get(n)!;
-    };
-    const etags: { number: number; etag: string }[] = [];
-    let next = 1;
-    const worker = async () => {
-      while (next <= count) {
-        const n = next++;
-        const blob = file.slice((n - 1) * size, Math.min(file.size, n * size));
-        const etag = await putWithRetry(() => urlFor(n), blob, null, (s) => { sent[n] = s; report(); });
-        if (!etag) throw new Error("Object Storage sendte ikke ETag tilbage – bucketens CORS skal vise ETag-headeren");
-        sent[n] = blob.size;
-        report();
-        etags.push({ number: n, etag });
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(PARALLEL, count) }, worker));
-    return await api.post<UploadStatus>(`${o.base}/uploads/${start.id}/complete`, { parts: etags });
+    const parts = await sendToBucket(file, start, `${o.base}/uploads/${start.id}/parts`, o.onProgress);
+    return await api.post<UploadStatus>(`${o.base}/uploads/${start.id}/complete`, start.multipart ? { parts } : {});
   } catch (e) {
     api.del(`${o.base}/uploads/${start.id}`).catch(() => {});
     throw e;
@@ -132,8 +152,7 @@ export async function uploadFile(file: File, o: UploadOptions): Promise<UploadSt
   try {
     status = await direct(file, o);
   } catch (e) {
-    const off = e instanceof ApiError && e.status === 404 && /Direkte upload/.test(e.message);
-    if (off || (e instanceof PutError && e.status === 0 && file.size <= SERVER_MAX)) return viaServer(file, o);
+    if (sendViaServerInstead(e, file.size)) return viaServer(file, o);
     throw e;
   }
   if (status.status === "failed" || status.status === "aborted") throw new Error(status.error ?? "Uploaden blev ikke gennemført");
