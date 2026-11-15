@@ -2,7 +2,7 @@
 
 **For:** whoever builds the license backoffice in Surdej (person or agent).
 **From:** gaer-base, where the checking side is built and merged on branch `claude/upbeat-archimedes-wcttui`.
-**Owner of the licenses:** Foreningen Happy Mates, CVR 46371771.
+**Owner of the licenses:** Happy Mates Services ApS.
 
 ## 1. Why
 
@@ -44,7 +44,7 @@ Payload (claims):
   "sub": "12345678",
   "domains": ["app.kunde.dk", "www.kunde.dk", "*.kunde.net"],
   "lic": { "name": "Kunde ApS", "cvr": "12345678" },
-  "stmt": "Gær © Foreningen Happy Mates (CVR 46371771). Licens HM-2026-0001 udstedt af happymates.ai til Kunde ApS (CVR 12345678). Alle rettigheder forbeholdes.",
+  "stmt": "Gær © Happy Mates Services ApS. Licens HM-2026-0001 udstedt af happymates.ai til Kunde ApS (CVR 12345678). Alle rettigheder forbeholdes.",
   "iat": 1794380000,
   "nbf": 1794380000,
   "exp": 1825916000
@@ -155,7 +155,7 @@ One row per license (the `jti`), with history of every token issued for it:
   redeploy; check `https://<domain>/health`.
 - The statement is generated from a template (default below, Danish, identical to Gær's fallback) and may be
   edited per license:
-  `Gær © Foreningen Happy Mates (CVR 46371771). Licens {id} udstedt af happymates.ai til {name} (CVR {cvr}). Alle rettigheder forbeholdes.`
+  `Gær © Happy Mates Services ApS. Licens {id} udstedt af happymates.ai til {name} (CVR {cvr}). Alle rettigheder forbeholdes.`
 - Renewal or a change of domains/statement issues a **new token with the same `jti`**; the old token keeps
   working until its `exp` (see 3.6).
 - Default term: 12 months, aligned with the agreement; reminders 60/30/7 days before `exp`.
@@ -164,7 +164,7 @@ One row per license (the `jti`), with history of every token issued for it:
 
 `https://happymates.ai/licenses/<id>` — Gær links here from every licensed page. Public, no login, shows: license
 id, licensee name and CVR, product, domains, valid from/to, status (active / expired / revoked / suspended) and
-"issued by Foreningen Happy Mates (CVR 46371771)". No personal data (contact persons, e-mails) on it.
+"issued by Happy Mates Services ApS". No personal data (contact persons, e-mails) on it.
 Also `…/licenses/<id>.json` with the same fields. Unknown ids: 404 with a short "not a license issued by
 happymates.ai" text.
 

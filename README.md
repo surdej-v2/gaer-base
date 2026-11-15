@@ -325,6 +325,12 @@ til brugeren `deploy`) og `SSH_KNOWN_HOSTS` (`ssh-keyscan <host>`), samt variabl
 På serveren laves `~/gaer/.env` ud fra `deploy/.env.example` og `~/gaer/app.env` ud fra
 `deploy/app.env.example`.
 
+**Kunden hoster selv.** En fork, som Gær Fleet laver med `DEPLOY_TARGET=compose` (eller `none`: kun image til
+GHCR), kører på kundens egen server med samme stak. Fleet sætter variablerne `APP_HOSTNAME` og `DOMAIN` til kundens
+eget værtsnavn, men skriver ingen secrets: kunden sætter selv `HOST`, `SSH_KEY` og `SSH_KNOWN_HOSTS` med sin egen
+nøgle, og `~/gaer/app.env` ligger kun på serveren. `LICENSE_KEY` udstedes af happymates.ai til kundens domæne, og
+serveren skal kunne nå happymates.ai over HTTPS.
+
 `postgres-init.sh` kører kun på et tomt volume. Har en eksisterende server ikke `<db>_mcp_ro` (fra før MCP), så
 sæt `DB_MCP_RO_PASSWORD` i `~/gaer/.env` og opret rollen én gang; den næste udrulning giver den rettighederne:
 
@@ -353,9 +359,9 @@ Alle indstillinger er miljøvariabler — se `.env.example` (lokalt), `deploy/ap
 
 ## Licens
 
-Copyright © 2026 Foreningen Happy Mates (CVR 46371771). Alle rettigheder forbeholdes.
+Copyright © 2026 Happy Mates Services ApS. Alle rettigheder forbeholdes.
 
-Gær er **ikke** open source. Koden må kun bruges af den, der har en skriftlig aftale med Foreningen Happy Mates,
+Gær er **ikke** open source. Koden må kun bruges af den, der har en skriftlig aftale med Happy Mates Services ApS,
 og kun til egen intern brug inden for aftalen. Den må ikke overdrages, videresælges, videregives, genbruges i andre
 produkter eller bruges til at bygge noget konkurrerende. Se [LICENSE](LICENSE).
 

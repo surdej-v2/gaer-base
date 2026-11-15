@@ -1,6 +1,6 @@
 """The license key: a JWT issued by happymates.ai, checked here on the server.
 
-Foreningen Happy Mates (CVR 46371771) issues one license per customer instance at happymates.ai. The key is a
+Happy Mates Services ApS issues one license per customer instance at happymates.ai. The key is a
 JWT signed with Ed25519 (alg EdDSA). It names the license id, the licensee, the domains the instance may run
 on (claim `domains`, an array; `*.kunde.dk` covers subdomains) and how long it runs, and it may carry the exact license statement to publish. The instance gets it in the environment variable
 LICENSE_KEY. The server verifies it with happymates.ai's public keys, which live in this file (ISSUER_KEYS)
@@ -40,7 +40,7 @@ from app import config
 
 ISSUER = "https://happymates.ai"
 PRODUCT = "gaer"
-OWNER = "Foreningen Happy Mates (CVR 46371771)"
+OWNER = "Happy Mates Services ApS"
 VERIFY_URL = "https://happymates.ai/licenses/"  # + license id: the public page for a license
 LEEWAY_SECONDS = 300
 CHECK_EVERY_SECONDS = 600
