@@ -16,7 +16,7 @@ import { extension, isExtension, type PageInfo } from "../bridge/extension";
 import { Alert, fmtDay, Loading } from "../ui";
 import { mapperApi, type Layout, type MapperState, type SavedView, type Shortcut, type ViewSpec } from "./api";
 import { ClipPill, clipKey, useMapperClipboard, type ClipItem } from "./clipboard";
-import { AskDialog, EditShortcut, FolderPicker, FolderProperties, RowMenu, Toast, type Ask, type MenuItem } from "./dialogs";
+import { AddShortcut, AskDialog, EditShortcut, FolderPicker, FolderProperties, RowMenu, Toast, type Ask, type MenuItem } from "./dialogs";
 import { GroupIcon, GroupTree, Letter } from "./GroupTree";
 import { ImportWizard } from "./ImportWizard";
 import { MapperNarrow } from "./MapperNarrow";
@@ -62,6 +62,7 @@ export default function Mapper() {
   const [props, setProps] = useState<number | null | undefined>(undefined);   // Egenskaber: a folder id, null = the root
   const [picking, setPicking] = useState<{ item: ClipItem; copy: boolean } | null>(null);
   const [layoutPick, setLayoutPick] = useState<Layout | null>(null);           // the layout chosen in this folder
+  const [adding, setAdding] = useState(false);                                  // "Tilføj genvej"
   const [dropAt, setDropAt] = useState<string | null>(null);
   const dragged = useRef<ClipItem | null>(null);
   const [, setChecked] = useState(0);
@@ -216,14 +217,7 @@ export default function Mapper() {
     },
   });
 
-  const newShortcut = () => setAsk({
-    title: "Ny genvej", label: "Adresse (https://…)", value: "", confirm: "Gem",
-    onSubmit: async (url) => {
-      const r = await mapperApi.addShortcut(url, null, folderId);
-      setNotice(`„${r.title}“ er gemt i ${folderLabel(folderId)}.`);
-      await load();
-    },
-  });
+  const newShortcut = () => setAdding(true);
 
   const removeShortcut = (s: Shortcut) => {
     // In a folder: out of that folder. In "Alle genveje", a search or another listing: out of every folder.
@@ -458,7 +452,9 @@ export default function Mapper() {
               <BookmarkPlus size={14} /> Gem denne side
             </button>
           )}
-          {listing === "mapper" && <button className="btn btn-outline btn-sm" onClick={newShortcut}><Plus size={14} /> Ny genvej</button>}
+          {listing === "mapper" && (
+            <button className={`btn ${inExtension ? "btn-outline" : "btn-primary"} btn-sm`} onClick={newShortcut}><Plus size={14} /> Tilføj genvej</button>
+          )}
           {listing === "mapper" && <button className="btn btn-outline btn-sm" onClick={() => newFolder(group?.folderId ?? null)}><FolderPlus size={14} /> {group ? "Ny undermappe" : "Ny mappe"}</button>}
           {inMapperFolder && (
             <button className="btn btn-ghost btn-sm" onClick={() => setProps(group?.folderId ?? null)}><Settings2 size={14} /> Egenskaber</button>
@@ -540,6 +536,10 @@ export default function Mapper() {
         <FolderPicker state={state} title={`Flyt „${picking.item.label}“ til …`} current={picking.item.from}
           exclude={picking.item.kind === "folder" ? descendantsOf(state, picking.item.id) : undefined}
           onClose={() => setPicking(null)} onPick={(to) => { const p = picking; setPicking(null); void cb.transfer(p.item, to, p.copy); }} />
+      )}
+      {adding && (
+        <AddShortcut state={state} folderId={folderId} onClose={() => setAdding(false)}
+          onSaved={async (text) => { setAdding(false); setToast(text); await load(); }} />
       )}
       {ask && <AskDialog ask={ask} onClose={() => setAsk(null)} />}
       {editing && (

@@ -2,10 +2,11 @@
 // bottom tab bar, installable on the home screen (public/m/manifest.webmanifest, public/m/sw.js).
 
 import { useEffect } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { useAiStatus } from "../ai";
+import { FeatureGate } from "../features";
 import { ClipsList, useClips, type Clip } from "../clips";
 import { FileBrowser } from "../pages/FileBrowser";
 import { Alert, fmtBytes, fmtDate, useLoad } from "../ui";
@@ -32,8 +33,10 @@ export function MobileLayout() {
   usePwa();
   const { config } = useAuth();
   const { status: ai } = useAiStatus();
+  // Dark mode (styles.css, .theme-auto) so far only on Mapper, whose components use the theme tokens.
+  const themed = useLocation().pathname.startsWith("/m/mapper");
   return (
-    <div className="embed-shell mobile">
+    <div className={`embed-shell mobile${themed ? " theme-auto" : ""}`}>
       <header className="embed-header">
         {config?.logo_url ? <img src={config.logo_url} alt="" /> : <span className="brand-dot" style={{ width: 22, height: 22 }} />}
         <strong>{config?.app_name ?? "Tørgær"}</strong>
@@ -41,6 +44,8 @@ export function MobileLayout() {
       <main className="embed-main"><Outlet /></main>
       <nav className="tabbar">
         <NavLink to="/m" end>Hjem</NavLink>
+        {/* A full page load: /m/mapper has its own CSP (frame-src https: for the preview, server/app/main.py). */}
+        <FeatureGate feature="mapper"><NavLink to="/m/mapper" reloadDocument>Mapper</NavLink></FeatureGate>
         {ai?.enabled && <NavLink to="/m/chat">AI</NavLink>}
         <NavLink to="/m/klip">Klip</NavLink>
         <NavLink to="/m/filer">Filer</NavLink>
@@ -74,6 +79,7 @@ export function MobileHome() {
         <Link to="/m/filer" className="card"><span className="eyebrow">Kamera</span><strong>Tag et billede</strong></Link>
         <Link to="/m/beskeder" className="card"><span className="eyebrow">Fra administrationen</span><strong>Beskeder</strong></Link>
         <Link to="/m/samtaler" className="card"><span className="eyebrow">Med de andre</span><strong>Samtaler</strong></Link>
+        <FeatureGate feature="mapper"><Link to="/m/mapper" reloadDocument className="card"><span className="eyebrow">Dine genveje</span><strong>Mapper</strong></Link></FeatureGate>
       </div>
       <div className="card">
         <span className="eyebrow">Seneste klip</span>

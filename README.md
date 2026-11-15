@@ -42,7 +42,7 @@ herfra ind i sin fork.
 | `/forbind`, `/go`, `/flow-godkendelse` | logget ind | **MCP-samtykke** (`/forbind`: en klient beder om adgang; `mcp:admin` kræver frisk anden faktor) og **deep links** (`/go?path=…&focus=…`, også `/admin/go`), der åbner en side og fokuserer et `data-deeplink`-anker. **Flow-godkendelser** (`/flow-godkendelse/<token>`): et trin i et flow fra Action-studie venter på, at en af de udpegede godkender eller afviser; linket kommer på mail, og man svarer logget ind. |
 | `/developer/…` | interne brugere med admin-rollen Udvikler eller Udvikler-admin (eller Data eller Fuld); /gaer/… for API-nøgler og tokens | **Gær Developer** (spec i `specs/developer/`): egen sidebar, brødkrumme og ⌘K. Fem studier på én kerne af versionerede artefakter med RACI-ejere og godkendelse: Datastudie, Pipeline, MCP-studie, API-studie og Action-studie (flows: udløser + handlinger, en workflow-motor som Logic Apps og Power Automate), plus datakatalog, forbindelser, godkendelser og eksport/import. |
 | `/admin/…` | admin (+ MFA) | Administration — en selvstændig app (`web/admin.html`). Kræver anden faktor efter tre logins med engangskode. Alt logges. |
-| `/m/…` | logget ind | Mobil-app (PWA) med bundmenu, AI, klip, filer og profil. |
+| `/m/…` | logget ind | Mobil-app (PWA) med bundmenu, Mapper, AI, klip, filer og profil. |
 | `/extension/…` | i browserudvidelsen | Sidepanelet: aktuel side, Mapper med egne genveje, klip, tags for siden og AI med siden som kontekst. |
 | `/office-addin?app=word\|excel\|powerpoint\|outlook` | Office (offentlig skal) | Router for Word, Excel, PowerPoint og Outlook → værktøjerne under `/extension/tools/…`. |
 | `/extension/tools/word\|outlook\|document` | logget ind, i Office | Office-værktøjer: indsæt/gem klip og AI med dokumentet eller mailen som kontekst. |
@@ -50,7 +50,7 @@ herfra ind i sin fork.
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP-klienter (OAuth) | MCP-servere: appen som den indloggede bruger, admin med kladder, og egne endpoints fra MCP Studio på `/mcp/<nøgle>`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. |
 | `/health` | udrulning | Sundhedstjek (database + version), bruges af `deploy/deploy.sh`. |
 
-<details><summary>Alle ruter (158)</summary>
+<details><summary>Alle ruter (159)</summary>
 
 | Sti | Svarer | Adgang | Side |
 | --- | --- | --- | --- |
@@ -185,6 +185,7 @@ herfra ind i sin fork.
 | `/admin/consent` | admin-appen | admin | Samtykke og cookies |
 | `/admin/settings` | admin-appen | admin | Indstillinger |
 | `/m` | appen | logget ind | Hjem · eget layout |
+| `/m/mapper` | appen | logget ind | Mapper (feature `mapper`) · eget layout |
 | `/m/klip` | appen | logget ind | Klip · eget layout |
 | `/m/chat` | appen | logget ind | AI · eget layout |
 | `/m/filer` | appen | logget ind | Filer · eget layout |

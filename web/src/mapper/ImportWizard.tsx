@@ -165,11 +165,14 @@ export function ImportWizard({ state, inExtension, first, onDone, onCancel, comp
       {step === 0 && (
         <div className="stack" style={{ "--gap": "8px" } as React.CSSProperties}>
           {first && <p className="small muted" style={{ margin: 0 }}>Mapper samler dine genveje i dine egne mapper. Start med favoritterne fra din browser, eller begynd forfra.</p>}
-          <button className="choice" disabled={busy || !inExtension} onClick={fromBrowser}>
-            <Bookmark size={20} aria-hidden="true" />
-            <span><strong>Fra denne browser</strong><br />
-              <span className="small muted">{inExtension ? "Udvidelsen beder om lov til at læse dine bogmærker." : "Kun i sidepanelet i browserudvidelsen."}</span></span>
-          </button>
+          {/* Only the extension can read the browser's bookmarks; elsewhere (/m, a plain browser) only the exported file. */}
+          {inExtension && (
+            <button className="choice" disabled={busy} onClick={fromBrowser}>
+              <Bookmark size={20} aria-hidden="true" />
+              <span><strong>Fra denne browser</strong><br />
+                <span className="small muted">Udvidelsen beder om lov til at læse dine bogmærker.</span></span>
+            </button>
+          )}
           <label className="choice" style={{ cursor: busy ? "default" : "pointer" }}>
             <FileUp size={20} aria-hidden="true" />
             <span><strong>Fra en eksportfil (.html)</strong><br />

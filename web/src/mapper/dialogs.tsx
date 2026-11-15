@@ -331,3 +331,61 @@ export function FolderProperties({ state, folderId, narrow, onSaved, onClose }: 
   );
   return narrow ? <Sheet title={title} onClose={onClose}>{form}</Sheet> : <Modal title={title} onClose={onClose}>{form}</Modal>;
 }
+
+/** "Tilføj genvej" where there is no current tab (/m, a plain browser): address, title, folder and Emner. */
+export function AddShortcut({ state, folderId, narrow, onSaved, onClose }: {
+  state: MapperState; folderId: number | null; narrow?: boolean; onSaved: (text: string) => Promise<void>; onClose: () => void;
+}) {
+  const [url, setUrl] = useState("https://");
+  const [title, setTitle] = useState("");
+  const [to, setTo] = useState<number | null>(folderId);
+  const [tags, setTags] = useState<number[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const list = useMemo(() => folderList(state), [state]);
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await mapperApi.addShortcut(url.trim(), title.trim() || null, to);
+      if (tags.length && state.root) {
+        // Your tags on the object become these plus the folders it lies in (folders are tags too).
+        await metaApi.setTags(r.id, [...new Set([...tags, ...r.folders.map((f) => f ?? state.root!.id)])]);
+      }
+      const where = to === null ? "Mapper" : list.find((x) => x.folder.id === to)?.folder.label ?? "mappen";
+      await onSaved(r.added ? `„${r.title}“ er gemt i „${where}“.` : `„${r.title}“ ligger allerede i „${where}“.`);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const form = (
+    <form className="stack mp-props" style={{ "--gap": "12px" } as React.CSSProperties} onSubmit={(e) => { e.preventDefault(); void save(); }}>
+      <label className="stack" style={{ "--gap": "4px" } as React.CSSProperties}>
+        <span className="small" style={{ fontWeight: 600 }}>Adresse</span>
+        <input type="url" inputMode="url" autoFocus required value={url} maxLength={2000} onChange={(e) => setUrl(e.target.value)} />
+      </label>
+      <label className="stack" style={{ "--gap": "4px" } as React.CSSProperties}>
+        <span className="small" style={{ fontWeight: 600 }}>Titel</span>
+        <input value={title} maxLength={300} onChange={(e) => setTitle(e.target.value)} placeholder="Tom: sidens værtsnavn" />
+      </label>
+      <label className="stack" style={{ "--gap": "4px" } as React.CSSProperties}>
+        <span className="small" style={{ fontWeight: 600 }}>Mappe</span>
+        <select value={to ?? ""} onChange={(e) => setTo(e.target.value ? Number(e.target.value) : null)}>
+          <option value="">Øverst i Mapper</option>
+          {list.map(({ folder, level }) => <option key={folder.id} value={folder.id}>{" ".repeat(level)}{folder.label}</option>)}
+        </select>
+      </label>
+      <TagEditor value={tags} onChange={setTags} label="Emner" />
+      <Alert>{error}</Alert>
+      <div className={narrow ? "stack" : "row"} style={{ "--gap": "6px" } as React.CSSProperties}>
+        <button className={`btn btn-primary ${narrow ? "btn-block mpn-touch" : "btn-sm"}`} disabled={busy || !/^https?:\/\/.+/.test(url.trim())}>Gem genvej</button>
+        <button type="button" className={`btn btn-ghost ${narrow ? "btn-block mpn-touch" : "btn-sm"}`} onClick={onClose}>Annullér</button>
+      </div>
+    </form>
+  );
+  return narrow ? <Sheet title="Tilføj genvej" onClose={onClose}>{form}</Sheet> : <Modal title="Tilføj genvej" onClose={onClose}>{form}</Modal>;
+}

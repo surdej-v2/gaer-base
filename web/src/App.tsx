@@ -247,6 +247,7 @@ export default function App() {
         <Route path="/m/login" element={<Login home="/m" embedded />} />
         <Route path="/m" element={<RequireUser login="/m/login"><MobileLayout /></RequireUser>}>
           <Route index element={<MobileHome />} />
+          <Route path="mapper" element={<FeatureGate feature="mapper"><Mapper /></FeatureGate>} />
           <Route path="klip" element={<MobileClips />} />
           <Route path="chat" element={<Chat surface="mobile" contextHint="Spørg om hvad som helst." />} />
           <Route path="filer" element={<MobileFiles />} />

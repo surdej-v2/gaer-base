@@ -13,7 +13,7 @@ import type { PageInfo } from "../bridge/extension";
 import { Alert } from "../ui";
 import { mapperApi, type MapperState, type SavedView, type Shortcut, type ViewSpec } from "./api";
 import { ClipPill, type ClipItem, type MapperClipboard } from "./clipboard";
-import { AskDialog, EditShortcut, FolderPicker, FolderProperties, Sheet, Toast, type Ask } from "./dialogs";
+import { AddShortcut, AskDialog, EditShortcut, FolderPicker, FolderProperties, Sheet, Toast, type Ask } from "./dialogs";
 import { GroupIcon, GroupTree, Letter } from "./GroupTree";
 import {
   ALL, BUILTIN, LISTINGS, SORTS, bareHost, descendantsOf, isPdf, matches, normalizeSpec, placedIn, sameSpec, sortShortcuts, treeFor, type Group, type Listing,
@@ -75,6 +75,7 @@ export function MapperNarrow(p: NarrowProps) {
   const [acting, setActing] = useState<Acting | null>(null);
   const [picking, setPicking] = useState<ClipItem | null>(null);
   const [props, setProps] = useState<number | null | undefined>(undefined);
+  const [adding, setAdding] = useState(false);
   const clearToast = useCallback(() => p.setToast(null), [p]);
   const { cb } = p;
 
@@ -138,14 +139,8 @@ export function MapperNarrow(p: NarrowProps) {
     const r = await mapperApi.addShortcut(p.tab!.url, p.tab!.title, folderId);
     return r.added ? `„${r.title}“ er gemt i ${folderLabel(folderId)}.` : `„${r.title}“ ligger allerede i ${folderLabel(folderId)}.`;
   });
-  const newShortcut = () => setAsk({
-    title: "Ny genvej", label: "Adresse (https://…)", value: "", confirm: "Gem",
-    onSubmit: async (url) => {
-      const r = await mapperApi.addShortcut(url, null, folderId);
-      setNotice(`„${r.title}“ er gemt i ${folderLabel(folderId)}.`);
-      await p.reload();
-    },
-  });
+  // Where there is no current tab (/m, a plain browser): the full form (address, title, folder, Emner).
+  const newShortcut = () => setAdding(true);
   const newFolder = () => setAsk({
     title: group ? "Ny undermappe" : "Ny mappe", label: "Navn", value: "", confirm: "Opret",
     onSubmit: async (label) => {
@@ -324,7 +319,7 @@ export function MapperNarrow(p: NarrowProps) {
               <BookmarkPlus size={16} /> Gem denne side her
             </button>
           ) : (
-            <button className="btn btn-primary mpn-touch" style={{ flex: 1 }} onClick={newShortcut}><Plus size={16} /> Ny genvej her</button>
+            <button className="btn btn-primary mpn-touch" style={{ flex: 1 }} onClick={newShortcut}><Plus size={16} /> Tilføj genvej</button>
           )}
           {group?.folderId !== undefined && (
             <button className={`mpn-ib mpn-pin${group.pinned ? " active" : ""}`} aria-pressed={!!group.pinned}
@@ -371,6 +366,10 @@ export function MapperNarrow(p: NarrowProps) {
         <FolderPicker narrow state={state} title={`Flyt „${picking.label}“ til …`} current={picking.from}
           exclude={picking.kind === "folder" ? descendantsOf(state, picking.id) : undefined}
           onClose={() => setPicking(null)} onPick={(to) => { const it = picking; setPicking(null); void cb.transfer(it, to, false); }} />
+      )}
+      {adding && (
+        <AddShortcut narrow state={state} folderId={folderId} onClose={() => setAdding(false)}
+          onSaved={async (text) => { setAdding(false); p.setToast(text); await p.reload(); }} />
       )}
       {props !== undefined && (
         <FolderProperties narrow state={state} folderId={props} onClose={() => setProps(undefined)}
@@ -511,7 +510,7 @@ function ViewsSheet(p: NarrowProps & {
             <span className="mp-sub">Mappen „{p.group.label}“</span>
             <button className="btn btn-outline btn-block mpn-touch" onClick={() => { p.onClose(); p.onProps(p.group!.folderId!); }}><Settings2 size={15} /> Egenskaber</button>
             <button className="btn btn-outline btn-block mpn-touch" onClick={() => { p.onClose(); p.onFolderActions(p.group!); }}><Copy size={15} /> Kopiér, klip eller flyt mappen …</button>
-            <button className="btn btn-outline btn-block mpn-touch" onClick={() => { p.onClose(); p.onNewShortcut(); }}><Plus size={15} /> Ny genvej (adresse)</button>
+            <button className="btn btn-outline btn-block mpn-touch" onClick={() => { p.onClose(); p.onNewShortcut(); }}><Plus size={15} /> Tilføj genvej …</button>
             <button className="btn btn-danger btn-block mpn-touch" onClick={() => p.onDelete(p.group!)}><Trash2 size={15} /> Slet mappe</button>
           </>
         )}

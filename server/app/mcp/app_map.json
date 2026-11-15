@@ -677,6 +677,10 @@
       "title": "Log ind på mobil",
       "anchors": []
     },
+    "/m/mapper": {
+      "title": "Mapper",
+      "anchors": []
+    },
     "/m/profil": {
       "title": "Profil",
       "anchors": [

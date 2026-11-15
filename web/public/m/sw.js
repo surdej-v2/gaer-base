@@ -1,6 +1,9 @@
 // Service worker for /m. Keeps the app shell and built assets cached, so the app opens
-// offline and fast. API calls are never cached (they carry personal data).
-const CACHE = "gaer-m-v1";
+// offline and fast. API calls are never cached (they carry personal data), /api/mapper included.
+// /m/mapper is never stored as the shell: its document has its own CSP (frame-src https: for Mapper's preview,
+// server/app/main.py), which must not end up on the other pages when they are served from the cache.
+const CACHE = "gaer-m-v2";
+const OWN_DOCUMENT = ["/m/mapper"];
 const SHELL = "/m/";
 
 self.addEventListener("install", (event) => {
@@ -20,9 +23,10 @@ self.addEventListener("fetch", (event) => {
 
   // Navigations: network first, fall back to the cached shell (the SPA routes /m/* itself).
   if (req.mode === "navigate") {
+    const own = OWN_DOCUMENT.some((p) => url.pathname === p || url.pathname.startsWith(p + "/"));
     event.respondWith(
       fetch(req).then((res) => {
-        if (res.ok) caches.open(CACHE).then((c) => c.put(SHELL, res.clone()));
+        if (res.ok && !own) caches.open(CACHE).then((c) => c.put(SHELL, res.clone()));
         return res;
       }).catch(() => caches.match(SHELL)),
     );

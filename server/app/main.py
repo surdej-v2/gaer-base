@@ -66,9 +66,10 @@ OFFICE_HOSTS = ("https://*.officeapps.live.com https://*.office.com https://*.of
 EXTENSION_HOSTS = "chrome-extension: moz-extension: safari-web-extension:"
 EMBEDDABLE = route_manifest.EMBEDDABLE  # routes with "embeddable": true in web/src/routes.json
 # Mapper's preview shows a shortcut's own page in a frame (sandboxed for HTML, the browser's PDF viewer for PDFs), so
-# only the document of /extension/mapper may frame other https sites. The side panel opens Mapper with a full page load
-# (ExtensionLayout), so this CSP is the one in force there; every other page keeps frame-src 'self' + Office.
-FRAME_ANY_HTTPS = ("/extension/mapper",)
+# only the documents of /extension/mapper and /m/mapper may frame other https sites. The side panel and /m open Mapper
+# with a full page load (ExtensionLayout, MobileLayout), so this CSP is the one in force there, and the /m service worker
+# never stores /m/mapper as its offline shell; every other page keeps frame-src 'self' + Office.
+FRAME_ANY_HTTPS = ("/extension/mapper", "/m/mapper")
 
 
 # Uploads go from the browser straight to Object Storage (app/uploads.py), so the bucket's origin may be fetched.

@@ -189,8 +189,8 @@
     "da": "logget ind"
    },
    "what": {
-    "en": "**Mobile app (PWA)**: home, AI chat (if enabled), clips, files with camera upload, profile. Bottom tab bar, own manifest + service worker scoped to `/m/`.",
-    "da": "Mobil-app (PWA) med bundmenu, AI, klip, filer og profil."
+    "en": "**Mobile app (PWA)**: home, **Mapper** (`/m/mapper`, feature `mapper`: the narrow drill-down layout of the side panel's Mapper, with „Tilføj genvej“ instead of „Gem denne side“ and import from an exported bookmarks file), AI chat (if enabled), clips, files with camera upload, profile. Bottom tab bar, own manifest + service worker scoped to `/m/` (never caches `/api/`, never stores `/m/mapper` as the offline shell).",
+    "da": "Mobil-app (PWA) med bundmenu, Mapper, AI, klip, filer og profil."
    },
    "code": [
     "mobile/Mobile.tsx",
@@ -1229,6 +1229,15 @@
    "access": "user",
    "title": "Hjem",
    "chrome": "own"
+  },
+  {
+   "path": "/m/mapper",
+   "group": "mobile",
+   "app": "app",
+   "access": "user",
+   "title": "Mapper",
+   "chrome": "own",
+   "feature": "mapper"
   },
   {
    "path": "/m/klip",

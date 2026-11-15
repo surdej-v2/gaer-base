@@ -288,8 +288,10 @@ async def test_frame_check(make_client, pages, monkeypatch):
 async def test_feature_and_csp(client):
     from app.features_catalog import CATALOG
     assert "mapper" in {f.key for f in CATALOG}  # migration 0040 adds it in ring 1; /admin/features moves it out
-    csp = (await client.get("/extension/mapper")).headers["content-security-policy"]
-    assert "frame-src 'self' https: " in csp
+    for path in ("/extension/mapper", "/m/mapper"):
+        assert "frame-src 'self' https: " in (await client.get(path)).headers["content-security-policy"], path
+    assert "frame-src 'self' https://*.officeapps" in (await client.get("/m/klip")).headers["content-security-policy"]
+    assert "frame-src 'self' https://*.officeapps" in (await client.get("/m")).headers["content-security-policy"]
     assert "frame-src 'self' https://*.officeapps" in (await client.get("/extension")).headers["content-security-policy"]
     assert "frame-src 'self' https://*.officeapps" in (await client.get("/klip")).headers["content-security-policy"]
 
