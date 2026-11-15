@@ -35,6 +35,21 @@ function drawHeat(canvas: HTMLCanvasElement, points: [number, number][], width: 
 }
 
 export default function Heatmaps() {
+  const sanitizeInternalPath = (value: unknown): string | null => {
+    if (typeof value !== "string") return null;
+    if (!value.startsWith("/")) return null;
+    if (value.startsWith("//")) return null;
+    if (value.includes("\\")) return null;
+    if (/[\u0000-\u001F\u007F]/.test(value)) return null;
+    try {
+      const u = new URL(value, window.location.origin);
+      if (u.origin !== window.location.origin) return null;
+      return `${u.pathname}${u.search}${u.hash}`;
+    } catch {
+      return null;
+    }
+  };
+
   const [days, setDays] = useState(30);
   const [device, setDevice] = useState("");
   const [path, setPath] = useState<string | null>(null);
@@ -48,8 +63,8 @@ export default function Heatmaps() {
   useEffect(() => {
     if (!path && pages.data?.length) setPath(pages.data[0].path);
   }, [pages.data, path]);
-  // Recorded paths are user input; only a path on this origin may be framed.
-  const framed = path && /^\/(?![/\\])/.test(path) ? path : null;
+  // Recorded paths are user input; only a normalized same-origin path may be framed.
+  const framed = sanitizeInternalPath(path);
 
   const measure = () => {
     const doc = frame.current?.contentDocument?.documentElement;
@@ -70,7 +85,7 @@ export default function Heatmaps() {
       </PageHeader>
       <div className="filters">
         <label className="field">Side
-          <select value={path ?? ""} onChange={(e) => { setPath(e.target.value); setSize(null); }}>
+          <select value={path ?? ""} onChange={(e) => { setPath(sanitizeInternalPath(e.target.value)); setSize(null); }}>
             {pages.data?.length === 0 && <option value="">Ingen data endnu</option>}
             {pages.data?.map((p) => <option key={p.path} value={p.path}>{p.path} — {fmtNumber(p.clicks)} klik</option>)}
           </select>
