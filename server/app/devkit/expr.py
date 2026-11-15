@@ -26,7 +26,6 @@ from urllib.parse import quote
 
 MAX_LENGTH = 4000
 MAX_DEPTH = 64
-TEMPLATE = re.compile(r"\{\{(.*?)\}\}", re.S)
 _TOKEN = re.compile(r"""
     (?P<ws>\s+) |
     (?P<num>\d+(?:\.\d+)?) |
@@ -247,10 +246,30 @@ def parse(text: str):
     return _Parser(text).parse()
 
 
+def segments(text: str):
+    """The parts of a template in order: (False, literal) and (True, expression). A linear scan — `{{` without a
+    closing `}}` stays literal text."""
+    pos = 0
+    while True:
+        start = text.find("{{", pos)
+        if start < 0:
+            break
+        end = text.find("}}", start + 2)
+        if end < 0:
+            break
+        if start > pos:
+            yield False, text[pos:start]
+        yield True, text[start + 2:end]
+        pos = end + 2
+    if pos < len(text):
+        yield False, text[pos:]
+
+
 def check(text: str) -> None:
     """Syntax only (for saving a definition): raises ExprError."""
-    for m in TEMPLATE.finditer(text):
-        parse(m.group(1))
+    for is_expr, part in segments(text):
+        if is_expr:
+            parse(part)
 
 
 # ── Evaluation ──────────────────────────────────────────────────────────────
@@ -404,7 +423,7 @@ def render(value, ctx: dict):
         single = _single(value)
         if single is not None:
             return evaluate(single, ctx)
-        return TEMPLATE.sub(lambda mm: _str(evaluate(mm.group(1), ctx)), value)
+        return "".join(_str(evaluate(part, ctx)) if is_expr else part for is_expr, part in segments(value))
     if isinstance(value, dict):
         return {k: render(v, ctx) for k, v in value.items()}
     if isinstance(value, list):
