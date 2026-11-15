@@ -284,6 +284,26 @@ async def test_frame_check(make_client, pages, monkeypatch):
     assert (await c.get("/api/mapper/frame-check", params={"url": "ftp://example.com"})).status_code == 400
     assert len(seen) == n
 
+    # The name is resolved once and the request goes to that checked address (no second lookup to rebind),
+    # with the Host header and the TLS name (SNI) kept as the name so the certificate is checked as usual.
+    pinned: list[tuple] = []
+
+    def record(request: httpx.Request) -> httpx.Response:
+        pinned.append((str(request.url), request.headers["host"], request.extensions.get("sni_hostname")))
+        return httpx.Response(200, headers={"content-type": "text/html"})
+
+    monkeypatch.setattr(mapper, "transport", httpx.MockTransport(record))
+    monkeypatch.setattr(mapper.socket, "getaddrinfo", lambda *a, **k: [(2, 1, 6, "", ("93.184.216.34", 443))])
+    r = await c.get("/api/mapper/frame-check", params={"url": "https://pinned.example.com/side?x=1"})
+    assert r.status_code == 200 and r.json()["framable"] is True
+    assert r.json()["final_url"] == "https://pinned.example.com/side?x=1"
+    assert pinned == [("https://93.184.216.34/side?x=1", "pinned.example.com", "pinned.example.com")]
+    # A name that resolves to an internal address is refused before any request is made.
+    monkeypatch.setattr(mapper.socket, "getaddrinfo", lambda *a, **k: [(2, 1, 6, "", ("10.0.0.5", 443))])
+    r = await c.get("/api/mapper/frame-check", params={"url": "https://rebind.example.com/"})
+    assert r.status_code == 400 and "internt" in r.json()["detail"]
+    assert len(pinned) == 1
+
 
 async def test_feature_and_csp(client):
     from app.features_catalog import CATALOG

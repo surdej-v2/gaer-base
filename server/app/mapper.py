@@ -23,15 +23,17 @@ redirects to private addresses) and tells whether a browser would let the side p
 """
 
 import asyncio
+import ipaddress
+import socket
 import time
 from collections import deque
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import httpx
 from fastapi import HTTPException
 from psycopg.types.json import Jsonb
 
-from app import db, integrations, meta, meta_objects, webhooks
+from app import config, db, integrations, meta, meta_objects, webhooks
 from app.logs import audit, changed
 from app.sessions import Principal
 
@@ -685,6 +687,40 @@ def _rate_limit(user_id: int) -> None:
     q.append(now)
 
 
+def _pinned(url: str) -> tuple[str, dict, dict]:
+    """Checks the address and resolves its host once, then returns what to request: the URL with the checked IP
+    address in place of the host name, plus the Host header and the TLS name (SNI) so the certificate is checked
+    against the name as usual. Connecting to the address we checked closes the gap where a name passes the check
+    and then resolves to an internal address when the connection is made (DNS rebinding). Raises UnsafeUrl."""
+    webhooks.check_url(url)  # scheme, no user info, length, no internal host names
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    if config.settings.webhook_allow_private:  # development and tests: no lookup, as for webhooks
+        return url, {}, {}
+    try:
+        literal = ipaddress.ip_address(host)
+    except ValueError:
+        literal = None
+    if literal is not None:
+        if not literal.is_global or literal.is_multicast:
+            raise webhooks.UnsafeUrl("Adressen peger på et internt eller reserveret net")
+        return url, {}, {}
+    try:
+        infos = socket.getaddrinfo(host, parts.port or 443, proto=socket.IPPROTO_TCP)
+    except socket.gaierror:
+        raise webhooks.UnsafeUrl("Værtsnavnet kunne ikke slås op") from None
+    addresses = [ipaddress.ip_address(i[4][0].split("%")[0]) for i in infos]
+    if not addresses or any(not a.is_global or a.is_multicast for a in addresses):
+        raise webhooks.UnsafeUrl("Adressen peger på et internt eller reserveret net")
+    ip = addresses[0]
+    netloc = f"[{ip}]" if ip.version == 6 else str(ip)
+    if parts.port:
+        netloc += f":{parts.port}"
+    target = urlunsplit(("https", netloc, parts.path or "/", parts.query, ""))
+    host_header = host if not parts.port else f"{host}:{parts.port}"
+    return target, {"Host": host_header}, {"sni_hostname": host}
+
+
 def _verdict(url: str, *, framable: bool, kind: str = "html", reason: str | None = None, final: str | None = None) -> dict:
     return {"url": url, "framable": framable, "kind": kind, "reason": reason, "final_url": final or url}
 
@@ -706,12 +742,13 @@ async def frame_check(p: Principal, url: str) -> dict:
                                      event_hooks=integrations.hooks("mapper_preview")) as client:
             for _ in range(MAX_REDIRECTS + 1):
                 try:
-                    await asyncio.to_thread(webhooks.check_url, current, resolve=True)
+                    target, host_header, tls = await asyncio.to_thread(_pinned, current)
                 except webhooks.UnsafeUrl:
                     raise HTTPException(400, "Adressen peger på et internt net og kan ikke forhåndsvises") from None
-                async with client.stream("GET", current, headers={
+                async with client.stream("GET", target, extensions=tls, headers={
                         "User-Agent": "Mozilla/5.0 (compatible; Gaer-preview/1)",
-                        "Accept": "text/html,application/xhtml+xml,application/pdf;q=0.9,*/*;q=0.5"}) as r:
+                        "Accept": "text/html,application/xhtml+xml,application/pdf;q=0.9,*/*;q=0.5",
+                        **host_header}) as r:
                     if r.status_code in (301, 302, 303, 307, 308) and r.headers.get("location"):
                         nxt = urljoin(current, r.headers["location"])
                         if urlsplit(nxt).scheme != "https":

@@ -25,36 +25,73 @@ export function fromChrome(tree: ChromeNode[]): BmFolder[] {
   return tops.filter((n) => !n.url).map(walk).filter((f) => countItems(f) > 0 || f.folders.length > 0);
 }
 
-/** The Netscape bookmark file: <DL> lists of <DT><H3>folder</H3><DL>…</DL> and <DT><A HREF>bookmark</A>. */
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
+/** Character references in the file's text and attributes, decoded to plain text (never parsed as markup). */
+function decodeText(s: string): string {
+  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, ref: string) => {
+    if (ref[0] === "#") {
+      const code = ref[1] === "x" || ref[1] === "X" ? parseInt(ref.slice(2), 16) : parseInt(ref.slice(1), 10);
+      return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole;
+    }
+    return ENTITIES[ref.toLowerCase()] ?? whole;
+  });
+}
+
+function readAttrs(raw: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const m of raw.matchAll(/([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g)) {
+    out[m[1].toLowerCase()] = decodeText(m[2] ?? m[3] ?? m[4] ?? "");
+  }
+  return out;
+}
+
+/** The Netscape bookmark file: <DL> lists of <DT><H3>folder</H3><DL>…</DL> and <DT><A HREF>bookmark</A>.
+ * Read with a small tokenizer instead of an HTML parser: the file is someone else's markup and only these three
+ * tags and their text matter, so nothing in it is ever turned into DOM. */
 export function fromHtml(html: string): BmFolder[] {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const top = doc.querySelector("dl");
-  if (!top) throw new Error("Filen ligner ikke en eksport af bogmærker (.html)");
-  const parseList = (dl: Element, into: BmFolder) => {
-    for (const dt of Array.from(dl.children)) {
-      if (dt.tagName === "P") {
-        parseList(dt, into); // some writers put the items inside the <p>
-        continue;
+  const root: BmFolder = { key: nextKey(), label: "Bogmærker", bar: false, folders: [], items: [] };
+  const stack: BmFolder[] = [];
+  let pending: BmFolder | null = null; // the folder whose <DL> comes next
+  let open: { tag: "h3" | "a"; text: string; attrs: Record<string, string> } | null = null;
+  let sawList = false;
+  for (const m of html.matchAll(/<(\/?)([a-z0-9]+)\b([^>]*)>|([^<]+)/gi)) {
+    const [, closing, rawTag, rawAttrs, text] = m;
+    if (text !== undefined) {
+      if (open) open.text += text;
+      continue;
+    }
+    const tag = rawTag.toLowerCase();
+    const into = stack[stack.length - 1] ?? root;
+    if (tag === "dl") {
+      if (!closing) {
+        sawList = true;
+        stack.push(pending ?? into);
+        pending = null;
+      } else {
+        stack.pop();
+        pending = null;
       }
-      if (dt.tagName !== "DT") continue;
-      const h3 = dt.querySelector(":scope > h3");
-      const a = dt.querySelector(":scope > a");
-      if (h3) {
-        const sub: BmFolder = {
-          key: nextKey(), label: (h3.textContent ?? "").trim() || "Uden navn",
-          bar: h3.getAttribute("personal_toolbar_folder") === "true", folders: [], items: [],
-        };
-        // The folder's list is inside the <dt>, or (other parsers) right after it.
-        const list = dt.querySelector(":scope > dl") ?? (dt.nextElementSibling?.tagName === "DL" ? dt.nextElementSibling : null);
-        if (list) parseList(list, sub);
-        into.folders.push(sub);
-      } else if (a?.getAttribute("href")) {
-        into.items.push({ url: a.getAttribute("href")!, title: (a.textContent ?? "").trim() });
+    } else if (tag === "h3" || tag === "a") {
+      if (!closing) {
+        open = { tag, text: "", attrs: readAttrs(rawAttrs) };
+      } else if (open?.tag === tag) {
+        const label = decodeText(open.text).trim();
+        if (tag === "h3") {
+          const sub: BmFolder = {
+            key: nextKey(), label: label || "Uden navn",
+            bar: open.attrs.personal_toolbar_folder === "true", folders: [], items: [],
+          };
+          into.folders.push(sub);
+          pending = sub;
+        } else if (open.attrs.href) {
+          into.items.push({ url: open.attrs.href, title: label });
+        }
+        open = null;
       }
     }
-  };
-  const root: BmFolder = { key: nextKey(), label: "Bogmærker", bar: false, folders: [], items: [] };
-  parseList(top, root);
+  }
+  if (!sawList) throw new Error("Filen ligner ikke en eksport af bogmærker (.html)");
   // Loose bookmarks at the top (Chrome's "Andre bogmærker" end up there) get a folder of their own.
   const out = [...root.folders];
   if (root.items.length) out.push({ key: nextKey(), label: "Andre bogmærker", bar: false, folders: [], items: root.items });
