@@ -25,6 +25,8 @@ CATALOG: tuple[CatalogFeature, ...] = (
     CatalogFeature("mail", "Mail", "Postkasse, kalendere og kontakter i Stalwart på /user/mail; udgående mail via Lettermint", "bruger"),
     CatalogFeature("beskeder", "Beskeder", "Beskeder fra administrationen i appen, på SMS og e-mail; svar til administrationen", "bruger"),
     CatalogFeature("samtaler", "Samtaler", "Fællessamtalen og direkte beskeder mellem brugere, med anmeld og bloker", "bruger"),
+    CatalogFeature("mapper", "Mapper", "Egne mapper med genveje i sidepanelet: træ, visninger, forhåndsvisning og import af favoritter",
+                   "integration"),
     CatalogFeature("knowledge", "Viden", "Vidensrum med indekserede dokumenter og agenter på /extension/agent", "bruger"),
     CatalogFeature("website", "Website /w", "Offentlige Markdown-sider på dansk og engelsk", "platform"),
     CatalogFeature("heatmaps", "Heatmaps", "Klik- og scroll-heatmaps pr. side", "admin"),

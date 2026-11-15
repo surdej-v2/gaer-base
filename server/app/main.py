@@ -32,6 +32,7 @@ from app.routes import admin_messages
 from app.routes import messages as messages_routes
 from app.routes import admin_meta
 from app.routes import meta as meta_routes
+from app.routes import mapper as mapper_routes
 from app.routes import mail as mail_routes
 from app.routes import admin_users
 from app.routes import developer as developer_routes
@@ -64,6 +65,10 @@ OFFICE_HOSTS = ("https://*.officeapps.live.com https://*.office.com https://*.of
                 "https://*.microsoft.com https://*.sharepoint.com https://outlook.live.com")
 EXTENSION_HOSTS = "chrome-extension: moz-extension: safari-web-extension:"
 EMBEDDABLE = route_manifest.EMBEDDABLE  # routes with "embeddable": true in web/src/routes.json
+# Mapper's preview shows a shortcut's own page in a frame (sandboxed for HTML, the browser's PDF viewer for PDFs), so
+# only the document of /extension/mapper may frame other https sites. The side panel opens Mapper with a full page load
+# (ExtensionLayout), so this CSP is the one in force there; every other page keeps frame-src 'self' + Office.
+FRAME_ANY_HTTPS = ("/extension/mapper",)
 
 
 # Uploads go from the browser straight to Object Storage (app/uploads.py), so the bucket's origin may be fetched.
@@ -77,9 +82,10 @@ def csp_for(path: str) -> str:
         ancestors = f"'self' {EXTENSION_HOSTS} {OFFICE_HOSTS}"
     if path.startswith("/office-addin"):
         scripts = "'self' https://appsforoffice.microsoft.com"
+    frames = "'self' https: " if path.startswith(FRAME_ANY_HTTPS) else "'self' "
     return (f"default-src 'self'; script-src {scripts}; img-src 'self' data: blob: https:; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
-            f"connect-src 'self'{UPLOAD_ORIGIN}; frame-src 'self' https://*.officeapps.live.com https://*.office.com; "
+            f"connect-src 'self'{UPLOAD_ORIGIN}; frame-src {frames}https://*.officeapps.live.com https://*.office.com; "
             f"frame-ancestors {ancestors}; base-uri 'self'; form-action 'self'; object-src 'none'")
 
 
@@ -213,7 +219,7 @@ def create_app() -> FastAPI:
               mcp_hub.router, office.router, review.router, admin_ops.router, hooks.router, nats.router, resources.router, consumption.router,
               user_area.router, mail_routes.router, admin_mail.router, adoption.router, adoption.admin_router,
               knowledge.router, knowledge_admin.router, group_routes.router, group_routes.me_router, admin_secrets.router,
-              meta_routes.router, admin_meta.router,
+              meta_routes.router, admin_meta.router, mapper_routes.router,
               messages_routes.router, admin_messages.router, admin_transfer.router,
               login_provider_routes.router, login_provider_routes.me_router, login_provider_routes.admin_router,
               developer_routes.router, developer_data_routes.router,

@@ -135,6 +135,11 @@ REGISTRY: tuple[Integration, ...] = (
         lambda: "flowenes egne adresser", (), lambda: True,
         (Endpoint(None, "/…", "HTTP-kald fra et flow", "flow_runs.py · act_http()", r".*"),)),
     Integration(
+        "mapper_preview", "Mapper: forhåndsvisning", "Læser kun svar-headerne fra en genvejs side (X-Frame-Options, CSP "
+        "frame-ancestors, Content-Type), så sidepanelet ved, om siden kan vises i en ramme. Adresserne er brugernes egne "
+        "genveje og går gennem SSRF-vagten.", ("server/app/mapper.py",), lambda: "genvejenes egne adresser", (), lambda: True,
+        (Endpoint("GET", "/…", "Headere for en side, der skal forhåndsvises", "mapper.py · frame_check()", r".*"),)),
+    Integration(
         "s3", "Object Storage (S3)", "Filer, avatarer og uploads. Kaldes med boto3, så kald tælles ikke endnu.",
         ("server/app/storage.py", "server/app/uploads.py"), lambda: _s().s3_endpoint, ("S3_ACCESS_KEY", "S3_SECRET_KEY"),
         lambda: _s().storage_backend == "s3", (), link="/files", counted=False, settings=("S3_ENDPOINT", "S3_BUCKET")),

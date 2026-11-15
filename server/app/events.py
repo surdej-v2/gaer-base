@@ -52,6 +52,7 @@ KINDS: dict[str, str] = {
     "ai.tokens": "AI-tokens pr. svar (værdi = tokens)",
     "job.failed": "Baggrundsjob der fejlede (ref = type)",
     "meta.node_created": "Noder oprettet i træstrukturer (ref = node-id)",
+    "mapper.import": "Import af favoritter til Mapper (ref = rodens node-id, værdi = genveje lagt i mapper)",
 }
 
 _nc = None          # nats.aio.client.Client once connected

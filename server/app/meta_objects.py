@@ -310,3 +310,22 @@ async def update(conn, p: Principal, object_id: int, fields: dict) -> dict:
         await audit(conn, "update", actor_id=p.user_id, meta=p.meta, table="meta_objects", row_id=object_id,
                     before=before, after=after)
     return await one(conn, p, object_id)
+
+
+# ── For app/mapper.py ──────────────────────────────────────────────────────
+# Mapper writes the same assignments and audit lines as tagging here; these names are its way in.
+
+async def nodes_of(conn, p: Principal, object_ids: list[int]) -> dict[int, list[dict]]:
+    """The visible nodes each object is tagged with, with trail, dimension label and colour."""
+    return await _nodes_of(conn, p, object_ids)
+
+
+async def apply_tags(conn, p: Principal, object_id: int, add: list[dict], remove: list[int]) -> None:
+    """Adds and removes assignments with one audit line (and webhooks for shared nodes). add: node rows with
+    id and owner_id."""
+    await _apply(conn, p, object_id, add, remove)
+
+
+async def drop_if_empty(conn, p: Principal, object_id: int) -> dict:
+    """Deletes the object when its last assignment is gone (audited); else returns it as the caller sees it."""
+    return await _drop_if_empty(conn, p, object_id)
