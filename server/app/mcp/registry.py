@@ -171,13 +171,13 @@ def _truncate(value):
 
 
 async def log_call(*, server: str, user_id: int | None, client_id: str | None, method: str, tool: str | None,
-                   args: dict | None, ms: int | None, status: str, ip: str | None) -> None:
+                   args: dict | None, ms: int | None, status: str, ip: str | None, cache: str | None = None) -> None:
     async with db.connection() as conn:
         await conn.execute("""
-            insert into mcp_log (server, user_id, client_id, method, tool, args, duration_ms, status, ip_masked)
-            values (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            insert into mcp_log (server, user_id, client_id, method, tool, args, duration_ms, status, ip_masked, cache)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (server, user_id, client_id, method, tool, Jsonb(_truncate(args)) if args is not None else None, ms, status,
-             mask_ip(ip)))
+             mask_ip(ip), cache))
 
 
 # ── Invocation ──────────────────────────────────────────────────────────────
@@ -194,7 +194,8 @@ async def invoke(server: str, name: str, raw_args: dict | None, caller: Caller) 
     from app.mcp import data_tools, endpoints, toolmap
 
     started = time.monotonic()
-    status, args = "ok", raw_args
+    status, args, cache_status = "ok", raw_args, None
+    log_args, t = None, None
     try:
         # The endpoint map in the database (governed from /admin/data) decides which tools exist here and who may
         # call them; catalog.json only describes the Code tools' handlers.
@@ -205,12 +206,24 @@ async def invoke(server: str, name: str, raw_args: dict | None, caller: Caller) 
             decision = await toolmap.decide(conn, t, caller.user_id, caller.principal.session_id)
         if not decision["allowed"]:
             raise PermissionError(decision["message"])
+        if caller.via != "studio":
+            # MCP-15: rate limits per endpoint, user and client (Gær Developer, app/devkit/mcp_studio.py).
+            from app.devkit import mcp_studio
+            ok, retry = await mcp_studio.check_rate(server, caller.user_id, caller.client_id)
+            if not ok:
+                raise ToolError(f"For mange kald. Prøv igen om {retry} sekunder")
         spec = toolmap.spec_for(t, server)
         args = coerce_args(spec, raw_args)
         handler = HANDLERS.get((endpoints.handler_server(server), name))
         if t["kind"] == "data":
             out: ToolOutput = await data_tools.run(t, args, caller, decision["grant"])
             result = {**out.data, **({"summary": out.text} if out.text else {})}
+        elif t["kind"] == "operation":
+            # Gær Developer: the same operation as the API (app/devkit/operations.py); masked before it leaves.
+            from app.mcp import operation_tools
+            log_args = operation_tools.log_args(t, args)
+            result = await operation_tools.run(t, args, caller)
+            cache_status = result.pop("_cache", None)
         elif handler.plan is not None:
             result = await drafts.create(server, name, args, caller)
             status = "draft"
@@ -235,9 +248,12 @@ async def invoke(server: str, name: str, raw_args: dict | None, caller: Caller) 
         status = "forbidden" if e.status_code == 403 else "error"
         return {"error": str(e.detail)}, True
     finally:
+        if log_args is None and isinstance(args, dict) and t is not None and t["kind"] == "operation":
+            from app.mcp import operation_tools
+            log_args = operation_tools.log_args(t, args)
         await log_call(server=server, user_id=caller.user_id, client_id=caller.client_id, method="tools/call", tool=name,
-                       args=args if isinstance(args, dict) else None, ms=int((time.monotonic() - started) * 1000),
-                       status=status, ip=caller.principal.meta.ip)
+                       args=log_args if log_args is not None else (args if isinstance(args, dict) else None),
+                       ms=int((time.monotonic() - started) * 1000), status=status, ip=caller.principal.meta.ip, cache=cache_status)
 
 
 async def tool_list(server: str) -> list[dict]:

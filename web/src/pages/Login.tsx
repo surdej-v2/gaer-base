@@ -6,11 +6,15 @@ import { loginWithLink, loginWithPasskey, passkeyErrorText, registerPasskey, use
 import { SecondFactor } from "../security";
 import { Alert } from "../ui";
 import { solveCaptcha } from "../captcha";
+import { ProviderIcon, ssoErrorText, startUrl, type ProviderList } from "../loginProviders";
 
 // After the code: users with "Kræv passkey" prove their second factor (step "mfa"); everybody else is logged in
 // and offered a passkey (step "offer"). Admins also see how many grace logins /admin has left.
 // A login link from the mail (/login#link=<token>) opens step "link": one click finishes the login, so a mail scanner
 // that opens the link cannot use it up.
+// Login providers (/admin/login-providers): their buttons replace the code. Back from one, the server sends the browser
+// here with ?sso=mfa (second factor), ?sso=offer (passkey offer) or ?sso_error=<code>. A domain that requires its
+// provider gets only that button.
 type Step =
   | { kind: "phone" }
   | { kind: "link"; token: string }
@@ -82,7 +86,13 @@ export default function Login({ home = "/", embedded = false }: { home?: string;
   const goFrom = () => (from === "/admin" || from.startsWith("/admin/") ? window.location.assign(from) : navigate(from, { replace: true }));
   const [step, setStep] = useState<Step>(() => {
     const token = new URLSearchParams(window.location.hash.slice(1)).get("link");
-    return token ? { kind: "link", token } : { kind: "phone" };
+    if (token) return { kind: "link", token };
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("sso") === "offer") {
+      const grace = q.get("grace");
+      return { kind: "offer", adminGraceLeft: grace === null ? null : Number(grace), becameAdmin: false };
+    }
+    return { kind: "phone" };
   });
   // The token is not left in the address bar or the history.
   useEffect(() => {
@@ -95,8 +105,22 @@ export default function Login({ home = "/", embedded = false }: { home?: string;
   const contact = channel === "email" ? { email: phone.trim() } : { phone };
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => ssoErrorText(new URLSearchParams(window.location.search).get("sso_error")));
   const supportsPasskey = browserSupportsWebAuthn();
+  // Login providers: the buttons for no e-mail yet, then for the e-mail's domain (and whether it must use one).
+  const [sso, setSso] = useState<ProviderList | null>(null);
+  const [ssoHint, setSsoHint] = useState(false);
+  const emailInput = useRef<HTMLInputElement | null>(null);
+  const typedEmail = channel === "email" && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(phone.trim()) ? phone.trim().toLowerCase() : "";
+  useEffect(() => {
+    if (embedded) return;
+    const t = window.setTimeout(() => {
+      api.get<ProviderList>(`/api/auth/providers${typedEmail ? `?email=${encodeURIComponent(typedEmail)}` : ""}`)
+        .then(setSso).catch(() => setSso(null));
+    }, typedEmail ? 350 : 0);
+    return () => window.clearTimeout(t);
+  }, [typedEmail, embedded]);
+  const goProvider = (key: string) => window.location.assign(startUrl(key, from));
   const [demo, setDemo] = useState<DemoAccount[]>([]);
   useEffect(() => {
     if (!config?.demo_logins) return;
@@ -191,7 +215,8 @@ export default function Login({ home = "/", embedded = false }: { home?: string;
       <div className="auth-card glow">
         <div className="card">
           {step.kind === "phone" && (
-            <form className="stack" style={{ "--gap": "16px" } as React.CSSProperties} onSubmit={sendCode}>
+            <form className="stack" style={{ "--gap": "16px" } as React.CSSProperties}
+                  onSubmit={(e) => { if (sso?.required) { e.preventDefault(); goProvider(sso.required.key); } else sendCode(e); }}>
               <div className="stack" style={{ "--gap": "6px" } as React.CSSProperties}>
                 <div className="eyebrow">Log ind</div>
                 <h2>{channel === "email" ? "Din e-mailadresse" : "Dit telefonnummer"}</h2>
@@ -208,7 +233,7 @@ export default function Login({ home = "/", embedded = false }: { home?: string;
               {channel === "email" ? (
                 <label className="field">
                   E-mail
-                  <input type="email" autoComplete="email" placeholder="navn@firma.dk" value={phone}
+                  <input ref={emailInput} type="email" autoComplete="email" placeholder="navn@firma.dk" value={phone}
                          onChange={(e) => setPhone(e.target.value)} required autoFocus />
                 </label>
               ) : (
@@ -219,9 +244,23 @@ export default function Login({ home = "/", embedded = false }: { home?: string;
                 </label>
               )}
               <Alert>{error}</Alert>
-              <button className="btn btn-primary btn-block" disabled={busy || phone.trim().length < 6}>
-                {busy && config?.captcha ? "Tjekker og sender …" : "Send kode"}
-              </button>
+              {sso?.required ? (
+                <>
+                  <div role="status" className="alert info" style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span>{sso.required.domain} logger ind med {sso.required.name}. Du sendes videre og kommer tilbage hertil.</span>
+                  </div>
+                  <button type="button" className="btn btn-dark btn-block" onClick={() => goProvider(sso.required!.key)} style={{ gap: 10 }}>
+                    <ProviderIcon kind={sso.required.kind} />{sso.required.label}
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setPhone(""); setError(null); emailInput.current?.focus(); }}>
+                    Brug en anden e-mail
+                  </button>
+                </>
+              ) : (
+                <button className="btn btn-primary btn-block" disabled={busy || phone.trim().length < 6}>
+                  {busy && config?.captcha ? "Tjekker og sender …" : "Send kode"}
+                </button>
+              )}
               {config?.captcha && (
                 <p className="muted tiny" style={{ textAlign: "center" }}>
                   Et lille robottjek kører i din browser. Ingen cookies, intet sendes til andre.
@@ -232,13 +271,31 @@ export default function Login({ home = "/", embedded = false }: { home?: string;
                   {channel === "email" ? "Brug telefonnummer i stedet" : "Brug e-mail i stedet"}
                 </button>
               )}
-              {supportsPasskey && (
-                <>
-                  <div className="row muted tiny" style={{ justifyContent: "center" }}>eller</div>
-                  <button type="button" className="btn btn-dark btn-block" onClick={passkeyLogin} disabled={busy}>
-                    Log ind med passkey
-                  </button>
-                </>
+              {!sso?.required && (supportsPasskey || (sso && (sso.providers.length > 0 || sso.sso))) && (
+                <div className="row muted tiny" style={{ justifyContent: "center" }}>eller</div>
+              )}
+              {!sso?.required && sso && (sso.providers.length > 0 || sso.sso) && (
+                <div className="stack" style={{ "--gap": "8px" } as React.CSSProperties} aria-label="Log ind med en anden konto">
+                  {sso.providers.map((p) => (
+                    <button key={p.key} type="button" className="btn btn-outline btn-block" onClick={() => goProvider(p.key)} disabled={busy} style={{ gap: 10 }}>
+                      <ProviderIcon kind={p.kind} />{p.label}
+                    </button>
+                  ))}
+                  {sso.sso && !sso.providers.some((p) => p.kind === "saml") && (
+                    <button type="button" className="btn btn-outline btn-block" style={{ gap: 10 }}
+                            onClick={() => { setSsoHint(true); setChannel("email"); emailInput.current?.focus(); }}>
+                      <ProviderIcon kind="saml" />Log ind med virksomhedens SSO
+                    </button>
+                  )}
+                  {ssoHint && !sso.providers.some((p) => p.kind === "saml") && (
+                    <p className="muted tiny" style={{ margin: 0, textAlign: "center" }}>Skriv din arbejdsmail ovenfor, så finder vi jeres login.</p>
+                  )}
+                </div>
+              )}
+              {supportsPasskey && !sso?.required && (
+                <button type="button" className="btn btn-dark btn-block" onClick={passkeyLogin} disabled={busy}>
+                  Log ind med passkey
+                </button>
               )}
               {config?.demo_logins && demo.length > 0 && <DemoLogins accounts={demo} busy={busy} onPick={demoLogin} />}
               <details className="muted small">
@@ -246,6 +303,9 @@ export default function Login({ home = "/", embedded = false }: { home?: string;
                 <div className="stack" style={{ "--gap": "6px", paddingTop: 8 } as React.CSSProperties}>
                   <span>Der er ingen adgangskode at nulstille. Skriv din e-mail, så sender vi en ny kode og et login-link, som du bare klikker på.</span>
                   <span>Har du mistet din passkey, sikkerhedsnøgle eller YubiKey, kan en administrator gendanne din adgang.</span>
+                  {sso?.required && (
+                    <span>Nødadgang: <button type="button" className="btn btn-ghost btn-sm" style={{ padding: 0, height: "auto" }} onClick={() => sendCode()}>send en kode alligevel</button> (virker kun for superadministratoren).</span>
+                  )}
                   {!signupOpen && (
                     <span>Har du ikke en konto, skal en administrator oprette dig{signupContact ? <>. Skriv til <strong>{signupContact}</strong></> : ""}.</span>
                   )}

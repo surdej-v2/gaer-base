@@ -109,6 +109,8 @@ async def update_tool(tool_id: int, body: ToolPatch, admin: Principal = Depends(
         if t["name"] in toolmap.CORE and (body.classification not in (None, "white") or body.enabled is False
                                           or body.endpoints is not None):
             raise HTTPException(409, f"{t['name']} er et kerneværktøj: det er altid åbent, så man kan bede om adgang")
+        if t["kind"] == "operation" and any(v is not None for v in (body.classification, body.endpoints, body.title, body.description)):
+            raise HTTPException(409, "Værktøjet er lavet i Datastudie. Niveau, beskrivelse og endpoint ændres der; her kan det kun slås fra")
         if body.classification is not None:
             if t["kind"] == "data":
                 raise HTTPException(409, "Et dataværktøj følger datasættets klassifikation. Ret den på datasættet")

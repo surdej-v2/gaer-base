@@ -39,6 +39,8 @@ async def _endpoint(conn, key: str) -> dict:
 def _dynamic(row: dict) -> dict:
     if row["builtin"]:
         raise HTTPException(409, f"{endpoints_mod.path_for(row['key'])} er indbygget og styres fra /admin/data/tools")
+    if row.get("artifact_id"):
+        raise HTTPException(409, f"{endpoints_mod.path_for(row['key'])} er lavet i Datastudie og ændres der (versioner og godkendelse)")
     return row
 
 

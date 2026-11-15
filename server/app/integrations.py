@@ -117,6 +117,24 @@ REGISTRY: tuple[Integration, ...] = (
         (Endpoint("GET", "/{x}z", "varz, jsz, connz …", "nats_monitor.py", r"^/[a-z]+z$"),), link="/nats",
         settings=("NATS_MONITOR_URL",)),
     Integration(
+        "login_providers", "Login-udbydere", "Login med Microsoft Entra ID, Google, Apple, GitHub, Amazon og SAML (kun de "
+        "udbydere, en admin har slået til).", ("server/app/login_providers.py", "server/app/saml.py"),
+        lambda: "login.microsoftonline.com · accounts.google.com · appleid.apple.com · github.com · amazon.com · jeres SAML-IdP", (),
+        lambda: True,
+        (Endpoint("GET", "/.well-known/openid-configuration", "OpenID Connect-opdagelse", "login_providers.py · discovery()",
+                  r"/\.well-known/openid-configuration$"),
+         Endpoint("GET", "/…/keys", "Signeringsnøgler (JWKS)", "login_providers.py · _verify_id_token()", r"/(keys|certs)$"),
+         Endpoint("POST", "/…/token", "Kode → tokens", "login_providers.py · _token()", r"/(token|access_token)$"),
+         Endpoint("GET", "/user, /user/emails, /user/profile", "Profil (GitHub, Amazon)", "login_providers.py · _oauth_identity()",
+                  r"^/user(/emails|/profile)?$"),
+         Endpoint("GET", "/…metadata…", "SAML-metadata", "saml.py · fetch_metadata()", r"(?i)metadata")),
+        link="/login-providers"),
+    Integration(
+        "flows", "Action-studie", "HTTP-kald fra flows (handlingen »HTTP-kald«). Adresserne er flowenes egne; auth kommer fra en "
+        "API-kilde, og adresser uden kilde går gennem SSRF-vagten.", ("server/app/devkit/flow_runs.py",),
+        lambda: "flowenes egne adresser", (), lambda: True,
+        (Endpoint(None, "/…", "HTTP-kald fra et flow", "flow_runs.py · act_http()", r".*"),)),
+    Integration(
         "s3", "Object Storage (S3)", "Filer, avatarer og uploads. Kaldes med boto3, så kald tælles ikke endnu.",
         ("server/app/storage.py", "server/app/uploads.py"), lambda: _s().s3_endpoint, ("S3_ACCESS_KEY", "S3_SECRET_KEY"),
         lambda: _s().storage_backend == "s3", (), link="/files", counted=False, settings=("S3_ENDPOINT", "S3_BUCKET")),

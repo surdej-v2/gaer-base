@@ -4,6 +4,7 @@ import { api, errorText } from "../api";
 import { useAuth } from "../auth";
 import { Alert, fmtDate, fmtNumber, PageHeader, useLoad } from "../ui";
 import AccountSecurity from "./AccountSecurity";
+import LinkedLogins from "./LinkedLogins";
 import ContactChange from "./ContactChange";
 import McpAccess from "./McpAccess";
 
@@ -106,6 +107,8 @@ export default function Account({ inArea = false }: { inArea?: boolean }) {
 
         <AccountSecurity />
       </div>
+
+      <LinkedLogins />
 
       <AiUsageCard />
 

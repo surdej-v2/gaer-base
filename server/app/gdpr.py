@@ -45,6 +45,11 @@ async def build_user_export(conn, user_id: int) -> dict:
         "yubikey_enrollments": await rows("""select created_at, expires_at, used_at, created_by from yubikey_enrollments
                                              where user_id = %s order by created_at""", user_id),
         # Authenticator apps: only that they exist, never the secret.
+        # Logins at other providers you connected (Microsoft, Google, SAML …): which account there, never a token.
+        "login_identities": await rows("""select p.name as provider, p.kind, i.subject, i.email, i.linked_via, i.created_at,
+                                                 i.last_used_at
+                                          from user_identities i join login_providers p on p.id = i.provider_id
+                                          where i.user_id = %s order by i.created_at""", user_id),
         "totp_factors": await rows("""select id, name, created_at, confirmed_at, last_used_at from totp_factors
                                       where user_id = %s order by created_at""", user_id),
         "sessions": await rows("""select created_at, last_seen_at, expires_at, revoked_at, host(ip) as ip, user_agent,
@@ -106,6 +111,18 @@ async def build_user_export(conn, user_id: int) -> dict:
                                                 where s.user_id = %s order by c.name""", user_id),
         "mail_availability": await rows("""select publish, working_hours, timezone, updated_at from mail_availability
                                            where user_id = %s""", user_id),
+        # Gær Developer: ownership (RACI), approvals given and messages.
+        "developer_roles": await rows("""select a.type, a.slug, a.name, r.role from dev_artifact_roles r
+                                          join dev_artifacts a on a.id = r.artifact_id where r.user_id = %s
+                                          order by a.type, a.slug, r.role""", user_id),
+        "developer_approvals": await rows("""select a.slug, v.major, v.minor, v.patch, p.role, p.decision, p.note, p.decided_at
+                                              from dev_artifact_approvals p join dev_artifact_versions v on v.id = p.version_id
+                                              join dev_artifacts a on a.id = v.artifact_id where p.user_id = %s
+                                              order by p.id""", user_id),
+        "developer_notifications": await rows("""select kind, title, body, link, created_at, read_at from dev_notifications
+                                                  where user_id = %s order by id""", user_id),
+        "developer_api_calls": await rows("""select ts, api, major, method, path, status from dev_api_log
+                                              where user_id = %s order by id""", user_id),
         "groups": await rows("""select g.name, g.slug, m.role, m.added_at from group_members m join groups g on g.id = m.group_id
                                 where m.user_id = %s order by g.name""", user_id),
         # The secret manager ("vault_*", so no export ever contains the word of the TOTP check): roles and access, never a value.
@@ -215,6 +232,13 @@ async def build_user_export(conn, user_id: int) -> dict:
         # Copies an import keeps for UNDO_DAYS so it can be undone (the user's row or rows they own, as they were).
         "data_transfer_undo": await rows(f"""select table_name, op, before, created_at from data_transfer_changes
                                              where {TRANSFER_CHANGES_OF_USER} order by id""", *[str(user_id)] * 3),
+        # Action-studie: approvals they were asked for in a flow, and how they answered (never the flow's data).
+        "flow_approvals": await rows("""select ap.title, ap.status, ap.created_at, ap.decided_at, ap.expires_at,
+                                               coalesce(ap.decided_by = %s, false) as decided_by_me, ap.comment, a.name as flow
+                                        from dev_flow_approvals ap join dev_flow_runs r on r.id = ap.run_id
+                                        join dev_artifacts a on a.id = r.artifact_id
+                                        where %s = any(ap.approvers) or ap.decided_by = %s order by ap.created_at""",
+                                     user_id, user_id, user_id),
         "analytics_events": await rows("""select ts, kind, path, referrer, device, browser from analytics_events
                                           where user_id = %s or visitor_id = any(%s) order by ts limit 50000""",
                                        user_id, visitor_ids),
@@ -223,7 +247,7 @@ async def build_user_export(conn, user_id: int) -> dict:
 
 README = """Indsigt i dine data
 
-data.json   alt, vi har gemt om dig: bruger og profil, passkeys og sikkerhedsnøgler, godkendelsesapps
+data.json   alt, vi har gemt om dig: bruger og profil, passkeys og sikkerhedsnøgler, forbundne logins, godkendelsesapps
             (uden den hemmelige nøgle), sessioner, klip, filer (oversigt), filer du har lagt i /shared
             (kun oversigt), hvem du har delt dit område med og hvis områder du har adgang til, tilladte domæner,
             din postkasse (adresse, aliasser, fælles postkasser, afsenderidentiteter, kalendere og adressebøger
@@ -280,7 +304,7 @@ async def ensure_can_erase(conn, user_id: int) -> dict:
 
 async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, reason: str,
                      gdpr_request: int | None = None) -> dict:
-    """The right to be forgotten. Deletes the user (passkeys, authenticator apps, sessions, clips, domain consents, AI usage,
+    """The right to be forgotten. Deletes the user (passkeys, authenticator apps, linked logins at providers, sessions, clips, domain consents, AI usage,
     AI budgets and their alerts, one-time codes, feature level, review sessions and notes, their private tree (meta_nodes with owner_id; shared nodes they made keep created_by = null), their test accounts, access to
     and from their area (/user), adoption visits, nudges and journey roles, group memberships and their roles, requests, approvals and grants
     for secrets (secrets where they were A are marked as without accountable person), Viden conversations and agent memberships
@@ -338,6 +362,9 @@ async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, r
                   and status not in ('queued', 'running', 'dry_running', 'undoing')
                   and (kind = 'import' or coalesce(manifest->>'personal', options->>'personal') <> 'without')) old
             where d.id = old.id returning old.storage_key""")
+        # Action-studie: they are taken off the approver lists of waiting flow approvals (decisions keep decided_by = null).
+        await conn.execute("update dev_flow_approvals set approvers = array_remove(approvers, %s) where %s = any(approvers)",
+                           (user_id, user_id))
         await conn.execute("delete from users where id = %s", (user_id,))
         await meta_tree.delete_orphan_objects(conn)  # objects tagged only in their private tree
         await audit(conn, "gdpr.erasure", actor_id=actor_id if actor_id != user_id else None, meta=meta,

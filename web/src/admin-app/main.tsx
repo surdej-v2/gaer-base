@@ -61,6 +61,8 @@ import AdoptionAccess from "./pages/adoption/Access";
 import DataTools from "./pages/data/Tools";
 import DataTransfer from "./pages/data/Transfer";
 import Access from "./pages/Access";
+import LoginProviders from "./pages/loginProviders/Overview";
+import LoginProviderSetup from "./pages/loginProviders/Setup";
 import { AdminGo } from "./go";
 import "./base.css";
 import "./admin.css";
@@ -106,6 +108,8 @@ createRoot(document.getElementById("root")!).render(
                   <Route index element={<Stats />} />
                   <Route path="users" element={<Users />} />
                   <Route path="impersonation" element={<Impersonation />} />
+                  <Route path="login-providers" element={<LoginProviders />} />
+                  <Route path="login-providers/:key" element={<LoginProviderSetup />} />
                   <Route path="features" element={<Features />} />
                   <Route path="app-stores" element={<AppStores />} />
                   <Route path="app-stores/:tab" element={<AppStores />} />

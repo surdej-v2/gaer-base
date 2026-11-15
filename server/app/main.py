@@ -26,6 +26,7 @@ from app.routes import (admin, admin_files, admin_ops, adoption, ai, app_store, 
                         security, studio, user_area, web)
 from app.routes import admin_mail
 from app.routes import admin_secrets
+from app.routes import login_providers as login_provider_routes
 from app.routes import groups as group_routes
 from app.routes import admin_messages
 from app.routes import messages as messages_routes
@@ -33,6 +34,13 @@ from app.routes import admin_meta
 from app.routes import meta as meta_routes
 from app.routes import mail as mail_routes
 from app.routes import admin_users
+from app.routes import developer as developer_routes
+from app.routes import developer_data as developer_data_routes
+from app.routes import developer_studio as developer_studio_routes
+from app.routes import developer_mcp as developer_mcp_routes
+from app.routes import developer_api as developer_api_routes
+from app.routes import developer_flows as developer_flow_routes
+from app.routes import gaer_api
 from app.routes import admin_transfer
 from app.routes import yubikey as yubikey_routes
 from app.security import bootstrap_admin_email, bootstrap_admin_phone
@@ -44,7 +52,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 # without a CORS preflight, which we never allow, so it stops CSRF together with SameSite cookies.
 CSRF_HEADER = "x-gaer"
 CSRF_EXEMPT = {"/api/collect"}  # sendBeacon cannot set headers; the endpoint only appends anonymous events
-CSRF_EXEMPT_PREFIXES = ("/api/hooks/in/",)  # incoming webhooks: other systems, no cookie, verified per endpoint
+CSRF_EXEMPT_PREFIXES = ("/api/hooks/in/",   # incoming webhooks: other systems, no cookie, verified per endpoint
+                        "/api/auth/saml/")  # SAML responses: a form the IdP posts (signed, bound to the login flow)
+# Sign in with Apple answers with a form the browser posts (response_mode=form_post); the login flow it belongs to is
+# bound to the browser by state + cookie (routes/login_providers.py). Only the callback, no other /oidc/ path.
+CSRF_EXEMPT_RE = re.compile(r"^/api/auth/oidc/[a-z][a-z0-9-]{1,39}/callback$")
 
 # Who may embed us: the app itself (heatmap previews, the Office shell) and, for the embeddable
 # routes, the browser extension and the Office hosts (Office on the web runs add-ins in iframes).
@@ -155,6 +167,7 @@ def create_app() -> FastAPI:
         path = request.url.path
         if (path.startswith("/api/") and request.method not in ("GET", "HEAD", "OPTIONS")
                 and path not in CSRF_EXEMPT and not path.startswith(CSRF_EXEMPT_PREFIXES)
+                and not CSRF_EXEMPT_RE.match(path)
                 and request.headers.get(CSRF_HEADER) != "1"):
             return JSONResponse({"detail": "Mangler X-Gaer header"}, status_code=403)
         # Kill switches (app.killswitch): a closed part of the service answers 503; /admin and login never close.
@@ -202,6 +215,11 @@ def create_app() -> FastAPI:
               knowledge.router, knowledge_admin.router, group_routes.router, group_routes.me_router, admin_secrets.router,
               meta_routes.router, admin_meta.router,
               messages_routes.router, admin_messages.router, admin_transfer.router,
+              login_provider_routes.router, login_provider_routes.me_router, login_provider_routes.admin_router,
+              developer_routes.router, developer_data_routes.router,
+              developer_studio_routes.router, developer_mcp_routes.router,
+              developer_api_routes.router, gaer_api.router,
+              developer_flow_routes.router, developer_flow_routes.public,
               web.router, files.memory_router):
         app.include_router(r)
 
