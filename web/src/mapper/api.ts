@@ -2,7 +2,21 @@
 // is a URL object tagged with one or more of them (null = the top level).
 import { api, query } from "../api";
 
-export type Folder = { id: number; parent_id: number | null; label: string; depth: number; sort_order: number; pinned: boolean };
+export type ChildSort = "label" | "sort_key" | "manual";
+export type ShortcutSort = "manual" | "name" | "site" | "added";
+
+/** A folder's properties ("Egenskaber"): meta's name, English label, sort key and child order (child_sort, null =
+ * alphabetical in Mapper), and Mapper's own shortcut sort and layout (null = follow the view). */
+export type FolderProps = {
+  en_label: string | null;
+  sort_key: string | null;
+  child_sort: ChildSort | null;
+  shortcut_sort: ShortcutSort | null;
+  layout: Layout | null;
+};
+
+export type Folder = FolderProps & { id: number; parent_id: number | null; label: string; depth: number; sort_order: number; pinned: boolean };
+export type Root = { id: number; label: string; child_sort: ChildSort | null; shortcut_sort: ShortcutSort | null; layout: Layout | null };
 
 export type Tag = {
   id: number;
@@ -22,16 +36,21 @@ export type Shortcut = {
   host: string;
   /** The folders it lies in; null = the top level of Mapper. */
   folders: (number | null)[];
+  /** The manual order in each of those folders (same index as folders; null = not ordered yet). */
+  positions: (number | null)[];
+  /** When it was put in each of those folders. */
+  placed: string[];
   added_at: string;
   mine: boolean;
   /** Its other tags (shared dimensions, the rest of the private tree): the "Emner" listing. */
   tags: Tag[];
 };
 
-export type MapperState = { root: { id: number; label: string } | null; folders: Folder[]; shortcuts: Shortcut[]; truncated: boolean };
+export type MapperState = { root: Root | null; folders: Folder[]; shortcuts: Shortcut[]; truncated: boolean };
 
 export type Layout = "list" | "grid" | "table";
-export type SortKey = "manual" | "name" | "site" | "added";
+/** "folder" = Mappens sortering: each folder's own shortcut sort (Egenskaber). */
+export type SortKey = "folder" | "name" | "site" | "added";
 export type Column = "site" | "folder" | "added";
 export type ViewSpec = { layout: Layout; sort: SortKey; columns: Column[]; filter: string };
 export type SavedView = { id: number; name: string; shared: boolean; spec: ViewSpec; mine: boolean; owner_name: string | null; updated_at: string };
@@ -58,6 +77,12 @@ export const mapperApi = {
   state: () => api.get<MapperState>("/api/mapper"),
   createFolder: (label: string, parentId: number | null) => api.post<Folder>("/api/mapper/folders", { label, parent_id: parentId }),
   renameFolder: (id: number, label: string) => api.patch<Folder>(`/api/mapper/folders/${id}`, { label }),
+  saveFolder: (id: number, body: Partial<FolderProps> & { label?: string }) => api.patch<Folder>(`/api/mapper/folders/${id}`, body),
+  orderChildren: (id: number, ids: number[]) => api.put<{ order: number[] }>(`/api/mapper/folders/${id}/children-order`, { ids }),
+  orderShortcuts: (id: number, ids: number[]) => api.put<{ order: number[] }>(`/api/mapper/folders/${id}/shortcut-order`, { ids }),
+  copyFolder: (id: number, to: number | null) =>
+    api.post<{ id: number; label: string; folders: number; shortcuts: number }>(`/api/mapper/folders/${id}/copy`, { to_id: to }),
+  copyShortcut: (id: number, to: number | null) => api.post<Shortcut>(`/api/mapper/shortcuts/${id}/copy`, { to_id: to }),
   moveFolder: (id: number, parentId: number | null) => api.patch<Folder>(`/api/mapper/folders/${id}`, { parent_id: parentId }),
   deleteFolder: (id: number, force = false) => api.del<{ ok: boolean }>(`/api/mapper/folders/${id}` + query({ force: force || undefined })),
   pin: (id: number, pinned: boolean) => api.put<{ id: number; pinned: boolean }>(`/api/mapper/folders/${id}/pin`, { pinned }),

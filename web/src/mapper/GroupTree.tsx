@@ -2,7 +2,7 @@
 // the WAI-ARIA tree keyboard pattern (↑ ↓ → ← Home End Enter). In full screen (and in the narrow panel's overview) the
 // open folders can show their shortcuts as leaves. Rows reuse the look of tree/TreeView (tree.css).
 import { Folder, FolderOpen, Globe, List, Pin, Tag } from "lucide-react";
-import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useMemo, useRef, useState, type HTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
 import "../tree/tree.css";
 import type { MapperState, Shortcut } from "./api";
 import { ALL, bareHost, hostHue, isPdf, letterOf, type Group, type ListingTree } from "./model";
@@ -27,9 +27,15 @@ type Row =
   | { kind: "group"; id: string; g: Group; level: number; open: boolean; hasChildren: boolean }
   | { kind: "leaf"; id: string; s: Shortcut; key: string; level: number };
 
-export function GroupTree({ tree, state, selected, open, full, leaves, onToggle, onOpen, onShortcut }: {
+export type RowKind = "all" | "pin" | "group";
+
+export function GroupTree({ tree, state, selected, open, full, leaves, onToggle, onOpen, onShortcut, rowAttrs, onRowKey }: {
   tree: ListingTree; state: MapperState; selected: string; open: Set<string>; full: boolean; leaves: boolean;
   onToggle: (key: string) => void; onOpen: (key: string) => void; onShortcut: (s: Shortcut, key: string) => void;
+  /** Extra attributes per row (drag and drop in the wide layout); className is added to the row's own. */
+  rowAttrs?: (key: string, kind: RowKind) => HTMLAttributes<HTMLDivElement>;
+  /** A key on a row before the tree's own keys (⌘/Ctrl+C/X/V); true when it was handled. */
+  onRowKey?: (key: string, kind: RowKind, e: KeyboardEvent) => boolean;
 }) {
   const [focus, setFocus] = useState<string | null>(null);
   const refs = useRef(new Map<string, HTMLDivElement>());
@@ -71,6 +77,7 @@ export function GroupTree({ tree, state, selected, open, full, leaves, onToggle,
 
   const onKey = (e: KeyboardEvent, i: number) => {
     const row = rows[i];
+    if (row.kind !== "leaf" && onRowKey?.(row.kind === "all" ? ALL : row.g.key, row.kind, e)) return;
     const keys: Record<string, () => void> = {
       ArrowDown: () => move(rows[i + 1]?.id),
       ArrowUp: () => move(rows[i - 1]?.id),
@@ -103,7 +110,10 @@ export function GroupTree({ tree, state, selected, open, full, leaves, onToggle,
   return (
     <div role="tree" aria-label="Mapper og genveje" className="tr-tree mp-tree">
       {rows.map((row, i) => {
+        const extra = row.kind === "leaf" ? {} : rowAttrs?.(row.kind === "all" ? ALL : row.g.key, row.kind) ?? {};
+        const { className: extraClass = "", ...extraAttrs } = extra;
         const common = {
+          ...extraAttrs,
           ref: (el: HTMLDivElement | null) => {
             if (el) refs.current.set(row.id, el);
             else refs.current.delete(row.id);
@@ -119,7 +129,7 @@ export function GroupTree({ tree, state, selected, open, full, leaves, onToggle,
         if (row.kind === "all") {
           return (
             <div key={row.id} {...common} aria-level={1} aria-selected={selected === ALL}
-              className={`tr-row mp-all${selected === ALL && !full ? " tr-selected" : ""}`} style={{ paddingLeft: 4 }}>
+              className={`tr-row mp-all${selected === ALL && !full ? " tr-selected" : ""} ${extraClass}`} style={{ paddingLeft: 4 }}>
               <span className="tr-chevron tr-leaf" aria-hidden="true" />
               <List size={16} className="mp-ficon" aria-hidden="true" />
               <span className="tr-label">Alle genveje</span>
@@ -132,7 +142,7 @@ export function GroupTree({ tree, state, selected, open, full, leaves, onToggle,
             <div key={row.id} style={{ display: "contents" }}>
               {heading}
               <div {...common} aria-level={1} aria-selected={selected === row.g.key}
-                className={`tr-row${selected === row.g.key && !full ? " tr-selected" : ""}`} style={{ paddingLeft: 4 }}>
+                className={`tr-row${selected === row.g.key && !full ? " tr-selected" : ""} ${extraClass}`} style={{ paddingLeft: 4 }}>
                 <span className="tr-chevron tr-leaf" aria-hidden="true" />
                 <Pin size={14} className="mp-ficon" aria-hidden="true" />
                 <span className="tr-label">{row.g.label}</span>
@@ -159,7 +169,7 @@ export function GroupTree({ tree, state, selected, open, full, leaves, onToggle,
           <div key={row.id} style={{ display: "contents" }}>
             {heading}
             <div {...common} aria-level={row.level} aria-expanded={row.hasChildren ? row.open : undefined} aria-selected={isSel}
-              className={`tr-row${isSel ? " tr-selected" : ""}`} style={{ paddingLeft: `${(row.level - 1) * indent + 4}px` }}>
+              className={`tr-row${isSel ? " tr-selected" : ""} ${extraClass}`} style={{ paddingLeft: `${(row.level - 1) * indent + 4}px` }}>
               {row.hasChildren ? (
                 <span className={`tr-chevron${row.open ? " tr-open" : ""}`} aria-hidden="true"
                   onClick={(e) => { e.stopPropagation(); onToggle(g.key); }}>

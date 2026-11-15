@@ -3,21 +3,25 @@
 // domain → host), right the chosen folder: breadcrumb, subfolders, the shortcuts in a saved view (list, cards, table)
 // and a preview of the page. A full-screen tree gives the overview. Narrow panels (below 640 px, the usual side panel)
 // get their own drill-down layout: MapperNarrow.tsx.
+// Copy, cut and paste (clipboard.tsx) from the "…" menus, the folder header and ⌘/Ctrl+C/X/V on a focused row; drag and
+// drop moves (⌥/Alt copies) shortcuts and folders onto folders in the tree or the tiles, and reorders shortcuts in a
+// folder (the folder's sort becomes manual). Egenskaber (dialogs.tsx) sets a folder's name, labels and orderings.
 import {
-  BookmarkPlus, ChevronsDownUp, ChevronsUpDown, Download, ExternalLink, FolderPlus, LayoutGrid, List, Maximize2, Minimize2,
-  Pencil, Pin, PinOff, Plus, Search, Table2, Trash2,
+  BookmarkPlus, ChevronsDownUp, ChevronsUpDown, ClipboardPaste, Copy, Download, ExternalLink, FolderPlus, LayoutGrid, List, Maximize2,
+  Minimize2, Pin, PinOff, Plus, Scissors, Search, Settings2, Table2, Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type HTMLAttributes, type KeyboardEvent } from "react";
 import { ApiError, errorText } from "../api";
 import { extension, isExtension, type PageInfo } from "../bridge/extension";
 import { Alert, fmtDay, Loading } from "../ui";
-import { mapperApi, type MapperState, type SavedView, type Shortcut, type ViewSpec } from "./api";
-import { AskDialog, EditShortcut, type Ask } from "./dialogs";
+import { mapperApi, type Layout, type MapperState, type SavedView, type Shortcut, type ViewSpec } from "./api";
+import { ClipPill, clipKey, useMapperClipboard, type ClipItem } from "./clipboard";
+import { AskDialog, EditShortcut, FolderPicker, FolderProperties, RowMenu, Toast, type Ask, type MenuItem } from "./dialogs";
 import { GroupIcon, GroupTree, Letter } from "./GroupTree";
 import { ImportWizard } from "./ImportWizard";
 import { MapperNarrow } from "./MapperNarrow";
 import {
-  ALL, BUILTIN, COLUMNS, LISTINGS, SORTS, bareHost, folderKey, isPdf, local, matches, normalizeSpec, placedIn,
+  ALL, BUILTIN, COLUMNS, LISTINGS, SORTS, bareHost, descendantsOf, folderKey, isPdf, local, matches, normalizeSpec, placedIn,
   sameSpec, sortShortcuts, treeFor, type Group, type Listing,
 } from "./model";
 import { openInTab, Preview, previewable, type Placement } from "./Preview";
@@ -25,6 +29,12 @@ import "./mapper.css";
 
 const WIDE = 640;        // tree and content side by side from here
 const PREVIEW_RIGHT = 760; // auto: the preview goes right of the list when the content pane is this wide
+export const MOD = /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl+";
+
+/** Copies text to the browser's clipboard ("Kopiér adresse"). */
+export async function copyText(text: string): Promise<void> {
+  await navigator.clipboard.writeText(text);
+}
 
 export default function Mapper() {
   const [state, setState] = useState<MapperState | null>(null);
@@ -47,6 +57,13 @@ export default function Mapper() {
   const [editing, setEditing] = useState<{ s: Shortcut; from: number | null } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const clearToast = useCallback(() => setToast(null), []);
+  const [props, setProps] = useState<number | null | undefined>(undefined);   // Egenskaber: a folder id, null = the root
+  const [picking, setPicking] = useState<{ item: ClipItem; copy: boolean } | null>(null);
+  const [layoutPick, setLayoutPick] = useState<Layout | null>(null);           // the layout chosen in this folder
+  const [dropAt, setDropAt] = useState<string | null>(null);
+  const dragged = useRef<ClipItem | null>(null);
   const [, setChecked] = useState(0);
   // Re-render once a preview check is known, so pages that refuse frames lose their "Forhåndsvis" hint.
   const onChecked = useCallback(() => setChecked((n) => n + 1), []);
@@ -86,6 +103,7 @@ export default function Mapper() {
     if (v) setSpec(normalizeSpec(v.spec));
   }, [viewId, views]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const cb = useMapperClipboard({ state, reload: load, onDone: setToast, onError: setError });
   const tree = useMemo(() => (state ? treeFor(listing, state) : null), [state, listing]);
   // The first level starts open, once per listing.
   const [opened, setOpened] = useState<Set<Listing>>(new Set());
@@ -115,6 +133,7 @@ export default function Mapper() {
 
   const openGroup = (key: string) => {
     setSelected(key);
+    setLayoutPick(null);
     setFull(false);
     setExpanded(false);
     if (tree) setOpen((o) => new Set([...o, ...tree.trail(key).map((g) => g.key)]));
@@ -157,7 +176,7 @@ export default function Mapper() {
         {state.truncated && <Alert kind="warn">Du har mange genveje; kun de første 5.000 vises.</Alert>}
         <MapperNarrow state={state} views={views} reload={load} inExtension={inExtension} tab={tab} listing={listing} setListing={chooseListing}
           spec={spec} setSpec={setSpec} viewId={viewId} setViewId={chooseView} onImport={() => setImporting(true)}
-          start={selected !== ALL ? selected : null} />
+          start={selected !== ALL ? selected : null} cb={cb} toast={toast} setToast={setToast} />
       </div>
     );
   }
@@ -168,7 +187,18 @@ export default function Mapper() {
   const searching = q.trim().length > 0;
   const base = searching ? state.shortcuts.filter((s) => matches(s, q))
     : group ? tree.direct(group.key) : listing === "mapper" ? state.shortcuts : state.shortcuts.filter((s) => listing === "websteder" || s.tags.length);
-  const shown = sortShortcuts(base.filter((s) => matches(s, spec.filter)), spec.sort, order);
+  const folder = group?.folderId !== undefined ? state.folders.find((f) => f.id === group.folderId) ?? null : null;
+  // "Mappens sortering" and the default layout come from the folder (or, on Alle genveje in Mapper, the root).
+  const inMapperFolder = listing === "mapper" && !searching && (!group || folder !== null);
+  const pasteTo: number | null | undefined = inMapperFolder ? folderId : undefined;
+  const folderLayout = listing === "mapper" && !searching ? (folder ? folder.layout : group ? null : state.root?.layout ?? null) : null;
+  const view: ViewSpec = { ...spec, layout: layoutPick ?? folderLayout ?? spec.layout };
+  const shown = sortShortcuts(base.filter((s) => matches(s, spec.filter)), spec.sort, order,
+    folder ? { id: folder.id, sort: folder.shortcut_sort } : null);
+  const setViewSpec = (next: ViewSpec) => {
+    if (next.layout !== view.layout) setLayoutPick(next.layout);
+    setSpec(next);
+  };
   const tiles = searching ? [] : tree.children(group?.key ?? null);
   const folderLabel = (id: number | null) => (id === null ? "Mapper" : state.folders.find((f) => f.id === id)?.label ?? "mappen");
 
@@ -226,6 +256,123 @@ export default function Mapper() {
     setExpanded(false);
   };
 
+  // ── Clipboard, menus, drag and drop ──
+  const itemOf = (s: Shortcut): ClipItem => ({
+    kind: "shortcut", id: s.id, label: s.title,
+    from: listing === "mapper" && !searching && group?.folderId !== undefined ? group.folderId : s.folders.includes(null) ? null : s.folders[0] ?? null,
+  });
+  const folderItem = (g: Group): ClipItem => ({ kind: "folder", id: g.folderId!, label: g.label,
+    from: state.folders.find((f) => f.id === g.folderId)?.parent_id ?? null });
+
+  const shortcutMenu = (s: Shortcut): MenuItem[] => {
+    const inFolder = listing === "mapper" && !searching && group?.folderId !== undefined;
+    return [
+      { label: "Kopiér", hint: `${MOD}C`, onSelect: () => cb.copy(itemOf(s)) },
+      { label: "Klip", hint: `${MOD}X`, onSelect: () => cb.cut(itemOf(s)) },
+      { label: "Kopiér adresse", onSelect: () => void copyText(s.url).then(() => setToast("Adressen er kopieret."), () => setError("Adressen kunne ikke kopieres")) },
+      { label: "Flyt til …", onSelect: () => setPicking({ item: itemOf(s), copy: false }) },
+      { label: "Ret …", onSelect: () => setEditing({ s, from: itemOf(s).from }) },
+      { label: inFolder ? "Fjern fra mappen" : "Fjern fra alle mapper", danger: true, onSelect: () => removeShortcut(s) },
+    ];
+  };
+
+  const keyOnShortcut = (s: Shortcut) => (e: KeyboardEvent) => {
+    const k = clipKey(e);
+    if (k === "copy") cb.copy(itemOf(s));
+    else if (k === "cut") cb.cut(itemOf(s));
+    else return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const keyOnContent = (e: KeyboardEvent) => {
+    if (clipKey(e) === "paste" && cb.clip && pasteTo !== undefined) {
+      e.preventDefault();
+      void cb.paste(pasteTo);
+    }
+  };
+  const keyOnTree = (key: string, kind: string, e: KeyboardEvent): boolean => {
+    const k = clipKey(e);
+    if (!k || listing !== "mapper") return false;
+    const g = key === ALL ? null : tree.groups.get(key);
+    if (k === "paste") {
+      if (!cb.clip) return false;
+      void cb.paste(g?.folderId ?? null);
+    } else if (g?.folderId !== undefined && kind !== "all") {
+      if (k === "copy") cb.copy(folderItem(g));
+      else cb.cut(folderItem(g));
+    } else return false;
+    e.preventDefault();
+    return true;
+  };
+
+  // Drop targets: a folder in the tree, a tile, "Alle genveje" (= the top level). ⌥/Alt copies.
+  const canDnd = listing === "mapper" && !searching;
+  const dropOn = (key: string, to: number | null): HTMLAttributes<HTMLElement> => !canDnd ? {} : {
+    onDragOver: (e: DragEvent) => {
+      if (!dragged.current) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = e.altKey ? "copy" : "move";
+      if (dropAt !== key) setDropAt(key);
+    },
+    onDragLeave: () => setDropAt((k) => (k === key ? null : k)),
+    onDrop: (e: DragEvent) => {
+      e.preventDefault();
+      const item = dragged.current;
+      dragged.current = null;
+      setDropAt(null);
+      if (item) void cb.transfer(item, to, e.altKey);
+    },
+  };
+  const dragFrom = (item: () => ClipItem): HTMLAttributes<HTMLElement> => !canDnd ? {} : {
+    draggable: true,
+    onDragStart: (e: DragEvent) => {
+      dragged.current = item();
+      e.dataTransfer.effectAllowed = "copyMove";
+      e.dataTransfer.setData("text/plain", dragged.current.label);
+    },
+    onDragEnd: () => {
+      dragged.current = null;
+      setDropAt(null);
+    },
+  };
+  const badDrop = (to: number | null) => dragged.current?.kind === "folder" && to !== null && descendantsOf(state, dragged.current.id).has(to);
+  const dropClass = (key: string, to: number | null) => (dropAt === key ? (badDrop(to) ? " mp-drop-bad" : " mp-drop") : "");
+
+  // Reorder: a shortcut dropped on another in the same folder goes before it (after it on the lower half).
+  const reorderable = listing === "mapper" && !searching && folder !== null;
+  const reorderOn = (s: Shortcut): HTMLAttributes<HTMLElement> => !reorderable ? {} : {
+    onDragOver: (e: DragEvent) => {
+      const d = dragged.current;
+      if (!d || d.kind !== "shortcut" || d.from !== folder!.id || d.id === s.id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = "move";
+      if (dropAt !== `s:${s.id}`) setDropAt(`s:${s.id}`);
+    },
+    onDragLeave: () => setDropAt((k) => (k === `s:${s.id}` ? null : k)),
+    onDrop: (e: DragEvent) => {
+      const d = dragged.current;
+      if (!d || d.kind !== "shortcut" || d.from !== folder!.id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dragged.current = null;
+      setDropAt(null);
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const after = e.clientY > rect.top + rect.height / 2;
+      const all = sortShortcuts(tree.direct(group!.key), spec.sort, order, { id: folder!.id, sort: folder!.shortcut_sort }).map((x) => x.id);
+      const ids = all.filter((id) => id !== d.id);
+      ids.splice(ids.indexOf(s.id) + (after ? 1 : 0), 0, d.id);
+      void run(async () => {
+        await mapperApi.orderShortcuts(folder!.id, ids);
+        if (spec.sort !== "folder") setSpec({ ...spec, sort: "folder" });
+        setToast(`Rækkefølgen i „${folder!.label}“ er gemt.`);
+      });
+    },
+  };
+  const rowProps = (s: Shortcut): HTMLAttributes<HTMLElement> => ({
+    ...dragFrom(() => itemOf(s)), ...reorderOn(s), onKeyDown: keyOnShortcut(s),
+  });
+
   // ── Tree pane ──
   const treePane = (
     <section className={`mp-pane${full ? " mp-full" : ""}`} aria-label="Træ">
@@ -263,6 +410,14 @@ export default function Mapper() {
         onShortcut={(s, key) => {
           openGroup(key);
           showPreview(s);
+        }}
+        onRowKey={keyOnTree}
+        rowAttrs={(key, kind) => {
+          if (listing !== "mapper" || full) return {};
+          const g = key === ALL ? null : tree.groups.get(key);
+          const to = g?.folderId ?? null;
+          if (kind === "all") return { ...dropOn("t:root", null), className: dropClass("t:root", null) } as HTMLAttributes<HTMLDivElement>;
+          return { ...dragFrom(() => folderItem(g!)), ...dropOn(`t:${key}`, to), className: dropClass(`t:${key}`, to) } as HTMLAttributes<HTMLDivElement>;
         }} />
       {listing === "mapper" && !state.folders.length && <p className="small muted" style={{ margin: 0 }}>Ingen mapper endnu. Opret en, eller importér dine favoritter.</p>}
       {listing === "emner" && !tree.groups.size && <p className="small muted" style={{ margin: 0 }}>Ingen af dine genveje har emner endnu. Giv dem emner under „Ret“, eller under Tags.</p>}
@@ -278,13 +433,12 @@ export default function Mapper() {
   const rightSide = placement === "right" || (placement === "auto" && width - 272 >= PREVIEW_RIGHT);
 
   const list = (
-    <ShortcutList items={shown} spec={spec} state={state} current={preview?.id ?? null}
-      onPreview={showPreview} onEdit={(s) => setEditing({ s, from: listing === "mapper" && group?.folderId !== undefined ? group.folderId : s.folders[0] ?? null })}
-      onRemove={removeShortcut} />
+    <ShortcutList items={shown} spec={view} state={state} current={preview?.id ?? null} onPreview={showPreview}
+      menu={shortcutMenu} rowProps={rowProps} dropAt={dropAt} />
   );
 
   const contentPane = (
-    <section className="mp-pane" aria-label="Indhold">
+    <section className="mp-pane" aria-label="Indhold" onKeyDown={keyOnContent}>
       <nav className="mp-crumbs" aria-label="Brødkrummer">
         <button onClick={() => { setSelected(ALL); setQ(""); }}>{searching ? "Alle genveje" : LISTINGS.find((l) => l.id === listing)!.label}</button>
         {!searching && crumbs.map((c) => <span key={c.key}>› <button onClick={() => openGroup(c.key)}>{c.label}</button></span>)}
@@ -306,15 +460,23 @@ export default function Mapper() {
           )}
           {listing === "mapper" && <button className="btn btn-outline btn-sm" onClick={newShortcut}><Plus size={14} /> Ny genvej</button>}
           {listing === "mapper" && <button className="btn btn-outline btn-sm" onClick={() => newFolder(group?.folderId ?? null)}><FolderPlus size={14} /> {group ? "Ny undermappe" : "Ny mappe"}</button>}
+          {inMapperFolder && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setProps(group?.folderId ?? null)}><Settings2 size={14} /> Egenskaber</button>
+          )}
+          {listing === "mapper" && group?.folderId !== undefined && (
+            <>
+              <button className="btn btn-ghost btn-sm" onClick={() => cb.copy(folderItem(group))}><Copy size={14} /> Kopiér mappe</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => cb.cut(folderItem(group))}><Scissors size={14} /> Klip mappe</button>
+            </>
+          )}
+          {cb.clip && pasteTo !== undefined && (
+            <button className="btn btn-outline btn-sm" onClick={() => void cb.paste(pasteTo)}><ClipboardPaste size={14} /> Indsæt</button>
+          )}
           {listing === "mapper" && group?.folderId !== undefined && (
             <>
               <button className="btn btn-ghost btn-sm" onClick={() => run(async () => { await mapperApi.pin(group.folderId!, !group.pinned); })}>
                 {group.pinned ? <><PinOff size={14} /> Frigør</> : <><Pin size={14} /> Fastgør</>}
               </button>
-              <button className="btn btn-ghost btn-sm" onClick={() => setAsk({
-                title: "Omdøb mappe", label: "Navn", value: group.label, confirm: "Gem",
-                onSubmit: async (label) => { await mapperApi.renameFolder(group.folderId!, label); await load(); },
-              })}><Pencil size={14} /> Omdøb</button>
               <button className="btn btn-ghost btn-sm" onClick={() => deleteFolder(group)}><Trash2 size={14} /> Slet</button>
             </>
           )}
@@ -323,7 +485,18 @@ export default function Mapper() {
       {tiles.length > 0 && !expanded && (
         <div className="mp-tiles">
           {tiles.map((t) => (
-            <button key={t.key} className="mp-tile" onClick={() => openGroup(t.key)}>
+            <button key={t.key} className={`mp-tile${t.folderId !== undefined ? dropClass(`tile:${t.key}`, t.folderId) : ""}`} onClick={() => openGroup(t.key)}
+              {...(t.folderId !== undefined ? { ...dragFrom(() => folderItem(t)), ...dropOn(`tile:${t.key}`, t.folderId) } : {})}
+              onKeyDown={(e) => {
+                if (t.folderId === undefined || listing !== "mapper") return;
+                const k = clipKey(e);
+                if (k === "copy") cb.copy(folderItem(t));
+                else if (k === "cut") cb.cut(folderItem(t));
+                else if (k === "paste" && cb.clip) void cb.paste(t.folderId);
+                else return;
+                e.preventDefault();
+                e.stopPropagation();
+              }}>
               <GroupIcon g={t} />
               <span className="mp-label">{t.label}</span>
               <span className="mp-count">{tree.total(t.key)}</span>
@@ -331,7 +504,8 @@ export default function Mapper() {
           ))}
         </div>
       )}
-      {!expanded && <ViewBar spec={spec} setSpec={setSpec} viewId={viewId} setViewId={chooseView} views={views} reload={load} />}
+      {!expanded && <ViewBar spec={view} base={spec} setSpec={setViewSpec} viewId={viewId} setViewId={chooseView} views={views} reload={load}
+        folderLayout={folderLayout} />}
       <div className={`mp-split${preview && rightSide && !expanded ? " mp-right" : ""}`}>
         {!expanded && (shown.length ? list : <p className="small muted" style={{ margin: 0 }}>{searching ? "Ingen genveje passer." : spec.filter ? "Ingen genveje passer til filteret." : "Ingen genveje her endnu."}</p>)}
         {preview && (
@@ -356,6 +530,17 @@ export default function Mapper() {
       {full ? treePane : <div className="mp-body mp-wide">{treePane}{contentPane}</div>}
       <Alert kind="success">{notice}</Alert>
       <Alert>{error}</Alert>
+      <ClipPill cb={cb} target={pasteTo} />
+      <Toast text={toast} onDone={clearToast} />
+      {props !== undefined && (
+        <FolderProperties state={state} folderId={props} onClose={() => setProps(undefined)}
+          onSaved={async (text) => { setProps(undefined); setLayoutPick(null); setToast(text); await load(); }} />
+      )}
+      {picking && (
+        <FolderPicker state={state} title={`Flyt „${picking.item.label}“ til …`} current={picking.item.from}
+          exclude={picking.item.kind === "folder" ? descendantsOf(state, picking.item.id) : undefined}
+          onClose={() => setPicking(null)} onPick={(to) => { const p = picking; setPicking(null); void cb.transfer(p.item, to, p.copy); }} />
+      )}
       {ask && <AskDialog ask={ask} onClose={() => setAsk(null)} />}
       {editing && (
         <EditShortcut item={editing.s} from={editing.from} state={state} onClose={() => setEditing(null)}
@@ -367,20 +552,27 @@ export default function Mapper() {
 
 // ── The list in a view: list, cards or table ───────────────────────────────
 
-function ShortcutList({ items, spec, state, current, onPreview, onEdit, onRemove }: {
+function ShortcutList({ items, spec, state, current, onPreview, menu, rowProps, dropAt }: {
   items: Shortcut[]; spec: ViewSpec; state: MapperState; current: number | null;
-  onPreview: (s: Shortcut) => void; onEdit: (s: Shortcut) => void; onRemove: (s: Shortcut) => void;
+  onPreview: (s: Shortcut) => void; menu: (s: Shortcut) => MenuItem[];
+  rowProps: (s: Shortcut) => HTMLAttributes<HTMLElement>; dropAt: string | null;
 }) {
   const actions = (s: Shortcut) => (
     <span className="mp-item-actions" onClick={(e) => e.stopPropagation()}>
       <button className="mp-icon" onClick={() => openInTab(s.url)} aria-label={`Åbn ${s.title} i ny fane`} title="Åbn i ny fane"><ExternalLink size={15} /></button>
-      <button className="mp-icon" onClick={() => onEdit(s)} aria-label={`Ret ${s.title}`} title="Ret"><Pencil size={15} /></button>
-      <button className="mp-icon" onClick={() => onRemove(s)} aria-label={`Fjern ${s.title}`} title="Fjern"><Trash2 size={15} /></button>
+      <RowMenu label={`Handlinger for ${s.title}`} items={menu(s)} />
     </span>
   );
+  const drop = (s: Shortcut) => (dropAt === `s:${s.id}` ? " mp-drop-line" : "");
   const hint = (s: Shortcut) => previewable(s) ? <span className="mp-hint" aria-hidden="true">Forhåndsvis</span> : null;
   const keyOpen = (s: Shortcut) => (e: KeyboardEvent) => {
     if (e.key === "Enter" && e.target === e.currentTarget) onPreview(s);
+    else rowProps(s).onKeyDown?.(e as KeyboardEvent<HTMLElement>);
+  };
+  const attrs = (s: Shortcut) => {
+    const { onKeyDown: _k, ...rest } = rowProps(s);
+    void _k;
+    return rest;
   };
   const cols = new Set(spec.columns);
 
@@ -397,7 +589,7 @@ function ShortcutList({ items, spec, state, current, onPreview, onEdit, onRemove
           </thead>
           <tbody>
             {items.map((s) => (
-              <tr key={s.id} className={`mp-row${current === s.id ? " mp-current" : ""}`} tabIndex={0} onClick={() => onPreview(s)} onKeyDown={keyOpen(s)}>
+              <tr key={s.id} {...attrs(s)} className={`mp-row${current === s.id ? " mp-current" : ""}${drop(s)}`} tabIndex={0} onClick={() => onPreview(s)} onKeyDown={keyOpen(s)}>
                 <td title={s.url}><span className="row" style={{ "--gap": "8px", flexWrap: "nowrap" } as React.CSSProperties}>
                   <Letter s={s} /> <strong style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{s.title}</strong>
                   {isPdf(s.url) && <span className="mp-badge">PDF</span>} {hint(s)}</span></td>
@@ -417,7 +609,7 @@ function ShortcutList({ items, spec, state, current, onPreview, onEdit, onRemove
     return (
       <div className="mp-grid">
         {items.map((s) => (
-          <div key={s.id} className={`mp-card${current === s.id ? " mp-current" : ""}`} tabIndex={0} role="button" title={s.url}
+          <div key={s.id} {...attrs(s)} className={`mp-card${current === s.id ? " mp-current" : ""}${drop(s)}`} tabIndex={0} role="button" title={s.url}
             onClick={() => onPreview(s)} onKeyDown={keyOpen(s)}>
             <Letter s={s} />
             {hint(s)}
@@ -433,7 +625,7 @@ function ShortcutList({ items, spec, state, current, onPreview, onEdit, onRemove
   return (
     <div className="mp-list">
       {items.map((s) => (
-        <div key={s.id} className={`mp-item${current === s.id ? " mp-current" : ""}`} tabIndex={0} role="button" title={s.url}
+        <div key={s.id} {...attrs(s)} className={`mp-item${current === s.id ? " mp-current" : ""}${drop(s)}`} tabIndex={0} role="button" title={s.url}
           onClick={() => onPreview(s)} onKeyDown={keyOpen(s)}>
           <Letter s={s} />
           <span className="mp-item-text">
@@ -451,15 +643,17 @@ function ShortcutList({ items, spec, state, current, onPreview, onEdit, onRemove
 
 // ── Views: Indbyggede, Delt med teamet, Mine visninger ─────────────────────
 
-function ViewBar({ spec, setSpec, viewId, setViewId, views, reload }: {
-  spec: ViewSpec; setSpec: (s: ViewSpec) => void; viewId: string; setViewId: (id: string) => void; views: SavedView[]; reload: () => Promise<void>;
+function ViewBar({ spec, base, setSpec, viewId, setViewId, views, reload, folderLayout }: {
+  /** spec: what is shown (the folder's layout applied); base: the view as the user set it, for "Ændret" and saving. */
+  spec: ViewSpec; base: ViewSpec; setSpec: (s: ViewSpec) => void; viewId: string; setViewId: (id: string) => void; views: SavedView[];
+  reload: () => Promise<void>; folderLayout: Layout | null;
 }) {
   const [saving, setSaving] = useState<Ask | null>(null);
   const [error, setError] = useState<string | null>(null);
   const builtin = BUILTIN.find((b) => b.id === viewId);
   const saved = views.find((v) => `v:${v.id}` === viewId);
   const baseSpec = builtin?.spec ?? (saved ? normalizeSpec(saved.spec) : BUILTIN[0].spec);
-  const changed = !sameSpec(spec, baseSpec);
+  const changed = !sameSpec(base, baseSpec);
   const shared = views.filter((v) => v.shared);
   const mine = views.filter((v) => v.mine && !v.shared);
   const set = (patch: Partial<ViewSpec>) => setSpec({ ...spec, ...patch });
@@ -487,17 +681,18 @@ function ViewBar({ spec, setSpec, viewId, setViewId, views, reload }: {
               onClick={() => set({ layout: id })}><Icon size={15} /></button>
           ))}
         </span>
+        {folderLayout && spec.layout === folderLayout && spec.layout !== base.layout && <span className="tiny muted">Mappens layout</span>}
         <select aria-label="Sortering" value={spec.sort} onChange={(e) => set({ sort: e.target.value as ViewSpec["sort"] })}>
           {SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
         {changed && saved?.mine && (
-          <button className="btn btn-outline btn-sm" onClick={() => act(async () => { await mapperApi.updateView(saved.id, { spec }); await reload(); })}>Gem</button>
+          <button className="btn btn-outline btn-sm" onClick={() => act(async () => { await mapperApi.updateView(saved.id, { spec: base }); await reload(); })}>Gem</button>
         )}
         {changed && (
           <button className="btn btn-outline btn-sm" onClick={() => setSaving({
             title: "Gem som visning", label: "Navn", value: "", confirm: "Gem", share: false,
             onSubmit: async (name, share) => {
-              const v = await mapperApi.createView(name, share, spec);
+              const v = await mapperApi.createView(name, share, base);
               await reload();
               setViewId(`v:${v.id}`);
             },

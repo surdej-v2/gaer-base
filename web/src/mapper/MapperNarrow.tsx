@@ -3,16 +3,20 @@
 // is changed). Under it the listing (Mapper / Emner / Websteder). Folders are 52 px rows, shortcuts 60 px rows with a
 // 44 px "open in a new tab" button; in a Mapper folder a bottom bar saves the current page there. Views, the preview and
 // the tree overview are sheets and layers over the content. Every touch target is at least 44 px.
-import { BookmarkPlus, ChevronLeft, ChevronRight, ExternalLink, FolderPlus, FolderTree, List, Pencil, Pin, PinOff, Plus, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  BookmarkPlus, ChevronLeft, ChevronRight, ClipboardPaste, Copy, Ellipsis, ExternalLink, FolderInput, FolderPlus, FolderTree, Link, List, Pencil,
+  Pin, PinOff, Plus, Scissors, Search, Settings2, SlidersHorizontal, Trash2, X,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, errorText } from "../api";
 import type { PageInfo } from "../bridge/extension";
 import { Alert } from "../ui";
 import { mapperApi, type MapperState, type SavedView, type Shortcut, type ViewSpec } from "./api";
-import { AskDialog, EditShortcut, type Ask } from "./dialogs";
+import { ClipPill, type ClipItem, type MapperClipboard } from "./clipboard";
+import { AskDialog, EditShortcut, FolderPicker, FolderProperties, Sheet, Toast, type Ask } from "./dialogs";
 import { GroupIcon, GroupTree, Letter } from "./GroupTree";
 import {
-  ALL, BUILTIN, LISTINGS, SORTS, bareHost, isPdf, matches, normalizeSpec, placedIn, sameSpec, sortShortcuts, treeFor, type Group, type Listing,
+  ALL, BUILTIN, LISTINGS, SORTS, bareHost, descendantsOf, isPdf, matches, normalizeSpec, placedIn, sameSpec, sortShortcuts, treeFor, type Group, type Listing,
 } from "./model";
 import { openInTab, Preview, previewable } from "./Preview";
 
@@ -33,7 +37,14 @@ export type NarrowProps = {
   onImport: () => void;
   /** A folder to open first (after an import). */
   start?: string | null;
+  /** Copy / cut / paste, shared with the wide layout (clipboard.tsx). */
+  cb: MapperClipboard;
+  toast: string | null;
+  setToast: (text: string | null) => void;
 };
+
+/** What the "…" sheet of a row acts on. */
+type Acting = { kind: "shortcut"; s: Shortcut } | { kind: "folder"; g: Group };
 
 function shortUrl(url: string): string {
   return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
@@ -61,6 +72,11 @@ export function MapperNarrow(p: NarrowProps) {
   const [error, setError] = useState<string | null>(null);
   const [, setChecked] = useState(0);
   const onChecked = useCallback(() => setChecked((n) => n + 1), []);
+  const [acting, setActing] = useState<Acting | null>(null);
+  const [picking, setPicking] = useState<ClipItem | null>(null);
+  const [props, setProps] = useState<number | null | undefined>(undefined);
+  const clearToast = useCallback(() => p.setToast(null), [p]);
+  const { cb } = p;
 
   useEffect(() => {
     if (loc && loc !== ALL && !tree.groups.has(loc)) setLoc(null);
@@ -75,8 +91,13 @@ export function MapperNarrow(p: NarrowProps) {
   const allOfListing = listing === "emner" ? state.shortcuts.filter((s) => s.tags.length) : state.shortcuts;
   const base = query ? state.shortcuts.filter((s) => matches(s, query))
     : loc === ALL ? allOfListing : group ? tree.direct(group.key) : listing === "mapper" ? tree.direct("root") : [];
-  const items = sortShortcuts(base.filter((s) => matches(s, spec.filter)), spec.sort, order);
-  const subgroups = query || loc === ALL ? [] : tree.children(group?.key ?? null);
+  const folder = group?.folderId !== undefined ? state.folders.find((f) => f.id === group.folderId) ?? null : null;
+  const items = sortShortcuts(base.filter((s) => matches(s, spec.filter)), spec.sort, order,
+    !query && listing === "mapper" && loc !== ALL ? { id: folder?.id ?? null, sort: folder ? folder.shortcut_sort : state.root?.shortcut_sort ?? null } : null);
+  // The folder's own layout (Egenskaber) unless the view is changed here; no table in a narrow panel.
+  const folderLayout = !query && listing === "mapper" && loc !== ALL ? (folder ? folder.layout : loc === null ? state.root?.layout ?? null : null) : null;
+  const layout = (folderLayout ?? spec.layout) === "grid" ? "grid" : "list";
+  const pasteTo: number | null | undefined = inFolderPlace && !query ? folderId : undefined;  const subgroups = query || loc === ALL ? [] : tree.children(group?.key ?? null);
   const pinned = listing === "mapper" ? [...tree.groups.values()].filter((g) => g.pinned) : [];
   const trail = group ? tree.trail(group.key) : [];
   const parent = group ? (trail[trail.length - 1] ?? null) : null;
@@ -174,6 +195,9 @@ export function MapperNarrow(p: NarrowProps) {
       <button className="mpn-ib" onClick={(e) => { e.stopPropagation(); openInTab(s.url); }} aria-label={`Åbn ${s.title} i ny fane`}>
         <ExternalLink size={18} />
       </button>
+      <button className="mpn-ib" onClick={(e) => { e.stopPropagation(); setActing({ kind: "shortcut", s }); }} aria-label={`Handlinger for ${s.title}`}>
+        <Ellipsis size={18} />
+      </button>
     </div>
   );
 
@@ -187,12 +211,25 @@ export function MapperNarrow(p: NarrowProps) {
   );
 
   const groupRow = (g: Group, label?: string, count?: number) => (
-    <button key={g.key} className="mpn-folder" onClick={() => go(g.key)}>
-      <GroupIcon g={g} />
-      <span className="mpn-label">{label ?? g.label}</span>
-      <span className="mp-count">{count ?? tree.total(g.key)}</span>
-      <ChevronRight size={18} aria-hidden="true" />
-    </button>
+    <div key={g.key} className="mpn-folder-row">
+      <button className="mpn-folder" onClick={() => go(g.key)}>
+        <GroupIcon g={g} />
+        <span className="mpn-label">{label ?? g.label}</span>
+        <span className="mp-count">{count ?? tree.total(g.key)}</span>
+        <ChevronRight size={18} aria-hidden="true" />
+      </button>
+      {g.folderId !== undefined && (
+        <button className="mpn-ib" onClick={() => setActing({ kind: "folder", g })} aria-label={`Handlinger for mappen ${g.label}`}><Ellipsis size={18} /></button>
+      )}
+    </div>
+  );
+
+  const shortcutItem = (s: Shortcut): ClipItem => ({ kind: "shortcut", id: s.id, label: s.title,
+    from: listing === "mapper" && !query && loc !== ALL ? folderId : s.folders.includes(null) ? null : s.folders[0] ?? null });
+  const folderItem = (g: Group): ClipItem => ({ kind: "folder", id: g.folderId!, label: g.label,
+    from: state.folders.find((f) => f.id === g.folderId)?.parent_id ?? null });
+  const sheetBtn = (icon: React.ReactNode, label: string, fn: () => void, danger = false) => (
+    <button className={`btn ${danger ? "btn-danger" : "btn-outline"} btn-block mpn-touch mpn-left`} onClick={() => { setActing(null); fn(); }}>{icon} {label}</button>
   );
 
   return (
@@ -268,7 +305,7 @@ export function MapperNarrow(p: NarrowProps) {
         )}
       </div>
 
-      {items.length > 0 && (spec.layout === "grid" ? <div className="mp-grid mpn-grid">{items.map(card)}</div> : <div className="mpn-list">{items.map(row)}</div>)}
+      {items.length > 0 && (layout === "grid" ? <div className="mp-grid mpn-grid">{items.map(card)}</div> : <div className="mpn-list">{items.map(row)}</div>)}
       {!items.length && (query || loc === ALL || group) && (
         <p className="small muted" style={{ margin: "4px 2px" }}>{query ? "Ingen genveje passer." : spec.filter ? "Ingen genveje passer til filteret." : "Ingen genveje her endnu."}</p>
       )}
@@ -277,8 +314,10 @@ export function MapperNarrow(p: NarrowProps) {
       <Alert kind="success">{notice}</Alert>
       <Alert>{error}</Alert>
 
-      {inFolderPlace && !query && (
+      {((inFolderPlace && !query) || cb.clip) && (
         <div className="mpn-bar">
+          <ClipPill cb={cb} target={pasteTo} narrow />
+          {inFolderPlace && !query && <div className="mpn-bar-row">
           {p.inExtension ? (
             <button className="btn btn-primary mpn-touch" style={{ flex: 1 }} disabled={!p.tab?.readable} onClick={saveTab}
               title={p.tab?.readable ? p.tab.title : "Kun almindelige websider (http og https)"}>
@@ -294,14 +333,54 @@ export function MapperNarrow(p: NarrowProps) {
               {group.pinned ? <PinOff size={18} /> : <Pin size={18} />}
             </button>
           )}
+          </div>}
         </div>
+      )}
+      <Toast text={p.toast} onDone={clearToast} />
+
+      {acting && (
+        <Sheet title={acting.kind === "shortcut" ? acting.s.title : `Mappen „${acting.g.label}“`} onClose={() => setActing(null)}>
+          <div className="stack mpn-sheet-body" style={{ "--gap": "6px" } as React.CSSProperties}>
+            {acting.kind === "shortcut" ? (() => {
+              const s = acting.s;
+              const inFolder = listing === "mapper" && !query && loc !== ALL;
+              return (
+                <>
+                  {sheetBtn(<Copy size={16} />, "Kopiér", () => cb.copy(shortcutItem(s)))}
+                  {sheetBtn(<Scissors size={16} />, "Klip", () => cb.cut(shortcutItem(s)))}
+                  {sheetBtn(<FolderInput size={16} />, "Flyt til …", () => setPicking(shortcutItem(s)))}
+                  {sheetBtn(<Link size={16} />, "Kopiér adresse", () => void navigator.clipboard.writeText(s.url).then(() => p.setToast("Adressen er kopieret."), () => setError("Adressen kunne ikke kopieres")))}
+                  {sheetBtn(<Pencil size={16} />, "Ret …", () => setEditing({ s, from: shortcutItem(s).from }))}
+                  {sheetBtn(<Trash2 size={16} />, inFolder ? "Fjern fra mappen" : "Fjern fra alle mapper", () => removeShortcut(s), true)}
+                </>
+              );
+            })() : (
+              <>
+                {sheetBtn(<Settings2 size={16} />, "Egenskaber", () => setProps(acting.g.folderId!))}
+                {sheetBtn(<Copy size={16} />, "Kopiér mappe", () => cb.copy(folderItem(acting.g)))}
+                {sheetBtn(<Scissors size={16} />, "Klip mappe", () => cb.cut(folderItem(acting.g)))}
+                {sheetBtn(<FolderInput size={16} />, "Flyt til …", () => setPicking(folderItem(acting.g)))}
+                {cb.clip && sheetBtn(<ClipboardPaste size={16} />, `Indsæt i „${acting.g.label}“`, () => void cb.paste(acting.g.folderId!))}
+                {sheetBtn(<Trash2 size={16} />, "Slet mappe", () => deleteFolder(acting.g), true)}
+              </>
+            )}
+          </div>
+        </Sheet>
+      )}
+      {picking && (
+        <FolderPicker narrow state={state} title={`Flyt „${picking.label}“ til …`} current={picking.from}
+          exclude={picking.kind === "folder" ? descendantsOf(state, picking.id) : undefined}
+          onClose={() => setPicking(null)} onPick={(to) => { const it = picking; setPicking(null); void cb.transfer(it, to, false); }} />
+      )}
+      {props !== undefined && (
+        <FolderProperties narrow state={state} folderId={props} onClose={() => setProps(undefined)}
+          onSaved={async (text) => { setProps(undefined); p.setToast(text); await p.reload(); }} />
       )}
 
       {sheet && (
         <Sheet title="Visning og sortering" onClose={() => setSheet(false)}>
-          <ViewsSheet {...p} group={listing === "mapper" ? group : null} onClose={() => setSheet(false)}
-            onRename={(g) => setAsk({ title: "Omdøb mappe", label: "Navn", value: g.label, confirm: "Gem",
-              onSubmit: async (label) => { await mapperApi.renameFolder(g.folderId!, label); await p.reload(); } })}
+          <ViewsSheet {...p} group={listing === "mapper" ? group : null} atRoot={listing === "mapper" && loc === null} onClose={() => setSheet(false)}
+            onProps={(id) => setProps(id)} onFolderActions={(g) => setActing({ kind: "folder", g })}
             onDelete={deleteFolder} onNewShortcut={newShortcut} onAsk={setAsk} />
         </Sheet>
       )}
@@ -356,28 +435,9 @@ export function MapperNarrow(p: NarrowProps) {
   );
 }
 
-function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [onClose]);
-  return (
-    <div className="mpn-backdrop" role="presentation" onClick={onClose}>
-      <div className="mpn-sheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
-        <div className="mpn-head">
-          <div className="mpn-titles"><strong>{title}</strong></div>
-          <button className="mpn-ib" onClick={onClose} aria-label="Luk"><X size={20} /></button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function ViewsSheet(p: NarrowProps & {
-  group: Group | null; onClose: () => void; onRename: (g: Group) => void; onDelete: (g: Group) => void;
-  onNewShortcut: () => void; onAsk: (a: Ask) => void;
+  group: Group | null; atRoot: boolean; onClose: () => void; onProps: (id: number | null) => void; onFolderActions: (g: Group) => void;
+  onDelete: (g: Group) => void; onNewShortcut: () => void; onAsk: (a: Ask) => void;
 }) {
   const { spec, setSpec, views, viewId } = p;
   const [error, setError] = useState<string | null>(null);
@@ -449,10 +509,14 @@ function ViewsSheet(p: NarrowProps & {
         {p.group?.folderId !== undefined && p.group && (
           <>
             <span className="mp-sub">Mappen „{p.group.label}“</span>
-            <button className="btn btn-outline btn-block mpn-touch" onClick={() => { p.onClose(); p.onRename(p.group!); }}><Pencil size={15} /> Omdøb mappe</button>
+            <button className="btn btn-outline btn-block mpn-touch" onClick={() => { p.onClose(); p.onProps(p.group!.folderId!); }}><Settings2 size={15} /> Egenskaber</button>
+            <button className="btn btn-outline btn-block mpn-touch" onClick={() => { p.onClose(); p.onFolderActions(p.group!); }}><Copy size={15} /> Kopiér, klip eller flyt mappen …</button>
             <button className="btn btn-outline btn-block mpn-touch" onClick={() => { p.onClose(); p.onNewShortcut(); }}><Plus size={15} /> Ny genvej (adresse)</button>
             <button className="btn btn-danger btn-block mpn-touch" onClick={() => p.onDelete(p.group!)}><Trash2 size={15} /> Slet mappe</button>
           </>
+        )}
+        {p.atRoot && (
+          <button className="btn btn-outline btn-block mpn-touch" onClick={() => { p.onClose(); p.onProps(null); }}><Settings2 size={15} /> Egenskaber for Mapper</button>
         )}
         <button className="btn btn-ghost btn-block mpn-touch" onClick={() => { p.onClose(); p.onImport(); }}>Importér favoritter …</button>
       </div>

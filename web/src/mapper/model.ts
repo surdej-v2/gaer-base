@@ -3,7 +3,7 @@
 //   emner      the other tags the shortcuts have (shared dimensions, the rest of the private tree)
 //   websteder  domain → host, worked out from the addresses
 // plus recursive counts, search, sorting and the built-in views.
-import type { Column, Folder, MapperState, Shortcut, SortKey, ViewSpec } from "./api";
+import type { ChildSort, Column, Folder, MapperState, Shortcut, ShortcutSort, SortKey, ViewSpec } from "./api";
 
 export type Listing = "mapper" | "emner" | "websteder";
 export const LISTINGS: { id: Listing; label: string }[] = [
@@ -39,7 +39,9 @@ export type ListingTree = {
 
 const collator = new Intl.Collator("da", { sensitivity: "base", numeric: true });
 
-function build(listing: Listing, groups: Group[], direct: Map<string, Shortcut[]>, order?: (a: Group, b: Group) => number): ListingTree {
+type Order = (a: Group, b: Group) => number;
+
+function build(listing: Listing, groups: Group[], direct: Map<string, Shortcut[]>, orderFor?: (parent: string | null) => Order): ListingTree {
   const byKey = new Map(groups.map((g) => [g.key, g]));
   const kids = new Map<string | null, Group[]>();
   for (const g of groups) {
@@ -48,7 +50,7 @@ function build(listing: Listing, groups: Group[], direct: Map<string, Shortcut[]
     list.push(g);
     kids.set(parent, list);
   }
-  for (const list of kids.values()) list.sort(order ?? ((a, b) => collator.compare(a.label, b.label)));
+  for (const [parent, list] of kids) list.sort(orderFor?.(parent) ?? ((a, b) => collator.compare(a.label, b.label)));
   const totals = new Map<string, Set<number>>();
   const collect = (key: string): Set<number> => {
     const cached = totals.get(key);
@@ -91,13 +93,56 @@ export function mapperTree(state: MapperState): ListingTree {
     key: folderKey(f.id), label: f.label, parent: f.parent_id === null ? null : folderKey(f.parent_id), kind: "folder",
     folderId: f.id, pinned: f.pinned,
   }));
-  const order = new Map(state.folders.map((f) => [folderKey(f.id), f]));
+  const byKey = new Map(state.folders.map((f) => [folderKey(f.id), f]));
   const direct = new Map<string, Shortcut[]>();
   for (const s of state.shortcuts) for (const f of s.folders) push(direct, folderKey(f), s);
-  return build("mapper", groups, direct, (a, b) => {
-    const fa = order.get(a.key) as Folder, fb = order.get(b.key) as Folder;
-    return fa.sort_order - fb.sort_order || collator.compare(a.label, b.label);
-  });
+  // Each folder orders its subfolders by its own child_sort (Egenskaber); the top level by the root's.
+  return build("mapper", groups, direct, (parent) => childOrder(
+    parent === null ? state.root?.child_sort ?? null : byKey.get(parent)?.child_sort ?? null,
+    (g) => byKey.get(g.key) as Folder,
+  ));
+}
+
+/** Subfolder order: label (alphabetical, the default), sort_key (then label) or manual (sort_order). */
+export function childOrder(sort: ChildSort | null, folderOf: (g: Group) => Folder): Order {
+  return (a, b) => {
+    const fa = folderOf(a), fb = folderOf(b);
+    if (sort === "manual") return fa.sort_order - fb.sort_order || collator.compare(a.label, b.label);
+    if (sort === "sort_key") {
+      if (fa.sort_key && fb.sort_key) return collator.compare(fa.sort_key, fb.sort_key) || collator.compare(a.label, b.label);
+      if (fa.sort_key || fb.sort_key) return fa.sort_key ? -1 : 1;  // folders without a key last
+    }
+    return collator.compare(a.label, b.label);
+  };
+}
+
+/** Folders of the user's Mapper in tree order (for pickers), with their level. */
+export function folderList(state: MapperState): { folder: Folder; level: number }[] {
+  const tree = mapperTree(state);
+  const out: { folder: Folder; level: number }[] = [];
+  const byId = new Map(state.folders.map((f) => [f.id, f]));
+  const walk = (key: string | null, level: number) => {
+    for (const g of tree.children(key)) {
+      out.push({ folder: byId.get(g.folderId!)!, level });
+      walk(g.key, level + 1);
+    }
+  };
+  walk(null, 0);
+  return out;
+}
+
+/** The folder ids below a folder (to refuse moving a folder into itself). */
+export function descendantsOf(state: MapperState, id: number): Set<number> {
+  const out = new Set<number>([id]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const f of state.folders) if (f.parent_id !== null && out.has(f.parent_id) && !out.has(f.id)) {
+      out.add(f.id);
+      grew = true;
+    }
+  }
+  return out;
 }
 
 export function emnerTree(state: MapperState): ListingTree {
@@ -181,12 +226,31 @@ export function matches(s: Shortcut, q: string): boolean {
   return [s.title, s.url, ...s.tags.map((t) => t.label)].some((x) => x.toLocaleLowerCase("da").includes(needle));
 }
 
-export function sortShortcuts(list: Shortcut[], sort: SortKey, order: Map<number, number>): Shortcut[] {
+/** The position of a shortcut in a folder's manual order (null = not ordered). */
+export function positionIn(s: Shortcut, folder: number | null): number | null {
+  const i = s.folders.indexOf(folder);
+  return i < 0 ? null : s.positions?.[i] ?? null;
+}
+
+/** Sorts a list. "folder" (Mappens sortering) uses the folder's own shortcut sort; its "manual" is the positions from
+ * drag and drop, then the order added. Outside a folder (Alle genveje, Emner, Websteder, search) it is the order added. */
+export function sortShortcuts(list: Shortcut[], sort: SortKey, order: Map<number, number>,
+                              folder?: { id: number | null; sort: ShortcutSort | null } | null): Shortcut[] {
   const out = [...list];
-  if (sort === "name") out.sort((a, b) => collator.compare(a.title, b.title));
-  else if (sort === "site") out.sort((a, b) => collator.compare(bareHost(a.host), bareHost(b.host)) || collator.compare(a.title, b.title));
-  else if (sort === "added") out.sort((a, b) => b.added_at.localeCompare(a.added_at) || b.id - a.id);
-  else out.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+  const by: ShortcutSort = sort === "folder" ? folder?.sort ?? "manual" : sort;
+  if (by === "name") out.sort((a, b) => collator.compare(a.title, b.title));
+  else if (by === "site") out.sort((a, b) => collator.compare(bareHost(a.host), bareHost(b.host)) || collator.compare(a.title, b.title));
+  else if (by === "added") out.sort((a, b) => b.added_at.localeCompare(a.added_at) || b.id - a.id);
+  else if (folder) {
+    out.sort((a, b) => {
+      const pa = positionIn(a, folder.id), pb = positionIn(b, folder.id);
+      if (pa !== null && pb !== null && pa !== pb) return pa - pb;
+      if ((pa === null) !== (pb === null)) return pa === null ? 1 : -1;
+      // Not ordered yet: by when they were put in this folder.
+      const ta = a.placed?.[a.folders.indexOf(folder.id)] ?? "", tb = b.placed?.[b.folders.indexOf(folder.id)] ?? "";
+      return ta.localeCompare(tb) || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0);
+    });
+  } else out.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
   return out;
 }
 
@@ -236,15 +300,15 @@ export const COLUMNS: { id: Column; label: string }[] = [
 ];
 
 export const SORTS: { id: SortKey; label: string }[] = [
-  { id: "manual", label: "Egen rækkefølge" },
+  { id: "folder", label: "Mappens sortering" },
   { id: "name", label: "Navn" },
   { id: "site", label: "Websted" },
   { id: "added", label: "Senest tilføjet" },
 ];
 
 export const BUILTIN: { id: string; name: string; spec: ViewSpec }[] = [
-  { id: "b:standard", name: "Standard", spec: { layout: "list", sort: "manual", columns: ["site"], filter: "" } },
-  { id: "b:kort", name: "Kort", spec: { layout: "grid", sort: "manual", columns: ["site"], filter: "" } },
+  { id: "b:standard", name: "Standard", spec: { layout: "list", sort: "folder", columns: ["site"], filter: "" } },
+  { id: "b:kort", name: "Kort", spec: { layout: "grid", sort: "folder", columns: ["site"], filter: "" } },
   { id: "b:tabel", name: "Tabel", spec: { layout: "table", sort: "name", columns: ["site", "folder", "added"], filter: "" } },
   { id: "b:senest", name: "Senest tilføjet", spec: { layout: "list", sort: "added", columns: ["site", "added"], filter: "" } },
 ];
@@ -255,7 +319,9 @@ export function sameSpec(a: ViewSpec, b: ViewSpec): boolean {
 }
 
 export function normalizeSpec(spec: Partial<ViewSpec> | null | undefined): ViewSpec {
-  return { layout: spec?.layout ?? "list", sort: spec?.sort ?? "manual", columns: spec?.columns ?? [], filter: spec?.filter ?? "" };
+  // "manual" (Egen rækkefølge) was the name before folders had their own sort; it is Mappens sortering now.
+  const sort = (spec?.sort as string) === "manual" || !spec?.sort ? "folder" : spec.sort;
+  return { layout: spec?.layout ?? "list", sort, columns: spec?.columns ?? [], filter: spec?.filter ?? "" };
 }
 
 /** Per-viewer conveniences (chosen view, preview placement). Never required: storage may be blocked. */
@@ -275,3 +341,16 @@ export const local = {
     }
   },
 };
+
+export const SHORTCUT_SORTS: { id: ShortcutSort; label: string }[] = [
+  { id: "manual", label: "Manuel rækkefølge" },
+  { id: "name", label: "Navn" },
+  { id: "site", label: "Websted" },
+  { id: "added", label: "Senest tilføjet" },
+];
+
+export const CHILD_SORTS: { id: ChildSort; label: string }[] = [
+  { id: "label", label: "Navn alfabetisk" },
+  { id: "sort_key", label: "Sorteringsnøgle" },
+  { id: "manual", label: "Manuel" },
+];
