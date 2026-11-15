@@ -15,6 +15,7 @@ import AiUsage from "./pages/AiUsage";
 import Files from "./pages/Files";
 import Privacy from "./pages/Privacy";
 import McpConsent from "./pages/McpConsent";
+import FlowApproval from "./pages/FlowApproval";
 import { DelegatedArea, UserHome, UserSettings, UserSharing } from "./pages/UserArea";
 import UserMail, { UserMailById } from "./pages/Mail";
 import Approve from "./pages/Approve";
@@ -29,6 +30,7 @@ import { PipelineEditor, PipelineList, PipelineNew, PlansPage, RunPage, RunsPage
 import { ConnectionList, ConnectionPage } from "./developer/Connections";
 import { MultisourceList, MultisourcePage } from "./developer/Multisource";
 import { ApiList, ApiMonitorPage, ApiPage, ConsolePage, DocsPage, ExportPage, KeysPage } from "./developer/ApiStudie";
+import { FlowEditor, FlowList, FlowNew, FlowRunPage, FlowRunsPage } from "./developer/Actions";
 import { ClientsPage, McpOverview, MonitorPage, TestBench } from "./developer/McpStudie";
 import { CachePage, EndpointList, EndpointPage, Guide, OperationList, OperationPage } from "./developer/Datastudie";
 import StudioOverview from "./developer/StudioOverview";
@@ -165,6 +167,7 @@ export default function App() {
         <Route path="/samtaler/:id" element={<RequireUser><FeatureGate feature="samtaler"><Conversations /></FeatureGate></RequireUser>} />
         <Route path="/forbind" element={<RequireUser><McpConsent /></RequireUser>} />
         <Route path="/godkend" element={<RequireUser><Approve /></RequireUser>} />
+        <Route path="/flow-godkendelse/:token" element={<RequireUser><FlowApproval /></RequireUser>} />
         <Route path="/filer" element={<RequireUser><FeatureGate feature="filer"><Files /></FeatureGate></RequireUser>} />
         <Route path="/klip" element={<RequireUser><FeatureGate feature="klip"><ClipsPage /></FeatureGate></RequireUser>} />
         <Route path="/klip/:id" element={<RequireUser><FeatureGate feature="klip"><ClipsPage /></FeatureGate></RequireUser>} />
@@ -196,6 +199,11 @@ export default function App() {
           <Route path="api/dokumentation" element={<DocsPage />} />
           <Route path="api/drift" element={<ApiMonitorPage />} />
           <Route path="api/:id" element={<ApiPage />} />
+          <Route path="actions" element={<FlowList />} />
+          <Route path="actions/ny" element={<FlowNew />} />
+          <Route path="actions/koersler" element={<FlowRunsPage />} />
+          <Route path="actions/koersler/:id" element={<FlowRunPage />} />
+          <Route path="actions/:id" element={<FlowEditor />} />
           <Route path="forbindelser" element={<ConnectionList />} />
           <Route path="forbindelser/cache" element={<CachePage />} />
           <Route path="forbindelser/:id" element={<ConnectionPage />} />

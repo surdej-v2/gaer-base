@@ -22,7 +22,7 @@ ROLES: dict[str, dict] = {
     "produkt": {"label": "Produkt", "description": "Features og ringe, AI og AI-forbrug, analytics, heatmaps og adoptionsforløb."},
     "data": {"label": "Data", "description": "Datakatalog, Udforsk, API-kilder og MCP-værktøjer (hvem må bruge hvad), og udviklerportalen /developer (API Studio og MCP Studio)."},
     "privatliv": {"label": "Privatliv", "description": "GDPR-forespørgsler, samtykke, sletning af logdata, audit- og auth-log, godkendelse af adgang til fortrolige data og moderering af samtaler."},
-    "udvikler": {"label": "Udvikler", "description": "Gær Developer (/developer): opretter og retter kladder af datasæt, pipelines, operationer, multisource-kilder, MCP-endpoints og API'er. Udgivelse går gennem godkendelse."},
+    "udvikler": {"label": "Udvikler", "description": "Gær Developer (/developer): opretter og retter kladder af datasæt, pipelines, operationer, multisource-kilder, MCP-endpoints, API'er og flows. Udgivelse går gennem godkendelse."},
     "udvikler_admin": {"label": "Udvikler-admin", "description": "Som Udvikler, og desuden dataforbindelser, eksterne MCP-servere og rollen Udvikler til andre."},
     "drift": {"label": "Drift", "description": "Login-udbydere, mail, kalendere og kontakter, hemmeligheder, MCP-servere, udvidelse og Office, webhooks, jobs, NATS, ressourcer og indstillinger; levering af beskeder og deres kanaler."},
 }

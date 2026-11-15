@@ -327,6 +327,26 @@
         "developer-{x}"
       ]
     },
+    "/developer/actions": {
+      "title": "Flows",
+      "anchors": []
+    },
+    "/developer/actions/:id": {
+      "title": "Flow",
+      "anchors": []
+    },
+    "/developer/actions/koersler": {
+      "title": "Kørsler",
+      "anchors": []
+    },
+    "/developer/actions/koersler/:id": {
+      "title": "Kørsel",
+      "anchors": []
+    },
+    "/developer/actions/ny": {
+      "title": "Nyt flow",
+      "anchors": []
+    },
     "/developer/api": {
       "title": "API'er",
       "anchors": []
@@ -557,6 +577,10 @@
       "anchors": [
         "file-row-{x}"
       ]
+    },
+    "/flow-godkendelse/:token": {
+      "title": "Godkend i flow",
+      "anchors": []
     },
     "/forbind": {
       "title": "Forbind MCP-klient",

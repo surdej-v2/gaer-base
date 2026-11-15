@@ -130,6 +130,11 @@ REGISTRY: tuple[Integration, ...] = (
          Endpoint("GET", "/…metadata…", "SAML-metadata", "saml.py · fetch_metadata()", r"(?i)metadata")),
         link="/login-providers"),
     Integration(
+        "flows", "Action-studie", "HTTP-kald fra flows (handlingen »HTTP-kald«). Adresserne er flowenes egne; auth kommer fra en "
+        "API-kilde, og adresser uden kilde går gennem SSRF-vagten.", ("server/app/devkit/flow_runs.py",),
+        lambda: "flowenes egne adresser", (), lambda: True,
+        (Endpoint(None, "/…", "HTTP-kald fra et flow", "flow_runs.py · act_http()", r".*"),)),
+    Integration(
         "s3", "Object Storage (S3)", "Filer, avatarer og uploads. Kaldes med boto3, så kald tælles ikke endnu.",
         ("server/app/storage.py", "server/app/uploads.py"), lambda: _s().s3_endpoint, ("S3_ACCESS_KEY", "S3_SECRET_KEY"),
         lambda: _s().storage_backend == "s3", (), link="/files", counted=False, settings=("S3_ENDPOINT", "S3_BUCKET")),

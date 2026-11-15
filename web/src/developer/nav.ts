@@ -1,7 +1,7 @@
 // The navigation of Gær Developer (specs/developer/NAVIGATION.md, NAV-1 … NAV-3): one sidebar with a global level
 // (Studier, Fælles) and local pages under the active item. Items are routes in web/src/routes.json.
 import {
-  ArrowLeftRight, BookOpen, Cable, CircleCheck, Code, Database, FileText, LayoutGrid, Plug, Workflow, type LucideIcon,
+  ArrowLeftRight, BookOpen, Cable, CircleCheck, Code, Database, FileText, LayoutGrid, Plug, Workflow, Zap, type LucideIcon,
 } from "lucide-react";
 
 export type LocalPage = { path: string; label: string; end?: boolean };
@@ -38,6 +38,10 @@ export const NAV: NavGroup[] = [
         { path: "/developer/api/konsol", label: "Testkonsol" },
         { path: "/developer/api/dokumentation", label: "Dokumentation" },
         { path: "/developer/api/drift", label: "Overvågning" },
+      ] },
+      { key: "actions", path: "/developer/actions", label: "Action-studie", icon: Zap, local: [
+        { path: "/developer/actions", label: "Flows", end: true },
+        { path: "/developer/actions/koersler", label: "Kørsler" },
       ] },
     ],
   },
@@ -127,6 +131,7 @@ export function staticCommands(): Command[] {
     for (const l of item.local) if (l.path !== item.path) out.push({ label: `${item.label} · ${l.label}`, hint: "Side", path: l.path });
   }
   out.push({ label: "Ny pipeline", hint: "Handling", path: "/developer/pipeline/ny", keywords: "opret pipeline" });
+  out.push({ label: "Nyt flow i Action-studie", hint: "Handling", path: "/developer/actions/ny", keywords: "opret flow workflow automatisering udløser" });
   out.push({ label: "Nyt endpoint i Datastudie", hint: "Handling", path: "/developer/datastudie/ny", keywords: "opret mcp endpoint guide" });
   out.push({ label: "Ny forbindelse", hint: "Handling", path: "/developer/forbindelser?ny=1", keywords: "opret database" });
   out.push({ label: "Til Gær base", hint: "Handling", path: "/", keywords: "tilbage app" });

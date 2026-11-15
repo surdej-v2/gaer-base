@@ -152,6 +152,8 @@ CLEANUP_SQL = {
     "review_orphans": """delete from review_sessions s where ended_at < now() - make_interval(days => %s)
                          and jsonb_array_length(pages) = 0
                          and not exists (select 1 from review_feedback r where r.session_id = s.id)""",
+    "dev_flow_runs": """delete from dev_flow_runs where status in ('succeeded', 'failed', 'cancelled')
+                        and finished_at < now() - make_interval(days => %s)""",
 }
 
 

@@ -1,6 +1,6 @@
 # Gær Developer
 
-`/developer` — the developer area of Gær base with four studios (Datastudie, Pipeline, MCP-studie, API-studie) on
+`/developer` — the developer area of Gær base with five studios (Datastudie, Pipeline, MCP-studie, API-studie, Action-studie) on
 one shared core: artifacts with owners and versions, the data catalog, masking, secrets, jobs and one runtime that
 MCP and the API both use. The full requirements are the PDF "Gær Developer – samlet specifikation" (requirement ids
 F-, DS-, PL-, MCP-, API-, NAV-). This folder records how they were built in this repo and every decision taken on
@@ -13,6 +13,7 @@ the way. The repo's own rules win over the spec's technology choices (raw SQL, p
 | `NAVIGATION.md` | the sidebar, top bar and command palette (NAV-1 … NAV-13) |
 | `DATA.md` | connections, FDW, snapshots in `gaer_analytics`/`snapshots`, the ingest status table, pipelines |
 | `RUNTIME.md` | operations, masking, cache, rate limits, idempotency, multisource, MCP and API on the same operation |
+| `ACTIONS.md` | Action-studie: flows as a workflow engine — triggers, steps, expressions, the resumable runs, approvals |
 
 ## Status
 
@@ -24,6 +25,7 @@ the way. The repo's own rules win over the spec's technology choices (raw SQL, p
 | 4 MCP-studie | built | MCP-1, MCP-2, MCP-7, MCP-9 … MCP-15 | MCP-8 (external MCP servers) not built |
 | 5 Live-kilder | built for app access | DS-10 … DS-17, F-11 (REST/Graph app access) | Delegated access (F-13 … F-16, delegated parts of F-18, F-19, DS-17) is the separate "Login-udbydere" work: extension point only |
 | 6 API og flytbarhed | built | API-1 … API-12, F-22 … F-24 | Not built: code operations (PUT/PATCH/DELETE answer 405), saving console calls as test cases, exporting secret values encrypted to the receiver |
+| 7 Action-studie | built | — (own spec: `ACTIONS.md`) | flows as artifacts; triggers manual, schedule, webhook, event, pipeline; 14 actions; approvals by people; runs that resume |
 
 ### Extension points left for "Login-udbydere" (delegated OAuth)
 
@@ -64,7 +66,8 @@ the way. The repo's own rules win over the spec's technology choices (raw SQL, p
 | `server/app/devkit/mcp_studio.py`, `routes/developer_mcp.py` | phase 4 (MCP.md) |
 | `server/app/devkit/multisource.py` | phase 5 (RUNTIME.md) |
 | `server/app/devkit/apis.py`, `portability.py`, `routes/developer_api.py`, `routes/gaer_api.py` | phase 6 (API.md) |
-| `server/app/migrations/0032` … `0036` | the schema, one migration per phase (0035 is MCP-studie, 0036 API and export) |
+| `server/app/devkit/expr.py`, `flows.py`, `flow_runs.py`, `routes/developer_flows.py`, `web/src/developer/Actions.tsx`, `web/src/pages/FlowApproval.tsx` | phase 7 (ACTIONS.md) |
+| `server/app/migrations/0032` … `0038` | the schema, one migration per phase (0035 is MCP-studie, 0036 API and export, 0038 Action-studie) |
 | `server/tests/test_developer_*.py` | the tests per phase |
 
 ## Decisions (phase 1)

@@ -224,6 +224,13 @@ async def build_user_export(conn, user_id: int) -> dict:
                                  user_id),
         "ai_budget_alerts": await rows("""select month, kind, pct, used, limit_tokens, created_at, mailed_at from ai_budget_alerts
                                           where user_id = %s order by created_at""", user_id),
+        # Action-studie: approvals they were asked for in a flow, and how they answered (never the flow's data).
+        "flow_approvals": await rows("""select ap.title, ap.status, ap.created_at, ap.decided_at, ap.expires_at,
+                                               coalesce(ap.decided_by = %s, false) as decided_by_me, ap.comment, a.name as flow
+                                        from dev_flow_approvals ap join dev_flow_runs r on r.id = ap.run_id
+                                        join dev_artifacts a on a.id = r.artifact_id
+                                        where %s = any(ap.approvers) or ap.decided_by = %s order by ap.created_at""",
+                                     user_id, user_id, user_id),
         "analytics_events": await rows("""select ts, kind, path, referrer, device, browser from analytics_events
                                           where user_id = %s or visitor_id = any(%s) order by ts limit 50000""",
                                        user_id, visitor_ids),
@@ -336,6 +343,9 @@ async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, r
                               (select conversation_id from conversation_members where user_id = %s)""", (user_id,))
         await conn.execute("""delete from conversation_messages x using conversations c
                               where c.id = x.conversation_id and c.kind = 'instance' and x.author_id = %s""", (user_id,))
+        # Action-studie: they are taken off the approver lists of waiting flow approvals (decisions keep decided_by = null).
+        await conn.execute("update dev_flow_approvals set approvers = array_remove(approvers, %s) where %s = any(approvers)",
+                           (user_id, user_id))
         await conn.execute("delete from users where id = %s", (user_id,))
         await meta_tree.delete_orphan_objects(conn)  # objects tagged only in their private tree
         await audit(conn, "gdpr.erasure", actor_id=actor_id if actor_id != user_id else None, meta=meta,

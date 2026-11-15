@@ -36,6 +36,7 @@ import secrets
 import socket
 import time
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
@@ -95,7 +96,13 @@ EVENTS: dict[str, str] = {
     "snapshot.updated": "Et snapshot fra en pipeline er genopfrisket (pipeline-id, datasæt-id, kørsel-id, rækker)",
     "pipeline.run.failed": "En pipelinekørsel fejlede; det sidste gode snapshot bevares (pipeline-id, kørsel-id)",
     "developer.review.required": "Et artefakt kræver review, fordi noget det bruger har fået en major (artefakt-id, årsag-id, review-id)",
+    "flow.event": "Et flow i Action-studie udsendte en hændelse med handlingen »Udsend hændelse« (flow-id, kørsel-id, navn, data)",
+    "flow.run.failed": "En kørsel af et flow i Action-studie fejlede (flow-id, kørsel-id)",
 }
+
+# Code that wants to act on every event in the same transaction as the change (flows: a trigger on an event):
+# fn(conn, event, data). A listener must never raise.
+LISTENERS: list[Callable[[object, str, dict], Awaitable[None]]] = []
 
 # Tests replace this with an httpx.MockTransport.
 transport: httpx.AsyncBaseTransport | None = None
@@ -171,6 +178,8 @@ async def emit(conn, event: str, data: dict) -> int:
         if _matches(h["events"], event):
             await _queue(conn, h, event, data)
             n += 1
+    for listener in LISTENERS:
+        await listener(conn, event, data)
     return n
 
 

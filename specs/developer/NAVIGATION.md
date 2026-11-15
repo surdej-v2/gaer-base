@@ -10,7 +10,7 @@ apps share no code (`appBoundary()` in `web/vite.config.ts`), so it is a copy of
 | Req | How |
 | --- | --- |
 | NAV-1 | One sidebar, two levels: the global items (`nav.ts` → `NAV`) and the active item's local pages, unfolded under it |
-| NAV-2 | Studier: Oversigt, Datastudie, Pipeline, MCP-studie, API-studie. Fælles: Datakatalog, Forbindelser, Godkendelser, Eksport og import. Hemmeligheder is added when the Secrets studio exists |
+| NAV-2 | Studier: Oversigt, Datastudie, Pipeline, MCP-studie, API-studie, Action-studie (Flows, Kørsler). Fælles: Datakatalog, Forbindelser, Godkendelser, Eksport og import. Hemmeligheder is added when the Secrets studio exists |
 | NAV-3 | Local pages per item as in the spec's table. MCP-studie → Endpoints is the existing MCP Studio (`/developer/studio/mcp`), Forbindelser → Live-kilder the existing API Studio (`/developer/studio/api`); the classic Studio, the prompt catalogue and the tree examples sit under Hjælp |
 | NAV-4 | Top: "Gær Developer", collapse button, search (⌘K / Ctrl+K). Bottom: Hjælp, Til Gær base. The top bar shows a breadcrumb (`breadcrumb()`; pages add the last part with `useCrumb`) |
 | NAV-5 | A handle on the right edge changes the width between 64 and 320 px; under 180 px the texts go and the bar jumps to 64 px |
