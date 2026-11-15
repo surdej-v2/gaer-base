@@ -63,6 +63,23 @@ const handlers = {
     return true;
   },
   OPEN_OPTIONS: async () => chrome.runtime.openOptionsPage(),
+  // Mapper's import of favourites. "bookmarks" is an optional permission: asked for here, while the click in the
+  // iframe still counts as a user gesture (activation reaches the panel, the frame's parent). If the browser refuses
+  // to ask from here, the options page has a button that does.
+  GET_BOOKMARKS: async () => {
+    const wanted = { permissions: ["bookmarks"] };
+    let granted = await chrome.permissions.contains(wanted);
+    if (!granted) {
+      try {
+        granted = await chrome.permissions.request(wanted);
+      } catch {
+        throw new Error("Giv udvidelsen adgang til bogmærker under Indstillinger for udvidelsen, og prøv igen");
+      }
+    }
+    if (!granted) throw new Error("Du gav ikke udvidelsen adgang til dine bogmærker");
+    const trim = (n) => ({ id: n.id, title: n.title, url: n.url, folderType: n.folderType, children: n.children?.map(trim) });
+    return (await chrome.bookmarks.getTree()).map(trim);
+  },
 };
 
 window.addEventListener("message", async (event) => {

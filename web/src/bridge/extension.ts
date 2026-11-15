@@ -5,6 +5,7 @@ const NS = "gaer-bridge";
 const TIMEOUT_MS = 10_000;
 
 export type PageInfo = { url: string; title: string; readable: boolean };
+export type BookmarkNode = { id: string; title: string; url?: string; folderType?: string; children?: BookmarkNode[] };
 export type PageSnapshot = { url: string; title: string; description: string; headings: string[]; selection: string; text: string };
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: number };
@@ -59,6 +60,9 @@ export const extension = {
   selection: () => request<string>("GET_SELECTION"),
   openUrl: (url: string) => request<boolean>("OPEN_URL", { url }),
   openOptions: () => request<void>("OPEN_OPTIONS"),
+  /** The browser's favourites (Mapper's import). The panel asks for the optional "bookmarks" permission the first
+   * time; the user may say no. Long timeout: the browser's permission prompt waits for the user. */
+  bookmarks: () => request<BookmarkNode[]>("GET_BOOKMARKS", undefined, 120_000),
   onTabChanged(fn: (info: PageInfo) => void) {
     tabListeners.add(fn);
     return () => void tabListeners.delete(fn);
