@@ -12,6 +12,12 @@ On top of that, migration 0040 keeps what is the user's alone: their title for a
 (mapper_titles), pinned folders (mapper_pins) and saved views (mapper_views). Every change is audited in the same
 transaction, through meta's own functions where they exist.
 
+Folder properties (migration 0041): the name, an English label (meta labels.en), a sort key, how subfolders are ordered
+(meta child_sort: label = default, sort_key, manual = sort_order), and in mapper_folder_settings how the folder's
+shortcuts are sorted (manual uses meta_assignments.sort_order) and the layout it opens in. Copy and move: a shortcut is
+moved by retagging it from one folder to another and copied by adding a tag; a folder is moved with meta's path rewrite
+and copied by cloning its subtree with the tags, in one transaction.
+
 Preview: frame_check() fetches only the response headers of a page (through the SSRF guard in app.webhooks, no
 redirects to private addresses) and tells whether a browser would let the side panel show it in a frame.
 """
@@ -47,7 +53,12 @@ def root_path(user_id: int) -> str:
 def _small(row: dict, user_id: int) -> dict:
     """The fields Mapper needs of a node, from meta.node() or meta.create_node()."""
     return {"id": row["id"], "path": row["path"], "depth": row["depth"], "label": row["label"],
-            "parent_id": row["parent_id"], "sort_order": row["sort_order"], "owner_id": user_id}
+            "parent_id": row["parent_id"], "sort_order": row["sort_order"], "owner_id": user_id,
+            "labels": row.get("labels") or {}, "sort_key": row.get("sort_key"), "child_sort": row.get("child_sort")}
+
+
+SHORTCUT_SORTS = ("manual", "name", "site", "added")
+LAYOUTS = ("list", "grid", "table")
 
 
 # ── Root and folders ───────────────────────────────────────────────────────
@@ -94,12 +105,57 @@ async def create_folder(conn, p: Principal, parent_id: int | None, label: str) -
     return folder_out(made, base, pinned=False)
 
 
+async def _settings(conn, node_id: int) -> dict:
+    row = await db.fetch_one(conn, "select shortcut_sort, layout from mapper_folder_settings where node_id = %s", (node_id,))
+    return row or {"shortcut_sort": None, "layout": None}
+
+
+async def _set_settings(conn, p: Principal, node_id: int, changes: dict) -> None:
+    """shortcut_sort and layout of one folder (or the root); null/"" = the default."""
+    cur = await _settings(conn, node_id)
+    new = dict(cur)
+    for key, allowed in (("shortcut_sort", SHORTCUT_SORTS), ("layout", LAYOUTS)):
+        if key in changes:
+            value = changes[key] or None
+            if value not in (None, *allowed):
+                raise HTTPException(400, "Ugyldig værdi")
+            new[key] = value
+    before, after = changed(cur, new)
+    if not after:
+        return
+    await conn.execute("""insert into mapper_folder_settings (node_id, user_id, shortcut_sort, layout) values (%s, %s, %s, %s)
+        on conflict (node_id) do update set shortcut_sort = excluded.shortcut_sort, layout = excluded.layout, updated_at = now()""",
+                       (node_id, p.user_id, new["shortcut_sort"], new["layout"]))
+    await audit(conn, "update", actor_id=p.user_id, meta=p.meta, table="mapper_folder_settings", row_id=node_id,
+                before=before, after=after)
+
+
+def _inside(node: dict, target: dict) -> bool:
+    """True when target is node itself or lies below it."""
+    return target["path"] == node["path"] or target["path"].startswith(node["path"] + "/")
+
+
 async def update_folder(conn, p: Principal, node_id: int, changes: dict) -> dict:
+    """Name, English label, sort key, subfolder order (child_sort), parent (move), and Mapper's own shortcut sort and
+    layout. The root takes only the orderings and the layout."""
     base = await root(conn, p)
     if base is None:
         raise HTTPException(404, "Mappen findes ikke")
-    cur = await folder(conn, p, node_id, base, allow_root=False)
+    is_root = node_id == base["id"]
+    if is_root and any(k in changes for k in ("label", "en_label", "sort_key", "parent_id")):
+        raise HTTPException(400, "Roden kan ikke omdøbes eller flyttes")
+    cur = await folder(conn, p, node_id, base)
     patch: dict = {}
+    if "en_label" in changes:
+        labels = dict(cur["labels"])
+        if (changes["en_label"] or "").strip():
+            labels["en"] = changes["en_label"]
+        else:
+            labels.pop("en", None)
+        patch["labels"] = labels
+    for key in ("sort_key", "child_sort"):
+        if key in changes:
+            patch[key] = changes[key]
     if changes.get("label"):
         patch["label"] = changes["label"]
         slug = meta.slugify(changes["label"])
@@ -107,14 +163,118 @@ async def update_folder(conn, p: Principal, node_id: int, changes: dict) -> dict
             patch["slug"] = slug  # the path follows the name, so a new folder may use the old one
     if "parent_id" in changes:
         target = await folder(conn, p, changes["parent_id"], base)
+        if _inside(cur, target):
+            raise HTTPException(400, "En mappe kan ikke flyttes ind i sig selv eller en af sine undermapper")
         patch["parent_id"] = target["id"]
     if "sort_order" in changes and changes["sort_order"] is not None:
         patch["sort_order"] = changes["sort_order"]
-    if patch.get("parent_id") == cur["parent_id"]:
+    if "parent_id" in patch and patch["parent_id"] == cur["parent_id"]:
         patch.pop("parent_id")
-    updated = await meta.update_node(conn, p, cur["id"], patch, admin=False)
+    if patch:
+        await meta.update_node(conn, p, cur["id"], patch, admin=False)
+    await _set_settings(conn, p, node_id, changes)
+    updated = await meta.node(conn, node_id, p)
     pinned = await db.fetch_one(conn, "select 1 as x from mapper_pins where user_id = %s and node_id = %s", (p.user_id, node_id))
-    return folder_out(updated, base, pinned=pinned is not None)
+    return folder_out(updated, base, pinned=pinned is not None, settings=await _settings(conn, node_id))
+
+
+async def order_children(conn, p: Principal, node_id: int, ids: list[int]) -> dict:
+    """Manual order of a folder's subfolders (or the top level): sort_order = position, child_sort = manual."""
+    base = await root(conn, p)
+    if base is None:
+        raise HTTPException(404, "Mappen findes ikke")
+    parent = await folder(conn, p, node_id, base)
+    kids = await db.fetch_all(conn, """select id, sort_order from meta_nodes where parent_id = %s and owner_id = %s
+                                       and archived_at is null for update""", (parent["id"], p.user_id))
+    known = {k["id"]: k["sort_order"] for k in kids}
+    if len(set(ids)) != len(ids) or not set(ids) <= set(known):
+        raise HTTPException(400, "Rækkefølgen skal være mappens egne undermapper")
+    order = list(ids) + sorted((i for i in known if i not in ids), key=lambda i: known[i])
+    for pos, child in enumerate(order):
+        if known[child] != pos:
+            await conn.execute("update meta_nodes set sort_order = %s, updated_by = %s, updated_at = now() where id = %s",
+                               (pos, p.user_id, child))
+    if parent["child_sort"] != "manual":
+        await meta.update_node(conn, p, parent["id"], {"child_sort": "manual"}, admin=False)
+    await audit(conn, "mapper.reorder", actor_id=p.user_id, meta=p.meta, table="meta_nodes", row_id=parent["id"],
+                kind="folders", order=order)
+    return {"id": parent["id"], "order": order}
+
+
+async def order_shortcuts(conn, p: Principal, node_id: int, ids: list[int]) -> dict:
+    """Manual order of the shortcuts in a folder (meta_assignments.sort_order); the folder's shortcut sort becomes manual."""
+    base = await root(conn, p)
+    if base is None:
+        raise HTTPException(404, "Mappen findes ikke")
+    node = await folder(conn, p, node_id, base)
+    have = {r["object_id"] for r in await db.fetch_all(conn, "select object_id from meta_assignments where node_id = %s for update",
+                                                       (node["id"],))}
+    if len(set(ids)) != len(ids) or not set(ids) <= have:
+        raise HTTPException(400, "Rækkefølgen skal være genveje i mappen")
+    for pos, object_id in enumerate(ids):
+        await conn.execute("update meta_assignments set sort_order = %s where node_id = %s and object_id = %s",
+                           (pos, node["id"], object_id))
+    await conn.execute("update meta_assignments set sort_order = null where node_id = %s and not (object_id = any(%s))",
+                       (node["id"], ids))
+    await _set_settings(conn, p, node["id"], {"shortcut_sort": "manual"})
+    await audit(conn, "mapper.reorder", actor_id=p.user_id, meta=p.meta, table="meta_nodes", row_id=node["id"],
+                kind="shortcuts", order=ids)
+    return {"id": node["id"], "order": ids}
+
+
+async def _free_slug(conn, parent: dict, slug: str) -> str:
+    candidate, n = slug, 1
+    while await _children_slug_taken(conn, parent, candidate):
+        n += 1
+        candidate = f"{slug[:meta.MAX_SLUG - 4]}-{n}"
+    return candidate
+
+
+async def copy_folder(conn, p: Principal, node_id: int, to_id: int | None) -> dict:
+    """Clones the folder with its subfolders, properties and shortcuts (tags) under to_id (None = the top level), in
+    this transaction. The copy is called "<name> (kopi)"."""
+    base = await root(conn, p)
+    if base is None:
+        raise HTTPException(404, "Mappen findes ikke")
+    src = await folder(conn, p, node_id, base, allow_root=False)
+    dst = await folder(conn, p, to_id, base)
+    if _inside(src, dst):
+        raise HTTPException(400, "En mappe kan ikke kopieres ind i sig selv eller en af sine undermapper")
+    rows = await db.fetch_all(conn, f"""select {meta.NODE_COLUMNS} from meta_nodes n
+        where n.owner_id = %(me)s and (n.id = %(id)s or n.path like %(prefix)s) and n.archived_at is null
+        order by n.depth, {meta.CHILD_ORDER}""", {"me": p.user_id, "id": src["id"], "prefix": meta.like_prefix(src["path"])})
+    if max(r["depth"] for r in rows) - src["depth"] + dst["depth"] + 1 > meta.MAX_DEPTH:
+        raise HTTPException(400, f"Kopien ville blive dybere end {meta.MAX_DEPTH} niveauer")
+    made: dict[int, dict] = {}
+    for r in rows:
+        if r["id"] != src["id"] and r["parent_id"] not in made:
+            continue  # below an archived folder
+        parent = dst if r["id"] == src["id"] else made[r["parent_id"]]
+        label = f"{r['label']} (kopi)"[:MAX_LABEL] if r["id"] == src["id"] else r["label"]
+        slug = await _free_slug(conn, parent, meta.slugify(label) or "mappe")
+        node = await meta.create_node(conn, p, dim_slug=meta.PRIVATE, parent_id=parent["id"], label=label, slug=slug,
+                                      description=r["description"])
+        await conn.execute("""update meta_nodes set labels = %s, sort_key = %s, child_sort = %s, sort_order = %s where id = %s""",
+                           (Jsonb(r["labels"] or {}), r["sort_key"], r["child_sort"],
+                            node["sort_order"] if r["id"] == src["id"] else r["sort_order"], node["id"]))
+        await conn.execute("""insert into mapper_folder_settings (node_id, user_id, shortcut_sort, layout)
+            select %s, user_id, shortcut_sort, layout from mapper_folder_settings where node_id = %s""", (node["id"], r["id"]))
+        made[r["id"]] = _small(node, p.user_id)
+    tags = await db.fetch_all(conn, """select object_id, node_id, sort_order from meta_assignments
+                                       where node_id = any(%s) order by object_id""", (list(made),))
+    per_object: dict[int, list[int]] = {}
+    for t in tags:
+        new_id = made[t["node_id"]]["id"]
+        await conn.execute("""insert into meta_assignments (object_id, node_id, created_by, sort_order) values (%s, %s, %s, %s)
+                              on conflict do nothing""", (t["object_id"], new_id, p.user_id, t["sort_order"]))
+        per_object.setdefault(t["object_id"], []).append(new_id)
+    for object_id, nodes in per_object.items():
+        await audit(conn, "update", actor_id=p.user_id, meta=p.meta, table="meta_objects", row_id=object_id,
+                    tagged=nodes, untagged=[], via="mapper.copy")
+    top = made[src["id"]]
+    await audit(conn, "mapper.copy", actor_id=p.user_id, meta=p.meta, table="meta_nodes", row_id=top["id"],
+                source=src["id"], folders=len(made), shortcuts=len(tags))
+    return {"id": top["id"], "label": top["label"], "folders": len(made), "shortcuts": len(tags)}
 
 
 async def delete_folder(conn, p: Principal, node_id: int, *, force: bool) -> dict:
@@ -143,9 +303,12 @@ async def set_pin(conn, p: Principal, node_id: int, pinned: bool) -> dict:
     return {"id": node_id, "pinned": pinned}
 
 
-def folder_out(row: dict, base: dict, *, pinned: bool) -> dict:
+def folder_out(row: dict, base: dict, *, pinned: bool, settings: dict | None = None) -> dict:
+    settings = settings or {}
     return {"id": row["id"], "parent_id": None if row["parent_id"] == base["id"] else row["parent_id"],
-            "label": row["label"], "depth": row["depth"] - base["depth"], "sort_order": row["sort_order"], "pinned": pinned}
+            "label": row["label"], "depth": row["depth"] - base["depth"], "sort_order": row["sort_order"], "pinned": pinned,
+            "en_label": (row.get("labels") or {}).get("en"), "sort_key": row.get("sort_key"), "child_sort": row.get("child_sort"),
+            "shortcut_sort": settings.get("shortcut_sort"), "layout": settings.get("layout")}
 
 
 # ── Reading everything ─────────────────────────────────────────────────────
@@ -158,7 +321,9 @@ async def _shortcut_rows(conn, p: Principal, base: dict, object_ids: list[int] |
     only = "and o.id = any(%(ids)s)" if object_ids is not None else ""
     return await db.fetch_all(conn, f"""
         select o.id, o.ref, coalesce(t.title, o.title) as title, o.created_by, o.updated_at,
-               array_agg(a.node_id order by a.created_at, a.node_id) as folders, min(a.created_at) as added_at
+               array_agg(a.node_id order by a.created_at, a.node_id) as folders,
+               array_agg(a.sort_order order by a.created_at, a.node_id) as positions,
+               array_agg(a.created_at order by a.created_at, a.node_id) as placed, min(a.created_at) as added_at
         from meta_assignments a
         join meta_nodes n on n.id = a.node_id
         join meta_objects o on o.id = a.object_id
@@ -178,6 +343,8 @@ async def _shortcuts_out(conn, p: Principal, base: dict, rows: list[dict]) -> li
         out.append({
             "id": r["id"], "url": r["ref"], "title": r["title"], "host": host_of(r["ref"]),
             "folders": [None if f == base["id"] else f for f in r["folders"]],
+            "positions": r["positions"],  # the manual order in each of those folders (null: not ordered yet)
+            "placed": r["placed"],        # when it was put in each of those folders
             "added_at": r["added_at"], "mine": r["created_by"] == p.user_id,
             # Emner: every other tag the user can see (shared dimensions and the rest of their private tree).
             "tags": [{k: n[k] for k in ("id", "label", "dimension", "dimension_label", "color", "trail", "private", "parent_id")}
@@ -191,15 +358,17 @@ async def state(conn, p: Principal) -> dict:
     base = await root(conn, p)
     if base is None:
         return {"root": None, "folders": [], "shortcuts": [], "truncated": False}
-    rows = await db.fetch_all(conn, f"""select {meta.NODE_COLUMNS}, (pin.node_id is not null) as pinned
+    rows = await db.fetch_all(conn, f"""select {meta.NODE_COLUMNS}, (pin.node_id is not null) as pinned,
+               fs.shortcut_sort, fs.layout
         from meta_nodes n left join mapper_pins pin on pin.node_id = n.id and pin.user_id = %(me)s
+        left join mapper_folder_settings fs on fs.node_id = n.id
         where n.owner_id = %(me)s and n.path like %(prefix)s and n.archived_at is null
         order by n.depth, {meta.CHILD_ORDER} limit %(limit)s""",
         {"me": p.user_id, "prefix": meta.like_prefix(base["path"]), "limit": MAX_FOLDERS})
     shortcuts = await _shortcut_rows(conn, p, base)
     truncated = len(shortcuts) > MAX_SHORTCUTS
-    return {"root": {"id": base["id"], "label": base["label"]},
-            "folders": [folder_out(r, base, pinned=r["pinned"]) for r in rows],
+    return {"root": {"id": base["id"], "label": base["label"], "child_sort": base["child_sort"]} | await _settings(conn, base["id"]),
+            "folders": [folder_out(r, base, pinned=r["pinned"], settings=r) for r in rows],
             "shortcuts": await _shortcuts_out(conn, p, base, shortcuts[:MAX_SHORTCUTS]),
             "truncated": truncated or len(rows) >= MAX_FOLDERS}
 
@@ -307,6 +476,19 @@ async def update_shortcut(conn, p: Principal, object_id: int, *, title: str | No
             raise HTTPException(404, "Genvejen ligger ikke i den mappe")
         if src["id"] != dst["id"]:
             await meta_objects.apply_tags(conn, p, object_id, [] if dst["id"] in placed else [dst], [src["id"]])
+    return await shortcut(conn, p, base, object_id)
+
+
+async def copy_shortcut(conn, p: Principal, object_id: int, to_id: int | None) -> dict:
+    """The shortcut into one more folder: one more tag on the same object."""
+    base = await root(conn, p)
+    if base is None:
+        raise HTTPException(404, "Genvejen findes ikke")
+    placed = await _in_mapper(conn, p, base, object_id)
+    dst = await folder(conn, p, to_id, base)
+    if dst["id"] in placed:
+        raise HTTPException(409, f"Genvejen ligger allerede i „{dst['label']}“")
+    await meta_objects.apply_tags(conn, p, object_id, [dst], [])
     return await shortcut(conn, p, base, object_id)
 
 

@@ -177,8 +177,8 @@ async def build_user_export(conn, user_id: int) -> dict:
         "mail_events": await rows("""select e.type, e.message_id, e.from_address, e.recipient_domain, e.count, e.at
                                      from mail_events e join mailboxes m on m.id = e.mailbox_id
                                      where m.owner_id = %s order by e.at limit 50000""", user_id),
-        "meta_private_nodes": await rows("""select id, path, label, description, archived_at, created_at, updated_at
-                                            from meta_nodes where owner_id = %s order by path""", user_id),
+        "meta_private_nodes": await rows("""select id, path, label, labels, description, sort_key, child_sort, archived_at,
+                                            created_at, updated_at from meta_nodes where owner_id = %s order by path""", user_id),
         "meta_objects_created": await rows("""select id, kind, ref, title, description, created_at from meta_objects
                                               where created_by = %s order by id""", user_id),
         "meta_tags_set": await rows("""select a.object_id, n.path, a.created_at from meta_assignments a
@@ -189,6 +189,9 @@ async def build_user_export(conn, user_id: int) -> dict:
                                        join meta_objects o on o.id = t.object_id where t.user_id = %s order by t.object_id""", user_id),
         "mapper_pins": await rows("""select p.node_id, n.path, p.created_at from mapper_pins p join meta_nodes n on n.id = p.node_id
                                      where p.user_id = %s order by p.created_at""", user_id),
+        "mapper_folder_settings": await rows("""select s.node_id, n.path, s.shortcut_sort, s.layout, s.updated_at
+                                                from mapper_folder_settings s join meta_nodes n on n.id = s.node_id
+                                                where s.user_id = %s order by n.path""", user_id),
         "mapper_views": await rows("""select id, name, shared, spec, created_at, updated_at from mapper_views
                                       where owner_id = %s order by id""", user_id),
         "bridge_consents": await rows("select domain, created_at from bridge_consents where user_id = %s order by domain",

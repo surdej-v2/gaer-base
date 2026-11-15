@@ -13,12 +13,17 @@ Who may create where (can_create):
     deeper            every logged-in user
 Visibility: a node is shared (owner_id is null) or the caller's own. Archived nodes are left out of pickers but still
 resolve by id, so stored values keep their label.
+
+Ordering (migration 0041): children are listed by sort_order, then label (CHILD_ORDER). A node may also carry other
+languages of its label (labels: {"en": …}), a sort_key, and child_sort (label / sort_key / manual) saying how a UI should
+order its children; null keeps the default. Mapper (app/mapper.py) applies child_sort; the generic tree does not yet.
 """
 
 import unicodedata
 
 from fastapi import HTTPException
 from psycopg import errors
+from psycopg.types.json import Jsonb
 
 from app import admin_roles, db, events, webhooks
 from app.logs import audit, changed
@@ -31,7 +36,8 @@ TREE_LIMIT = 2000
 NOW = object()  # update_node: set a column to now()
 
 NODE_COLUMNS = """n.id, n.dimension_id, n.owner_id, n.parent_id, n.path, n.slug, n.label, n.description, n.depth,
-    n.sort_order, n.archived_at, n.created_at, n.updated_at"""
+    n.sort_order, n.archived_at, n.created_at, n.updated_at, n.labels, n.sort_key, n.child_sort"""
+CHILD_SORTS = ("label", "sort_key", "manual")
 CHILD_ORDER = "n.sort_order, lower(n.label), n.id"
 
 
@@ -132,6 +138,7 @@ def out(row: dict, p: Principal, *, dims: dict[int, dict] | None = None, has_chi
         "description": row["description"], "depth": row["depth"], "sort_order": row["sort_order"],
         "dimension": row.get("dimension_slug") or (dim["slug"] if dim else PRIVATE),
         "private": row["owner_id"] is not None, "archived": row["archived_at"] is not None,
+        "labels": row.get("labels") or {}, "sort_key": row.get("sort_key"), "child_sort": row.get("child_sort"),
     }
     if "objects" in row:
         o["objects"] = row["objects"]
@@ -321,6 +328,14 @@ async def update_node(conn, p: Principal, node_id: int, changes: dict, *, admin:
     for key in ("description", "sort_order"):
         if key in changes and changes[key] is not None:
             sets[key] = changes[key]
+    if "labels" in changes and changes["labels"] is not None:
+        sets["labels"] = {k: " ".join(str(v).split()) for k, v in changes["labels"].items() if str(v).strip()}
+    for key in ("sort_key", "child_sort"):        # sent as null or "": cleared
+        if key in changes:
+            value = (changes[key] or "").strip() or None
+            if key == "child_sort" and value not in (None, *CHILD_SORTS):
+                raise HTTPException(400, "Ukendt sortering")
+            sets[key] = value
     if "archived" in changes and changes["archived"] is not None and changes["archived"] != (cur["archived_at"] is not None):
         sets["archived_at"] = NOW if changes["archived"] else None
     new_parent_id = changes["parent_id"] if "parent_id" in changes else cur["parent_id"]
@@ -352,8 +367,10 @@ async def update_node(conn, p: Principal, node_id: int, changes: dict, *, admin:
     if sets:
         cols = ", ".join(f"{k} = now()" if v is NOW else f"{k} = %({k})s" for k, v in sets.items())
         await conn.execute(f"update meta_nodes set {cols}, updated_by = %(by)s, updated_at = now() where id = %(id)s",
-                           {k: v for k, v in sets.items() if v is not NOW} | {"by": p.user_id, "id": node_id})
-        old = {k: cur[k] for k in ("label", "description", "sort_order", "parent_id", "slug", "path")}
+                           {k: Jsonb(v) if k == "labels" else v for k, v in sets.items() if v is not NOW}
+                           | {"by": p.user_id, "id": node_id})
+        old = {k: cur[k] for k in ("label", "description", "sort_order", "parent_id", "slug", "path", "labels", "sort_key",
+                                   "child_sort")}
         old["archived"] = cur["archived_at"] is not None
         new = old | {k: v for k, v in sets.items() if k in old}
         if "archived_at" in sets:

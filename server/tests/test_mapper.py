@@ -292,3 +292,101 @@ async def test_feature_and_csp(client):
     assert "frame-src 'self' https: " in csp
     assert "frame-src 'self' https://*.officeapps" in (await client.get("/extension")).headers["content-security-policy"]
     assert "frame-src 'self' https://*.officeapps" in (await client.get("/klip")).headers["content-security-policy"]
+
+
+async def test_folder_properties_and_ordering(make_client, owner_conn):
+    admin, a, b = await _users(make_client)
+    work = (await a.post("/api/mapper/folders", json={"label": "Arbejde"})).json()
+    kids = [(await a.post("/api/mapper/folders", json={"label": n, "parent_id": work["id"]})).json() for n in ("Bravo", "Alfa", "Charlie")]
+
+    # Egenskaber: English label, sort key, subfolder order, shortcut sort, layout.
+    r = await a.patch(f"/api/mapper/folders/{work['id']}", json={
+        "label": "Arbejdet", "en_label": "Work", "sort_key": "010", "child_sort": "sort_key", "shortcut_sort": "name", "layout": "grid"})
+    assert r.status_code == 200, r.text
+    f = r.json()
+    assert (f["label"], f["en_label"], f["sort_key"], f["child_sort"], f["shortcut_sort"], f["layout"]) == (
+        "Arbejdet", "Work", "010", "sort_key", "name", "grid")
+    labels = owner_conn.execute("select labels from meta_nodes where id = %s", (work["id"],)).fetchone()[0]
+    assert labels == {"en": "Work"}
+    # Cleared again with null / "".
+    f = (await a.patch(f"/api/mapper/folders/{work['id']}", json={"en_label": "", "layout": None, "sort_key": ""})).json()
+    assert f["en_label"] is None and f["layout"] is None and f["sort_key"] is None and f["shortcut_sort"] == "name"
+    assert (await a.patch(f"/api/mapper/folders/{work['id']}", json={"layout": "kanban"})).status_code == 422
+
+    # The root takes the orderings and layout, not a name.
+    root_id = (await a.get("/api/mapper")).json()["root"]["id"]
+    assert (await a.patch(f"/api/mapper/folders/{root_id}", json={"child_sort": "manual", "layout": "table"})).status_code == 200
+    root = (await a.get("/api/mapper")).json()["root"]
+    assert root["child_sort"] == "manual" and root["layout"] == "table"
+    assert (await a.patch(f"/api/mapper/folders/{root_id}", json={"label": "X"})).status_code == 400
+
+    # Manual order of subfolders (up/down in Egenskaber).
+    order = [kids[2]["id"], kids[0]["id"], kids[1]["id"]]
+    r = await a.put(f"/api/mapper/folders/{work['id']}/children-order", json={"ids": order})
+    assert r.status_code == 200, r.text
+    folders = {x["id"]: x for x in (await a.get("/api/mapper")).json()["folders"]}
+    assert sorted(order, key=lambda i: folders[i]["sort_order"]) == order and folders[work["id"]]["child_sort"] == "manual"
+    assert (await a.put(f"/api/mapper/folders/{work['id']}/children-order", json={"ids": [root_id]})).status_code == 400
+    assert (await b.put(f"/api/mapper/folders/{work['id']}/children-order", json={"ids": order})).status_code == 404
+
+    # Manual order of shortcuts (drag and drop): positions per folder, the folder's sort becomes manual.
+    ids = [(await a.post("/api/mapper/shortcuts", json={"url": f"https://ex{i}.dk", "folder_id": work["id"]})).json()["id"] for i in range(3)]
+    r = await a.put(f"/api/mapper/folders/{work['id']}/shortcut-order", json={"ids": [ids[2], ids[0], ids[1]]})
+    assert r.status_code == 200, r.text
+    st = (await a.get("/api/mapper")).json()
+    pos = {s["id"]: s["positions"][s["folders"].index(work["id"])] for s in st["shortcuts"]}
+    assert (pos[ids[2]], pos[ids[0]], pos[ids[1]]) == (0, 1, 2)
+    assert next(x for x in st["folders"] if x["id"] == work["id"])["shortcut_sort"] == "manual"
+    assert (await a.put(f"/api/mapper/folders/{kids[0]['id']}/shortcut-order", json={"ids": ids})).status_code == 400
+
+    reorders = owner_conn.execute("select detail->>'kind' from audit_log where action = 'mapper.reorder' order by id").fetchall()
+    assert [r[0] for r in reorders] == ["folders", "shortcuts"]
+    assert owner_conn.execute("select count(*) from audit_log where table_name = 'mapper_folder_settings'").fetchone()[0] >= 3
+
+
+async def test_copy_and_move(make_client, owner_conn):
+    admin, a, b = await _users(make_client)
+    src = (await a.post("/api/mapper/folders", json={"label": "Kilde"})).json()
+    sub = (await a.post("/api/mapper/folders", json={"label": "Under", "parent_id": src["id"]})).json()
+    dst = (await a.post("/api/mapper/folders", json={"label": "Mål"})).json()
+    s1 = (await a.post("/api/mapper/shortcuts", json={"url": "https://one.dk", "title": "Et", "folder_id": src["id"]})).json()
+    s2 = (await a.post("/api/mapper/shortcuts", json={"url": "https://two.dk", "title": "To", "folder_id": sub["id"]})).json()
+    await a.patch(f"/api/mapper/folders/{src['id']}", json={"en_label": "Source", "shortcut_sort": "name"})
+
+    # Copy a shortcut = one more tag; twice into the same folder is refused.
+    r = await a.post(f"/api/mapper/shortcuts/{s1['id']}/copy", json={"to_id": dst["id"]})
+    assert r.status_code == 200 and sorted(r.json()["folders"]) == sorted([src["id"], dst["id"]])
+    assert (await a.post(f"/api/mapper/shortcuts/{s1['id']}/copy", json={"to_id": dst["id"]})).status_code == 409
+    assert (await b.post(f"/api/mapper/shortcuts/{s1['id']}/copy", json={"to_id": None})).status_code == 404
+
+    # Copy a folder: the subtree with properties and shortcuts, "(kopi)", in the same parent twice → unique paths.
+    r = await a.post(f"/api/mapper/folders/{src['id']}/copy", json={"to_id": None})
+    assert r.status_code == 200, r.text
+    assert r.json() | {"id": 0} == {"id": 0, "label": "Kilde (kopi)", "folders": 2, "shortcuts": 2}
+    again = (await a.post(f"/api/mapper/folders/{src['id']}/copy", json={"to_id": None})).json()
+    st = (await a.get("/api/mapper")).json()
+    folders = {f["id"]: f for f in st["folders"]}
+    copy = folders[r.json()["id"]]
+    assert copy["en_label"] == "Source" and copy["shortcut_sort"] == "name" and copy["parent_id"] is None
+    assert [f["label"] for f in st["folders"] if f["parent_id"] == copy["id"]] == ["Under"]
+    by_title = {s["title"]: s for s in st["shortcuts"]}
+    assert copy["id"] in by_title["Et"]["folders"] and again["id"] in by_title["Et"]["folders"]
+    paths = [p[0] for p in owner_conn.execute("select path from meta_nodes where label = 'Kilde (kopi)' order by id")]
+    assert paths[0].endswith("/kilde-kopi") and paths[1].endswith("/kilde-kopi-2")
+    # Into itself or below itself: refused, for copy and move.
+    assert (await a.post(f"/api/mapper/folders/{src['id']}/copy", json={"to_id": sub["id"]})).status_code == 400
+    r = await a.patch(f"/api/mapper/folders/{src['id']}", json={"parent_id": sub["id"]})
+    assert r.status_code == 400 and "sig selv" in r.json()["detail"]
+    assert (await a.patch(f"/api/mapper/folders/{src['id']}", json={"parent_id": src["id"]})).status_code == 400
+
+    # Move a folder (path rewrite) and a shortcut (retag).
+    r = await a.patch(f"/api/mapper/folders/{src['id']}", json={"parent_id": dst["id"]})
+    assert r.status_code == 200 and r.json()["parent_id"] == dst["id"]
+    assert owner_conn.execute("select path from meta_nodes where id = %s", (sub["id"],)).fetchone()[0].endswith("/mål/kilde/under")
+    r = await a.patch(f"/api/mapper/shortcuts/{s2['id']}", json={"move": {"from_id": sub["id"], "to_id": dst["id"]}})
+    assert dst["id"] in r.json()["folders"] and sub["id"] not in r.json()["folders"]  # the copies keep theirs
+
+    actions = [r[0] for r in owner_conn.execute("select action from audit_log where action like 'mapper.%' order by id")]
+    assert actions.count("mapper.copy") == 2
+    via = owner_conn.execute("select count(*) from audit_log where detail->>'via' = 'mapper.copy'").fetchone()[0]
+    assert via == 4  # two objects tagged in each of the two copies

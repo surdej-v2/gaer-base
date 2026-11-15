@@ -29,6 +29,9 @@ class NodePatch(BaseModel):
     archived: bool | None = None
     parent_id: int | None = None
     slug: str | None = Field(default=None, max_length=meta.MAX_SLUG)
+    labels: dict[str, str] | None = Field(default=None, max_length=10)   # other languages: {"en": "Operations"}
+    sort_key: str | None = Field(default=None, max_length=64)             # null or "": cleared
+    child_sort: str | None = Field(default=None, pattern="^(label|sort_key|manual)?$")
 
 
 def patch_dict(body: NodePatch) -> dict:
