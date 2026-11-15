@@ -43,14 +43,14 @@ herfra ind i sin fork.
 | `/developer/…` | interne brugere med admin-rollen Udvikler eller Udvikler-admin (eller Data eller Fuld); /gaer/… for API-nøgler og tokens | **Gær Developer** (spec i `specs/developer/`): egen sidebar, brødkrumme og ⌘K. Fem studier på én kerne af versionerede artefakter med RACI-ejere og godkendelse: Datastudie, Pipeline, MCP-studie, API-studie og Action-studie (flows: udløser + handlinger, en workflow-motor som Logic Apps og Power Automate), plus datakatalog, forbindelser, godkendelser og eksport/import. |
 | `/admin/…` | admin (+ MFA) | Administration — en selvstændig app (`web/admin.html`). Kræver anden faktor efter tre logins med engangskode. Alt logges. |
 | `/m/…` | logget ind | Mobil-app (PWA) med bundmenu, AI, klip, filer og profil. |
-| `/extension/…` | i browserudvidelsen | Sidepanelet: aktuel side, klip, tags for siden og AI med siden som kontekst. |
+| `/extension/…` | i browserudvidelsen | Sidepanelet: aktuel side, Mapper med egne genveje, klip, tags for siden og AI med siden som kontekst. |
 | `/office-addin?app=word\|excel\|powerpoint\|outlook` | Office (offentlig skal) | Router for Word, Excel, PowerPoint og Outlook → værktøjerne under `/extension/tools/…`. |
 | `/extension/tools/word\|outlook\|document` | logget ind, i Office | Office-værktøjer: indsæt/gem klip og AI med dokumentet eller mailen som kontekst. |
 | `/api/…` | pr. endpoint | JSON-API. Ændringer kræver headeren `X-Gaer: 1` (CSRF). |
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP-klienter (OAuth) | MCP-servere: appen som den indloggede bruger, admin med kladder, og egne endpoints fra MCP Studio på `/mcp/<nøgle>`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. |
 | `/health` | udrulning | Sundhedstjek (database + version), bruges af `deploy/deploy.sh`. |
 
-<details><summary>Alle ruter (157)</summary>
+<details><summary>Alle ruter (158)</summary>
 
 | Sti | Svarer | Adgang | Side |
 | --- | --- | --- | --- |
@@ -194,6 +194,7 @@ herfra ind i sin fork.
 | `/m/samtaler/:id` | appen | logget ind | Samtale (feature `samtaler`) · eget layout |
 | `/m/profil` | appen | logget ind | Profil · eget layout |
 | `/extension` | appen | logget ind | Aktuel side · eget layout · kan indlejres |
+| `/extension/mapper` | appen | logget ind | Mapper (feature `mapper`) · eget layout · kan indlejres |
 | `/extension/chat` | appen | logget ind | AI · eget layout · kan indlejres |
 | `/extension/klip` | appen | logget ind | Klip · eget layout · kan indlejres |
 | `/extension/meta` | appen | logget ind | Tags · eget layout · kan indlejres |

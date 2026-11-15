@@ -205,14 +205,16 @@
     "da": "i browserudvidelsen"
    },
    "what": {
-    "en": "**Side panel** of the Chrome/Edge extension (iframe). Current page + per-domain consent + save as clip, AI chat with the page as context, clips, **tags** for the page (`/extension/meta`: what it is tagged with, tag it as the page, a folder pattern or the whole domain, browse a tag's context; the address is only looked up automatically on allowed domains), account. Talks to the panel over `gaer-bridge`.",
-    "da": "Sidepanelet: aktuel side, klip, tags for siden og AI med siden som kontekst."
+    "en": "**Side panel** of the Chrome/Edge extension (iframe). Current page + per-domain consent + save as clip, **Mapper** (`/extension/mapper`, feature `mapper`, spec in `specs/mapper/`: the user's own folders of shortcuts in their private tree `~/mapper`, seen as folders, by topic (Emner) or by website; saved views, a framed preview of the page, import of the browser's favourites), AI chat with the page as context, clips, **tags** for the page (`/extension/meta`: what it is tagged with, tag it as the page, a folder pattern or the whole domain, browse a tag's context; the address is only looked up automatically on allowed domains), account. Talks to the panel over `gaer-bridge`.",
+    "da": "Sidepanelet: aktuel side, Mapper med egne genveje, klip, tags for siden og AI med siden som kontekst."
    },
    "code": [
     "extension/",
     "web/src/extension/",
     "bridge/extension.ts",
-    "web/src/extension/ExtensionMeta.tsx"
+    "web/src/extension/ExtensionMeta.tsx",
+    "web/src/mapper/",
+    "routes/mapper.py"
    ]
   },
   {
@@ -1304,6 +1306,16 @@
    "title": "Aktuel side",
    "chrome": "own",
    "embeddable": true
+  },
+  {
+   "path": "/extension/mapper",
+   "group": "extension",
+   "app": "app",
+   "access": "user",
+   "title": "Mapper",
+   "chrome": "own",
+   "embeddable": true,
+   "feature": "mapper"
   },
   {
    "path": "/extension/chat",

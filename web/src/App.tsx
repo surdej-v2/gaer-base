@@ -45,6 +45,7 @@ import ExtensionPage from "./extension/ExtensionPage";
 import ExtensionAccount from "./extension/ExtensionAccount";
 import ExtensionChat from "./extension/ExtensionChat";
 import ExtensionMeta from "./extension/ExtensionMeta";
+import Mapper from "./mapper/Mapper";
 import { Chat } from "./ai";
 import ClipsPage, { ClipsList, useClips } from "./clips";
 import OfficeShell from "./office/OfficeShell";
@@ -235,6 +236,7 @@ export default function App() {
         <Route path="/extension/agent/:slug" element={<RequireUser login="/extension/login"><FeatureGate feature="knowledge"><AgentChat /></FeatureGate></RequireUser>} />
         <Route path="/extension" element={<RequireUser login="/extension/login"><ExtensionLayout /></RequireUser>}>
           <Route index element={<ExtensionPage />} />
+          <Route path="mapper" element={<FeatureGate feature="mapper"><Mapper /></FeatureGate>} />
           <Route path="chat" element={<ExtensionChat />} />
           <Route path="klip" element={<ExtensionClips />} />
           <Route path="meta" element={<ExtensionMeta />} />

@@ -21,6 +21,13 @@
   --hm-radius-lg: 0.75rem;
   --hm-radius-xl: 1rem;
   --hm-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  /* Surfaces and accents that change with the theme (see "Dark mode" at the end). */
+  --hm-surface: #ffffff;
+  --hm-hover: #f8fafc;
+  --hm-selected: #eef3fe;
+  --hm-accent-text: var(--hm-primary);
+  --hm-track: #e2e8f0;
+  --hm-icon: #475569;
 }
 
 * { box-sizing: border-box; }
@@ -348,4 +355,76 @@ button.chip:hover { background: var(--hm-muted); }
   /* The bulk tools move to the footer, just above the tab bar */
   .data-bar.selected { position: fixed; left: 8px; right: 8px; bottom: calc(68px + env(safe-area-inset-bottom)); z-index: 55; border: 1px solid #bfdbfe; border-radius: var(--hm-radius-lg); box-shadow: var(--hm-shadow-lg); }
   .shell-content .page { padding-bottom: 96px; }
+}
+
+/* ── Dark mode ───────────────────────────────────────────────────────────────
+   Opt-in per surface: a container with .theme-auto follows the system setting (prefers-color-scheme). Today only
+   /extension/mapper (ExtensionLayout adds the class there). Inside it, use the tokens (--hm-surface, --hm-hover,
+   --hm-selected, --hm-accent-text, --hm-track, --hm-icon and the --hm-* colours), not fixed light colours.
+   Accent text gets a lighter tint on dark backgrounds (≥ 4.5:1); solid accent buttons keep white text. */
+.theme-auto { color-scheme: light dark; }
+@media (prefers-color-scheme: dark) {
+  .theme-auto {
+    --hm-background: #0b1120;
+    --hm-foreground: #e5ebf3;
+    --hm-muted: #0f172a;
+    --hm-muted-foreground: #9aa8bd;
+    --hm-border: #2b3a52;
+    --hm-primary: #2563eb;
+    --hm-primary-90: #3b74f0;
+    --hm-surface: #162033;
+    --hm-hover: #1d2a40;
+    --hm-selected: #1e3a6e;
+    --hm-accent-text: #93b4f5;
+    --hm-track: #0b1120;
+    --hm-icon: #b4c0d3;
+    --hm-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+    background: var(--hm-muted);
+    color: var(--hm-foreground);
+  }
+  html:has(.theme-auto), html:has(.theme-auto) body { background: #0f172a; color-scheme: dark; }
+  .theme-auto a, .theme-auto a:hover { color: var(--hm-accent-text); }
+  .theme-auto .card, .theme-auto .embed-header, .theme-auto .tabbar, .theme-auto .table-wrap, .theme-auto .choice,
+  .theme-auto .btn-outline, .theme-auto button.chip, .theme-auto input, .theme-auto select, .theme-auto textarea,
+  .theme-auto .bubble.assistant {
+    background: var(--hm-surface); color: var(--hm-foreground); border-color: var(--hm-border);
+  }
+  .theme-auto .btn-outline:hover:not(:disabled), .theme-auto .btn-ghost:hover:not(:disabled), .theme-auto button.chip:hover { background: var(--hm-hover); }
+  .theme-auto .btn-danger { background: var(--hm-surface); border-color: #7f1d1d; color: #fca5a5; }
+  .theme-auto .btn-danger:hover:not(:disabled) { background: #2a1520; }
+  .theme-auto .btn-dark { background: var(--hm-foreground); color: var(--hm-background); }
+  .theme-auto .tabbar a.active { color: var(--hm-accent-text); box-shadow: inset 0 2px 0 var(--hm-accent-text); }
+  .theme-auto .segmented { background: var(--hm-track); }
+  .theme-auto .segmented button.active { background: var(--hm-surface); color: var(--hm-foreground); box-shadow: 0 1px 2px rgb(0 0 0 / 0.4); }
+  .theme-auto .pill, .theme-auto .chip { background: var(--hm-hover); color: var(--hm-foreground); }
+  .theme-auto .alert.error { background: #3b1219; border-color: #7f1d1d; color: #fecaca; }
+  .theme-auto .alert.info { background: #172554; border-color: #1e3a8a; color: #bfdbfe; }
+  .theme-auto .alert.success { background: #052e1a; border-color: #14532d; color: #bbf7d0; }
+  .theme-auto .alert.warn { background: #3a2a06; border-color: #78350f; color: #fde68a; }
+  .theme-auto .dialog-backdrop { background: rgb(0 0 0 / 0.6); }
+  .theme-auto input:focus, .theme-auto select:focus, .theme-auto textarea:focus { outline-color: var(--hm-accent-text); }
+  /* Træstrukturer (tree/tree.css) inside a dark surface */
+  .theme-auto .tr-row { color: var(--hm-foreground); }
+  .theme-auto .tr-row.tr-selected, .theme-auto .tr-rootrow.tr-selected, .theme-auto .tr-hit.tr-selected,
+  .theme-auto .tr-col-item.tr-on { background: var(--hm-selected); color: var(--hm-foreground); }
+  .theme-auto .tr-row:focus-visible { box-shadow: inset 0 0 0 2px var(--hm-accent-text); }
+  .theme-auto .tr-chevron:hover, .theme-auto .tr-x:hover, .theme-auto .tr-rootrow:hover, .theme-auto .tr-hit:hover,
+  .theme-auto .tr-col-item:hover, .theme-auto .tr-drill-item:hover { background: var(--hm-hover); }
+  .theme-auto .tr-labeltext, .theme-auto .tr-create-parent, .theme-auto .tr-keys kbd { color: var(--hm-foreground); }
+  .theme-auto .tr-field, .theme-auto .tr-panel, .theme-auto .tr-tab, .theme-auto .tr-drill, .theme-auto .tr-drill-item,
+  .theme-auto .tr-create-parent select, .theme-auto .tr-chip-btn {
+    background: var(--hm-surface); color: var(--hm-foreground); border-color: var(--hm-border);
+  }
+  .theme-auto .tr-field.tr-disabled { background: var(--hm-muted); }
+  .theme-auto .tr-tab.tr-on { background: var(--hm-primary); border-color: var(--hm-primary); color: #fff; }
+  .theme-auto .tr-box { background: var(--hm-surface); border-color: #64748b; }
+  .theme-auto .tr-box-on, .theme-auto .tr-box-mixed { background: var(--hm-primary); border-color: var(--hm-primary); }
+  .theme-auto .tr-box-implied { background: #31508f; border-color: #31508f; }
+  .theme-auto .tr-chip, .theme-auto .tr-more, .theme-auto .tr-kind { background: var(--hm-hover); border-color: var(--hm-border); color: var(--hm-foreground); }
+  .theme-auto .tr-chip-sub { background: var(--hm-selected); color: var(--hm-accent-text); }
+  .theme-auto .tr-tag { background: #4a2a10; color: #fdba74; }
+  .theme-auto .tr-tabs, .theme-auto .tr-scope-bar, .theme-auto .tr-create, .theme-auto .tr-col, .theme-auto .tr-drill-head,
+  .theme-auto .tr-bucket { border-color: var(--hm-border); }
+  .theme-auto .tr-keys { background: var(--hm-muted); border-color: var(--hm-border); }
+  .theme-auto .tr-error, .theme-auto .tr-errortext { color: #fca5a5; }
 }

@@ -556,6 +556,10 @@
       "title": "Log ind i udvidelsen",
       "anchors": []
     },
+    "/extension/mapper": {
+      "title": "Mapper",
+      "anchors": []
+    },
     "/extension/meta": {
       "title": "Tags",
       "anchors": []
