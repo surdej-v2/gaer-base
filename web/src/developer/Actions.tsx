@@ -9,7 +9,7 @@ import { api, errorText } from "../api";
 import { Alert, fmtDate, useLoad } from "../ui";
 import { DevPage, devState, useCrumb } from "./DeveloperShell";
 import { ArtifactTabs, Empty, StatusDot, Tabs, type ArtifactDetail } from "./devui";
-import { useAiContext } from "./ai/context";
+import { useAiContext, useAiProposalHandler, useDevAi } from "./ai/context";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -42,6 +42,40 @@ type RunDetail = Run & { name: string; slug: string; trigger_data: Record<string
   children: Run[] };
 type ListItem = { id: number; slug: string; name: string; status: string; statusLabel: string; version: string | null; trigger: string | null; triggerText: string;
   steps: number; draft: string | null; next: string | null; lastRun: Run | null; failed7d: number; open: number };
+// specs/developer/AI.md fase 5
+type Risk = { key: string; level: "warn" | "info"; step: string; title: string; text: string; fixLabel?: string; fix?: unknown };
+type FlowDraft = { definition: Definition; ai: boolean; notes: string[]; risks: Risk[] };
+
+/** A line about a drafted step: its inputs, or for Hvis / For hver its condition and how many steps it holds. */
+function stepPreview(st: Step): string {
+  const x = st as unknown as { when?: string; items?: string; then?: unknown[]; else?: unknown[]; steps?: unknown[] };
+  if (x.then || x.steps) {
+    const inner = (x.then?.length ?? 0) + (x.else?.length ?? 0) + (x.steps?.length ?? 0);
+    return `${x.when ?? x.items ?? ""} → ${inner} trin indeni`;
+  }
+  return JSON.stringify(st.with ?? {});
+}
+
+/** The risk check: rules on the definition (no AI). A fix is applied to the designer, unsaved. */
+function RiskList({ risks, onFix }: { risks: Risk[]; onFix?: (r: Risk) => void }) {
+  if (!risks.length) return null;
+  return (
+    <section className="stack" style={{ "--gap": "6px" } as CSSProperties} aria-label="Risici i flowet">
+      <strong className="small">Tjek af flowet · {risks.length} {risks.length === 1 ? "ting" : "ting"} at se på</strong>
+      {risks.map((r) => (
+        <div key={r.key} className="row" style={{ gap: 8, alignItems: "flex-start", borderRadius: 10, padding: "8px 10px",
+          border: `1px solid ${r.level === "warn" ? "#fde68a" : "var(--hm-border)"}`, background: r.level === "warn" ? "#fffbeb" : "#fff" }}>
+          <div className="stack" style={{ "--gap": "2px", flex: 1, minWidth: 0 } as CSSProperties}>
+            <span className="small"><strong>{r.title}</strong> <span className="tiny muted mono">{r.step}</span></span>
+            <span className="small" style={{ color: "#475569" }}>{r.text}</span>
+          </div>
+          {r.fix !== undefined && onFix && <button className="btn btn-outline btn-sm" onClick={() => onFix(r)}>{r.fixLabel ?? "Ret"}</button>}
+        </div>
+      ))}
+    </section>
+  );
+}
+
 type Detail = { artifact: ArtifactDetail; definition: Definition; runs: Run[]; next: string | null; triggerText: string;
   subscriptions: { kind: string; key: string }[]; endpoint: { key: string; name: string; url: string; active: boolean } | null };
 
@@ -163,22 +197,87 @@ export function FlowNew() {
   const [name, setName] = useState("");
   const [trigger, setTrigger] = useState("manual");
   const [err, setErr] = useState<string | null>(null);
-  const [wish] = useState(() => new URLSearchParams(window.location.search).get("beskrivelse") ?? "");  // from "Hvad vil du bygge?" on the overview
+  // specs/developer/AI.md fase 5: a description (also from "Hvad vil du bygge?") becomes a draft; the steps are taken one by one.
+  const [description, setDescription] = useState(() => new URLSearchParams(window.location.search).get("beskrivelse") ?? "");
+  const [draft, setDraft] = useState<FlowDraft | null>(null);
+  const [taken, setTaken] = useState<boolean[]>([]);
+  const [busy, setBusy] = useState(false);
+  const ai = useDevAi();
   const { data: cat } = useLoad(() => api.get<Catalog>("/api/admin/dev/flows/catalog"), []);
+  const showDraft = (d: FlowDraft) => {
+    setDraft(d);
+    setTaken(d.definition.steps.map(() => true));
+    setTrigger(d.definition.trigger.type);
+  };
+  // A flow the AI proposes in the panel (no artifact_id: a new flow) becomes the draft here.
+  useAiProposalHandler("propose_flow_steps", async (args) => {
+    if (args.artifact_id) return null;
+    const definition = JSON.parse(String(args.definition ?? "{}"));
+    const v = await api.post<{ definition: Definition }>("/api/admin/dev/flows/validate", { definition });
+    const rk = await api.post<{ risks: Risk[] }>("/api/admin/dev/flows/risks", { definition: v.definition });
+    showDraft({ definition: v.definition, ai: true, notes: [], risks: rk.risks });
+    return "Flowet er vist som kladde på siden. Brugeren tager trinene og opretter flowet; intet er gemt endnu.";
+  });
+  const makeDraft = async () => {
+    setErr(null);
+    setBusy(true);
+    try {
+      showDraft(await api.post<FlowDraft>("/api/admin/dev/flows/draft", { description }));
+    } catch (e) {
+      setErr(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
   const create = async () => {
     setErr(null);
     try {
-      const r = await api.post<{ id: number }>("/api/admin/dev/flows", { slug, name: name || slug, trigger });
+      const r = await api.post<{ id: number }>("/api/admin/dev/flows", { slug, name: name || slug, trigger, description });
+      if (draft) {
+        const steps = draft.definition.steps.filter((_, i) => taken[i]);
+        await api.put(`/api/admin/dev/flows/${r.id}`, { definition: { ...draft.definition, steps, description } });
+      }
       devState.refresh();
       navigate(`/developer/actions/${r.id}`);
     } catch (e) {
       setErr(errorText(e));
     }
   };
+  const chosen = taken.filter(Boolean).length;
   return (
-    <DevPage title="Nyt flow" intro="Giv flowet et navn, og vælg, hvad der starter det. Trinene bygger du bagefter i designeren.">
+    <DevPage title="Nyt flow" intro="Beskriv flowet med dine egne ord, eller giv det et navn og vælg, hvad der starter det. Trinene kan du altid rette i designeren.">
+      <div className="dev-ai-card" style={{ maxWidth: 760 }}>
+        <label htmlFor="flow-desc" className="small" style={{ fontWeight: 600 }}>Hvad skal flowet gøre?</label>
+        <textarea id="flow-desc" className="dev-input" style={{ height: 84, padding: 8 }} maxLength={2000} value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Fx: Hver hverdag kl. 8 skal salgschefen godkende rapporten, og så sendes en mail til salg." />
+        <div className="row" style={{ gap: 8, alignItems: "center" }}>
+          <span className="tiny muted" style={{ flex: 1 }}>{ai.enabled ? "AI laver en kladde ud fra kataloget; den bruges kun, hvis den er gyldig" : "En kladde ud fra ordene i beskrivelsen"}</span>
+          <button className="btn btn-primary btn-sm" onClick={makeDraft} disabled={busy || description.trim().length < 5}>{busy ? "Laver kladde …" : "Lav kladde"}</button>
+        </div>
+        {draft && (
+          <div className="stack" style={{ "--gap": "8px" } as CSSProperties}>
+            <strong className="small">Kladde · {draft.ai ? "skrevet af AI" : "ud fra beskrivelsen"} · udløser: {cat?.triggers.find((t) => t.key === draft.definition.trigger.type)?.label ?? draft.definition.trigger.type}
+              {draft.definition.trigger.cron ? ` (${draft.definition.trigger.cron})` : ""}</strong>
+            <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+              {draft.definition.steps.map((st, i) => (
+                <li key={st.id} className="row" style={{ gap: 8, alignItems: "flex-start", background: "#fff", border: `1px solid ${taken[i] ? "var(--hm-border)" : "#93b4f5"}`, borderRadius: 10, padding: "8px 10px" }}>
+                  <input type="checkbox" checked={!!taken[i]} onChange={(e) => setTaken(taken.map((x, k) => (k === i ? e.target.checked : x)))}
+                         aria-label={`Tag trin ${i + 1}`} style={{ marginTop: 3 }} />
+                  <div className="stack" style={{ "--gap": "2px", flex: 1, minWidth: 0 } as CSSProperties}>
+                    <span className="small"><span className="pill mono">{st.action}</span> <strong>{st.name || st.id}</strong></span>
+                    <span className="tiny muted mono" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {stepPreview(st)}</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            {draft.notes.map((n) => <span key={n} className="small" style={{ color: "#92400e" }}>{n}</span>)}
+            <RiskList risks={draft.risks} />
+          </div>
+        )}
+      </div>
       <div className="dev-card" style={{ maxWidth: 560 }}>
-        {wish && <p className="small" style={{ margin: 0 }}><span className="muted">Din beskrivelse:</span> {wish}</p>}
         <label style={s.label}>Navn (id)<input className="dev-input" placeholder="fx velkomst_til_nye_brugere" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "_"))} /></label>
         <label style={s.label}>Visningsnavn<input className="dev-input" placeholder="Velkomst til nye brugere" value={name} onChange={(e) => setName(e.target.value)} /></label>
         <fieldset style={{ border: 0, margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -190,7 +289,8 @@ export function FlowNew() {
           ))}
         </fieldset>
         {err && <Alert>{err}</Alert>}
-        <button className="btn btn-primary btn-sm" style={{ alignSelf: "flex-start" }} onClick={create} disabled={!slug}>Opret kladde</button>
+        <button className="btn btn-primary btn-sm" style={{ alignSelf: "flex-start" }} onClick={create} disabled={!slug}>
+          {draft ? `Opret flowet med ${chosen} ${chosen === 1 ? "trin" : "trin"}` : "Opret kladde"}</button>
       </div>
     </DevPage>
   );
@@ -212,7 +312,27 @@ export function FlowEditor() {
   const [adding, setAdding] = useState<{ path: Path; index: number } | null>(null);
   const [msg, setMsg] = useState<{ kind: "error" | "success" | "info" | "warn"; text: string } | null>(null);
   const [testInput, setTestInput] = useState("{}");
+  const [risks, setRisks] = useState<Risk[] | null>(null);
+  const [undo, setUndo] = useState<{ def: Definition; label: string } | null>(null);
   useCrumb(data?.artifact.slug);
+  // The risk check (rules, no AI) follows the definition as it is edited.
+  useEffect(() => {
+    if (!def) return;
+    const t = setTimeout(() => {
+      api.post<{ risks: Risk[] }>("/api/admin/dev/flows/risks", { definition: def }).then((r) => setRisks(r.risks), () => setRisks(null));
+    }, 500);
+    return () => clearTimeout(t);
+  }, [def]);
+  // A flow the AI proposes for this flow goes into the designer, unsaved, with "Fortryd".
+  useAiProposalHandler("propose_flow_steps", (args) => {
+    if (Number(args.artifact_id) !== Number(id) || !def) return null;
+    const next = JSON.parse(String(args.definition ?? "{}")) as Definition;
+    setUndo({ def, label: String(args.summary ?? "Forslag fra AI") });
+    setDef(next);
+    setJson(JSON.stringify(next, null, 2));
+    setDirty(true);
+    return "Forslaget er lagt i designeren. Brugeren ser det og gemmer selv; intet er gemt endnu.";
+  });
   useEffect(() => {
     if (data) {
       setDef(data.definition);
@@ -364,6 +484,18 @@ export function FlowEditor() {
             )}
           </aside>
         </div>
+      )}
+      {undo && (
+        <div className="dev-ai-inline" role="status">
+          <span className="small"><b>{undo.label}</b> er lagt i designeren. Intet er gemt endnu.</span>
+          <div className="row" style={{ gap: 6 }}>
+            <button className="btn btn-outline btn-sm" onClick={() => { update(undo.def); setUndo(null); }}>Fortryd</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setUndo(null)}>Behold</button>
+          </div>
+        </div>
+      )}
+      {risks && risks.length > 0 && (
+        <RiskList risks={risks} onFix={(rk) => { setUndo({ def, label: rk.fixLabel ?? rk.title }); update(rk.fix as Definition); }} />
       )}
       <div className="row" style={{ gap: 8, alignItems: "center" }}>
         <button className="btn btn-outline btn-sm" onClick={save} disabled={!dirty}>Gem kladde</button>

@@ -5,6 +5,7 @@
   GET    /api/admin/dev/flows/catalog              actions, triggers, functions, events and the things a step can point at
   POST   /api/admin/dev/flows/validate             the definition cleaned, or 422 with what is wrong
   POST   /api/admin/dev/flows/expr                 try an expression against a sample context (the editor)
+  POST   /api/admin/dev/flows/draft|risks          a draft from a description · the risk check (specs/developer/AI.md fase 5)
   GET    /api/admin/dev/flows/runs[?flow=]          runs across flows · GET …/runs/{id} one run with its steps
   POST   /api/admin/dev/flows/runs/{id}/cancel|rerun
   GET    /api/admin/dev/flows/{id}                 the artifact, the definition (draft or published), runs, next run
@@ -135,6 +136,30 @@ async def validate(body: DefinitionIn):
     async with db.connection() as conn:
         clean = await flows.resolve(conn, flows.validate(body.definition))
     return {"definition": clean, "steps": flows.count_steps(clean["steps"]), "trigger": flows.trigger_text(clean["trigger"])}
+
+
+# ── Fase 5 of specs/developer/AI.md: a draft from a description, and the risk check ──
+
+class DraftIn(BaseModel):
+    description: str = Field(min_length=5, max_length=2000)
+
+
+@router.post("/draft")
+async def draft(body: DraftIn, p: Principal = Depends(require_admin)):
+    """"Beskriv flowet": a trigger and steps (AI when it is on and its flow validates, else a skeleton from keywords),
+    with the risk check. Nothing is saved; the user takes the steps and creates the flow."""
+    from app.devkit import flow_assist
+    async with db.connection() as conn:
+        return await flow_assist.draft(conn, body.description.strip(), p.user_id)
+
+
+@router.post("/risks")
+async def risks(body: DefinitionIn):
+    """The risk check (rules, no AI) for a definition as it is in the editor."""
+    from app.devkit import flow_assist
+    async with db.connection() as conn:
+        clean = await flows.resolve(conn, flows.validate(body.definition))
+        return {"risks": await flow_assist.risks(conn, clean)}
 
 
 class ExprIn(BaseModel):

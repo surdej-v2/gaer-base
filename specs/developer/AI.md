@@ -1,6 +1,6 @@
 # AI i Gær Developer — chat og forslag overalt
 
-Status: fase 0 (backend), fase 1 (shell, oversigt, ⌘K), fase 2 (pipeline-editoren), fase 3 (MCP-testbænken) og fase 4 (API-dokumentationen) er bygget. Fase 5–6 er planlagt. Designet ligger på canvasset „Developer med AI“
+Status: fase 0 (backend), fase 1 (shell, oversigt, ⌘K), fase 2 (pipeline-editoren), fase 3 (MCP-testbænken), fase 4 (API-dokumentationen) og fase 5 (Action-studie) er bygget. Fase 6 er planlagt. Designet ligger på canvasset „Developer med AI“
 (artboards: Oversigt, Pipeline-editor, ⌘K, MCP-testbænk, Action-studie, API-dokumentation, AI-mønstre, telefon).
 
 ## Mål
@@ -80,10 +80,13 @@ tilbage, og React fejlede, når en samtale blev lukket.
 | Eksempler | curl, Python og TypeScript pr. operation, lavet ud fra OpenAPI-dokumentet og operationens første eksempel |
 | Endpoints og UI | `GET /api/admin/dev/apis/{id}/docs`, `POST …/docs/generate`, `POST …/docs/{approve\|edit\|reject}`; siden Dokumentation (`ApiStudie.tsx`) viser afsnittene med godkendt tekst og kladde, Godkend/Ret/Afvis, eksemplerne, nøglerne på den gamle major (kun i admin) og fejltallene. Et `propose_doc_text` for det åbne API lægges i afsnittets editor, ikke gemt |
 
-## Fase 5 — Action-studie
+## Fase 5 — Action-studie (bygget)
 
-- `assist.draft_flow(description)` → udløser og trin, valideret af flow-validatoren; trin tages ét ad gangen.
-- Risikotjek som regler: approval uden frist, gruppe med ét medlem, personfelter i mail mod klassifikationen.
+| Del | Hvor |
+| --- | --- |
+| Kladde | `devkit/flow_assist.draft()`: AI skriver udløser og trin ud fra kataloget (handlinger og påkrævede felter, udløsere, udgivne operationer); flowet bruges kun, hvis det består `flows.validate` og `flows.resolve`. Ellers giver nøgleord et skelet: tidsplan („hver hverdag kl. 8“ → `0 8 * * 1-5`), „ny bruger“ → hændelsen `user.created`, webhook eller manuelt, og trinene i den rækkefølge, teksten nævner dem (godkendelse, e-mail, Besked/SMS, fil/rapport) med [pladsholdere] og et „Hvis godkendt“ efter en godkendelse. `POST /api/admin/dev/flows/draft`. Intet gemmes |
+| Risikotjek | `devkit/flow_assist.risks()`, regler uden AI: en godkendelse, hvis svar intet senere trin læser (flowet fortsætter også ved afvisning — rettelsen lægger resten bag „Hvis godkendt“ og afslutter ved afvisning), kun én godkender, en frist over en uge, data fra en operation med røde eller personfelter sendt videre med mail, Besked, HTTP, AI, en hændelse eller en fil, en nøgle skrevet i et HTTP-trin (header eller query) i stedet for en API-kilde, og mail eller Besked inde i For hver. `POST /api/admin/dev/flows/risks`. (Godkendelser har allerede en frist — `timeout_hours`, standard 72 — så tjekket ser på, om svaret bruges, i stedet for på en manglende frist) |
+| UI | „Nyt flow“ (`Actions.tsx`): beskrivelsen (også fra „Hvad vil du bygge?“) → „Lav kladde“ → trinene med flueben og tjekket → „Opret flowet med N trin“. Designeren viser tjekket, mens man retter, med „Fortsæt kun, hvis godkendt“ som rettelse og „Fortryd“. Et `propose_flow_steps` lægges i designeren for det åbne flow, eller som kladde på „Nyt flow“ for et nyt; intet gemmes, før brugeren gemmer |
 
 ## Fase 6 — telefon
 
@@ -91,6 +94,6 @@ tilbage, og React fejlede, når en samtale blev lukket.
 
 ## Tests
 
-`server/tests/test_developer_ai.py`: kontekst uden værdier, valg af studie med og uden AI, AI-resumé på en version, der venter, i `test_developer_ai_pipeline.py` flytningen af en `$match` (samme rækker), beskrivelser, grå tekst med og uden AI og ændringsnoten, og i `test_developer_ai_mcp.py` forslag, dækning, de nye kontroller, AI-spørgsmål og varianter, forklaringen af en fejlet testcase og budgettet i AI-testen, og i `test_developer_ai_apidocs.py` kladder ud fra reglerne, godkendelse og udgivelse i OpenAPI, vejledningen til en ny major, fejl ud fra tal og AI-omskrivning, citerede værdier fjernet fra fejltekster, budget nået → 429
+`server/tests/test_developer_ai.py`: kontekst uden værdier, valg af studie med og uden AI, AI-resumé på en version, der venter, i `test_developer_ai_pipeline.py` flytningen af en `$match` (samme rækker), beskrivelser, grå tekst med og uden AI og ændringsnoten, og i `test_developer_ai_mcp.py` forslag, dækning, de nye kontroller, AI-spørgsmål og varianter, forklaringen af en fejlet testcase og budgettet i AI-testen, og i `test_developer_ai_apidocs.py` kladder ud fra reglerne, godkendelse og udgivelse i OpenAPI, vejledningen til en ny major, fejl ud fra tal og AI-omskrivning, og i `test_developer_ai_flows.py` skelettet ud fra nøgleord, AI-kladden, der kun bruges når den er gyldig, og risikotjekket med rettelsen, citerede værdier fjernet fra fejltekster, budget nået → 429
 (også i `assist.complete`), AI slået fra → 404 og forslag virker stadig, `/api/ai/chat` afviser surface `developer`,
 afvisning og fortryd med audit, afvisninger i GDPR-eksporten og slettet med brugeren.
