@@ -48,7 +48,9 @@ MAX_TOKEN_BYTES = 8192
 
 # happymates.ai's signing keys: kid → raw Ed25519 public key, base64url. Add a key from `keygen` here before
 # issuing with it, keep the old one while its licenses run, then remove it (rotation).
-ISSUER_KEYS: dict[str, str] = {}
+ISSUER_KEYS: dict[str, str] = {
+    "hm-2026-1": "C1bOIRir-HUS0839kVlgYj5YjR1YuTkMPEAscvgFngc",
+}
 
 
 @dataclass(frozen=True)
