@@ -7,8 +7,9 @@ name: deploy
 #   k8s                build to GHCR (build-image.yml), roll out to the namespace (deploy-k8s.yml, deploy/k8s/).
 #   none               build to GHCR only.
 
-# This instance deploys to AKS (aks-main.yml / aks-canary.yml); the UpCloud path is kept for manual use only.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 concurrency: deploy-main

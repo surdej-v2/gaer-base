@@ -69,6 +69,14 @@
       "title": "App Stores",
       "anchors": []
     },
+    "/admin/config": {
+      "title": "Konfiguration",
+      "anchors": [
+        "config-import",
+        "config-save-{x}",
+        "config-{x}"
+      ]
+    },
     "/admin/consent": {
       "title": "Samtykke og cookies",
       "anchors": []

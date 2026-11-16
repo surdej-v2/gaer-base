@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gær · Codespace</title>
+<style>
+  /* The Happy Mates tokens from web/src/styles.css */
+  :root {
+    --bg: #f1f5f9; --surface: #ffffff; --fg: #020817; --muted: #475569; --label: #64748b;
+    --border: #e2e8f0; --soft: #f8fafc; --primary: #2563eb; --primary-90: #1e58d3; --on-primary: #f8fafc;
+    --done: #16a34a; --busy: #f59e0b; --fail: #dc2626; --wait: #cbd5e1;
+    --sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1120; --surface: #111827; --fg: #e5e7eb; --muted: #a3acb9; --label: #94a3b8;
+      --border: #1f2937; --soft: #0f172a; --primary: #3b82f6; --primary-90: #60a5fa; --wait: #475569;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--fg); font-family: var(--sans);
+         display: flex; align-items: center; justify-content: center; padding: 32px 16px; }
+  .card { width: 100%; max-width: 600px; background: var(--surface); border: 1px solid var(--border);
+          border-radius: 16px; overflow: hidden;
+          box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+  .bar { height: 6px; background: linear-gradient(to right, #f59e0b, #facc15); }
+  .body { padding: 36px 40px; display: flex; flex-direction: column; gap: 22px; }
+  .eyebrow { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--label); }
+  h1 { margin: 6px 0 8px; font-size: 28px; line-height: 1.2; }
+  .lead { margin: 0; font-size: 16px; line-height: 1.55; color: var(--muted); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; padding: 0 20px;
+         border-radius: 8px; font: 600 15px var(--sans); text-decoration: none; border: 1px solid transparent; cursor: pointer; }
+  .btn.primary { background: var(--primary); color: var(--on-primary); }
+  .btn.primary:hover { background: var(--primary-90); }
+  .btn.ghost { background: transparent; color: var(--fg); border-color: var(--border); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .help { padding: 16px 20px; background: var(--soft); border: 1px solid var(--border); border-radius: 12px; }
+  .help p { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+  .help ol { margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.7; color: var(--muted); }
+  a { color: var(--primary); } a:hover { color: var(--primary-90); }
+  code { font-family: var(--mono); font-size: 13px; color: var(--fg); }
+  ul.steps { margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: 12px; }
+  ul.steps li { display: flex; align-items: center; gap: 12px; padding: 12px 16px; font-size: 15px; }
+  ul.steps li + li { border-top: 1px solid var(--border); }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; background: var(--wait); }
+  .done .dot { background: var(--done); } .running .dot { background: var(--busy); } .failed .dot { background: var(--fail); }
+  .name { flex-grow: 1; font-weight: 500; }
+  .state { font-size: 13px; color: var(--label); }
+  .failed .state { color: var(--fail); }
+  .note { margin: 0; font-size: 13px; color: var(--label); }
+  pre { margin: 0; max-height: 280px; overflow: auto; padding: 12px; background: var(--soft); border: 1px solid var(--border);
+        border-radius: 8px; font: 12px/1.5 var(--mono); white-space: pre-wrap; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="bar"></div>
+
+  <!-- In the browser: open VS Code Desktop -->
+  <section class="body" id="web" hidden>
+    <div>
+      <p class="eyebrow">Gær · Codespace</p>
+      <h1>Åbn projektet i VS Code Desktop</h1>
+      <p class="lead">Du er i Codespaces i browseren. Login, passkeys og den indbyggede browser virker kun rigtigt i
+        VS Code Desktop, hvor appen kører på localhost.</p>
+    </div>
+    <div class="row">
+      <a class="btn primary" id="open-desktop" href="#" target="_blank" rel="noopener">Åbn i VS Code Desktop</a>
+    </div>
+    <div class="help">
+      <p>Virker knappen ikke?</p>
+      <ol>
+        <li>Installer VS Code og udvidelsen GitHub Codespaces.</li>
+        <li>Tryk F1 og vælg <code>Codespaces: Open in VS Code Desktop</code>.</li>
+        <li>Eller gå til <a href="https://github.com/codespaces" target="_blank" rel="noopener">github.com/codespaces</a>
+          og vælg <em>Open in › Visual Studio Code</em>.</li>
+        <li>Startsiden åbner igen derinde og skifter til appen, når den er klar.</li>
+      </ol>
+    </div>
+    <p class="note" id="web-progress">Dev-stakken starter allerede i baggrunden, så den er klar, når du kommer ind.</p>
+  </section>
+
+  <!-- In VS Code Desktop: follow the dev stack, then go to the app -->
+  <section class="body" id="desktop" hidden>
+    <div>
+      <p class="eyebrow">Gær · VS Code Desktop</p>
+      <h1 id="desktop-title">Dev-stakken starter</h1>
+      <p class="lead">Siden skifter selv til appen på localhost:5173, når alt er klar.</p>
+    </div>
+    <ul class="steps" id="steps" aria-live="polite"></ul>
+    <div class="row">
+      <a class="btn primary" id="open-app" href="#">Åbn appen nu</a>
+      <button class="btn ghost" id="show-log" type="button">Vis log</button>
+    </div>
+    <pre id="log" hidden></pre>
+    <p class="note">Logs: <code>.devcontainer/logs/</code></p>
+  </section>
+</main>
+
+<script>
+  const CODESPACE = "__CODESPACE_NAME__";
+  const params = new URLSearchParams(location.search);
+  const local = ["localhost", "127.0.0.1"].includes(location.hostname);
+  // ?mode=web|desktop overrides; otherwise localhost means VS Code Desktop's forwarded port.
+  const mode = params.get("mode") || (local ? "desktop" : "web");
+  document.getElementById(mode === "desktop" ? "desktop" : "web").hidden = false;
+
+  const appUrl = `${location.protocol}//${location.hostname}:5173/login`;
+  document.getElementById("open-app").href = appUrl;
+  document.getElementById("open-desktop").href = CODESPACE
+    ? `vscode://github.codespaces/connect?name=${encodeURIComponent(CODESPACE)}&windowId=_blank`
+    : "https://github.com/codespaces";
+
+  const LABEL = { done: "Klar", running: "Starter…", failed: "Fejlede", waiting: "Venter" };
+  const stepsEl = document.getElementById("steps");
+  const logEl = document.getElementById("log");
+
+  function render(s) {
+    stepsEl.replaceChildren(...s.steps.map((st) => {
+      const li = document.createElement("li");
+      li.className = st.state;
+      li.innerHTML = '<span class="dot" aria-hidden="true"></span><span class="name"></span><span class="state"></span>';
+      li.querySelector(".name").textContent = st.label;
+      li.querySelector(".state").textContent = LABEL[st.state] || st.state;
+      return li;
+    }));
+    const failed = s.steps.some((st) => st.state === "failed");
+    document.getElementById("desktop-title").textContent = failed ? "Noget fejlede under opstart" : "Dev-stakken starter";
+    if (failed && logEl.hidden) showLog();
+    const done = s.steps.filter((st) => st.state === "done").length;
+    document.getElementById("web-progress").textContent = s.ready
+      ? "Dev-stakken kører og venter på dig i VS Code Desktop."
+      : `Dev-stakken starter allerede i baggrunden (${done} af ${s.steps.length} trin klar), så den er klar, når du kommer ind.`;
+  }
+
+  async function showLog() {
+    logEl.hidden = false;
+    try { logEl.textContent = await (await fetch("log", { cache: "no-store" })).text(); } catch { /* next try */ }
+  }
+  document.getElementById("show-log").addEventListener("click", showLog);
+
+  async function poll() {
+    try {
+      const s = await (await fetch("status", { cache: "no-store" })).json();
+      render(s);
+      if (s.ready && mode === "desktop" && params.get("stay") === null) {
+        location.replace(appUrl);
+        return;
+      }
+      if (!logEl.hidden) showLog();
+    } catch { /* the page server restarts with the container */ }
+    setTimeout(poll, 1500);
+  }
+  poll();
+</script>
+</body>
+</html>
