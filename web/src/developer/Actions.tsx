@@ -9,6 +9,7 @@ import { api, errorText } from "../api";
 import { Alert, fmtDate, useLoad } from "../ui";
 import { DevPage, devState, useCrumb } from "./DeveloperShell";
 import { ArtifactTabs, Empty, StatusDot, Tabs, type ArtifactDetail } from "./devui";
+import { useAiContext } from "./ai/context";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -162,6 +163,7 @@ export function FlowNew() {
   const [name, setName] = useState("");
   const [trigger, setTrigger] = useState("manual");
   const [err, setErr] = useState<string | null>(null);
+  const [wish] = useState(() => new URLSearchParams(window.location.search).get("beskrivelse") ?? "");  // from "Hvad vil du bygge?" on the overview
   const { data: cat } = useLoad(() => api.get<Catalog>("/api/admin/dev/flows/catalog"), []);
   const create = async () => {
     setErr(null);
@@ -176,6 +178,7 @@ export function FlowNew() {
   return (
     <DevPage title="Nyt flow" intro="Giv flowet et navn, og vælg, hvad der starter det. Trinene bygger du bagefter i designeren.">
       <div className="dev-card" style={{ maxWidth: 560 }}>
+        {wish && <p className="small" style={{ margin: 0 }}><span className="muted">Din beskrivelse:</span> {wish}</p>}
         <label style={s.label}>Navn (id)<input className="dev-input" placeholder="fx velkomst_til_nye_brugere" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "_"))} /></label>
         <label style={s.label}>Visningsnavn<input className="dev-input" placeholder="Velkomst til nye brugere" value={name} onChange={(e) => setName(e.target.value)} /></label>
         <fieldset style={{ border: 0, margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -197,6 +200,7 @@ export function FlowNew() {
 
 export function FlowEditor() {
   const { id } = useParams();
+  useAiContext("artifact", id);
   const { data, error, reload, setData } = useLoad(() => api.get<Detail>(`/api/admin/dev/flows/${id}`), [id]);
   const { data: cat } = useLoad(() => api.get<Catalog>("/api/admin/dev/flows/catalog"), []);
   const [def, setDef] = useState<Definition | null>(null);

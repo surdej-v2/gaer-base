@@ -6,12 +6,14 @@ only metadata goes to the model (AI-1). Every AI call passes consumption.check (
 (app/devkit/ai_suggestions.py) and work without AI (AI-4); dismissing one is audited.
 """
 
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app import ai, consumption, db, events, settings_store
-from app.devkit import ai_context, ai_suggestions, ai_tools
+from app.devkit import ai_context, ai_suggestions, ai_tools, assist
 from app.logs import audit
 from app.sessions import Principal, require_admin
 
@@ -99,3 +101,16 @@ async def restore(key: str, p: Principal = Depends(require_admin)):
             raise HTTPException(404, "Forslaget er ikke afvist")
         await audit(conn, "dev.ai.suggestion.restored", actor_id=p.user_id, meta=p.meta, table="dev_ai_dismissals",
                     row_id=row["key"], before={"key": row["key"], "kind": row["kind"]})
+
+
+class RouteIn(BaseModel):
+    text: str = Field(min_length=3, max_length=2000)
+
+
+@router.post("/route")
+async def route(body: RouteIn, p: Principal = Depends(require_admin)):
+    """"Hvad vil du bygge?" on the overview: the studio for a description and the page that starts a draft, with the
+    description passed on (?beskrivelse=…). Keywords answer without AI (AI-4)."""
+    r = await assist.route_description(body.text, p.user_id)
+    sep = "&" if "?" in r["path"] else "?"
+    return {**r, "path": f"{r['path']}{sep}beskrivelse={quote(body.text.strip()[:500])}"}

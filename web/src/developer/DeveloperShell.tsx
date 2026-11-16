@@ -6,10 +6,13 @@
 // (admin-app/SideMenu.tsx: fixed top and bottom, sticky headings, ⌘K) is reused here; the two apps share no code.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronsLeft, ChevronsRight, Menu, Search, X } from "lucide-react";
+import { ArrowLeft, ChevronsLeft, ChevronsRight, Menu, Search, Sparkles, X } from "lucide-react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { HELP, NAV, activeItem, breadcrumb, score, staticCommands, type Command, type NavItem } from "./nav";
+import { AiDock } from "./ai/AiDock";
+import { AiProvider, useDevAi } from "./ai/context";
+import { AskAiButton } from "./ai/patterns";
 import "./developer.css";
 
 export const SECTION = "/developer";
@@ -80,6 +83,14 @@ function useWindowWidth() {
 }
 
 export default function DeveloperShell() {
+  return <AiProvider><Shell /></AiProvider>;
+}
+
+/** A question for the AI rather than a name to jump to: ends with "?" or starts like one. */
+const QUESTION = /\?\s*$|^(hvad|hvem|hvor|hvorfor|hvordan|hvilke|hvilken|hvornår|kan|skal|er|find|forklar|lav|skriv)\b/i;
+
+function Shell() {
+  const ai = useDevAi();
   const { user } = useAuth();
   const access = useDeveloperAccess();
   const { pathname } = useLocation();
@@ -137,11 +148,14 @@ export default function DeveloperShell() {
       } else if (k === "b") {
         e.preventDefault();
         toggle();
+      } else if (k === "j" && ai.enabled) {
+        e.preventDefault();
+        ai.toggle();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggle]);
+  }, [toggle, ai]);
 
   useEffect(() => setMobileOpen(false), [pathname]);
 
@@ -204,6 +218,14 @@ export default function DeveloperShell() {
         <SideNav pathname={pathname} narrow={narrow} approvals={approvals} />
 
         <div className="dev-side-bottom">
+          {ai.enabled && (
+            <button type="button" className={`dev-link${ai.open ? " active" : ""}`} onClick={ai.toggle} aria-pressed={ai.open}
+                    style={{ border: 0, background: ai.open ? undefined : "transparent", cursor: "pointer", font: "inherit", width: "100%", textAlign: "left" }}
+                    title={narrow ? "AI-assistent (⌘J)" : undefined} aria-label={narrow ? "AI-assistent (⌘J)" : undefined}>
+              <Sparkles size={16} aria-hidden className="dev-ai-icon" />
+              {!narrow && <><span className="dev-link-text">AI-assistent</span><kbd className="tiny muted">⌘J</kbd></>}
+            </button>
+          )}
           <SideLink item={HELP} pathname={pathname} narrow={narrow} />
           <a href="/" className="dev-link" title={narrow ? "Til Gær base" : undefined}>
             <ArrowLeft size={16} aria-hidden />
@@ -234,15 +256,21 @@ export default function DeveloperShell() {
               </span>
             ))}
           </nav>
-          <button type="button" className="dev-top-search" onClick={() => setPaletteOpen(true)} aria-label="Søg (⌘K)">
+          <button type="button" className="dev-top-search" onClick={() => setPaletteOpen(true)} aria-label={ai.enabled ? "Søg eller spørg AI (⌘K)" : "Søg (⌘K)"}>
             <Search size={14} aria-hidden /><kbd>⌘K</kbd>
           </button>
+          {access === "ok" && <AskAiButton />}
         </header>
-        <main className="dev-content">
-          {access === "loading" ? null : access === "ok" ? <Outlet /> : <NoDeveloperAccess />}
-        </main>
+        <div className="dev-body">
+          <main className="dev-content">
+            {access === "loading" ? null : access === "ok" ? <Outlet /> : <NoDeveloperAccess />}
+          </main>
+          {access === "ok" && <AiDock />}
+        </div>
       </div>
-      {paletteOpen && <Palette onClose={() => setPaletteOpen(false)} onGo={(p) => { setPaletteOpen(false); if (p === "/") window.location.href = "/"; else navigate(p); }} />}
+      {paletteOpen && <Palette onClose={() => setPaletteOpen(false)}
+                               onGo={(p) => { setPaletteOpen(false); if (p === "/") window.location.href = "/"; else navigate(p); }}
+                               onAsk={ai.enabled ? (q) => { setPaletteOpen(false); ai.ask(q); } : undefined} />}
     </div>
   );
 }
@@ -323,7 +351,9 @@ function SideLink({ item, pathname, narrow, dot, count = 0 }: { item: NavItem; p
 
 type Found = Command & { kind?: string };
 
-function Palette({ onClose, onGo }: { onClose: () => void; onGo: (path: string) => void }) {
+const ASK = "#spoerg-ai";
+
+function Palette({ onClose, onGo, onAsk }: { onClose: () => void; onGo: (path: string) => void; onAsk?: (q: string) => void }) {
   const [q, setQ] = useState("");
   const [remote, setRemote] = useState<Found[]>([]);
   const [index, setIndex] = useState(0);
@@ -344,7 +374,12 @@ function Palette({ onClose, onGo }: { onClose: () => void; onGo: (path: string) 
   const local = q.trim()
     ? commands.map((c) => [c, score(c, q)] as const).filter(([, s]) => s >= 0).sort((a, b) => b[1] - a[1]).map(([c]) => c)
     : commands.slice(0, 12);
-  const items: Found[] = [...local.slice(0, 12), ...remote];
+  const query = q.trim();
+  // With AI on, the palette also answers: a question goes first, a name keeps the jump first (specs/developer/AI.md).
+  const ask: Found[] = onAsk && query.length >= 3 ? [{ label: `Spørg AI: ${query}`, hint: "AI · Tab", path: ASK, kind: "ai" }] : [];
+  const found: Found[] = [...local.slice(0, 12), ...remote];
+  const items: Found[] = QUESTION.test(query) ? [...ask, ...found] : [...found, ...ask];
+  const go = (c: Found) => (c.path === ASK ? onAsk?.(query) : onGo(c.path));
   useEffect(() => setIndex(0), [q]);
   const onKey = (e: ReactKeyboardEvent) => {
     if (e.key === "Escape") {
@@ -358,7 +393,10 @@ function Palette({ onClose, onGo }: { onClose: () => void; onGo: (path: string) 
       setIndex((i) => Math.max(0, i - 1));
     } else if (e.key === "Enter" && items[index]) {
       e.preventDefault();
-      onGo(items[index].path);
+      go(items[index]);
+    } else if (e.key === "Tab" && onAsk && query.length >= 3) {
+      e.preventDefault();
+      onAsk(query);
     }
   };
   return (
@@ -366,7 +404,7 @@ function Palette({ onClose, onGo }: { onClose: () => void; onGo: (path: string) 
       <div className="dev-palette" role="dialog" aria-modal="true" aria-label="Kommandopalet" onMouseDown={(e) => e.stopPropagation()}>
         <div className="dev-palette-input">
           <Search size={16} aria-hidden />
-          <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} placeholder="Find studier, endpoints, pipelines, datasæt og handlinger"
+          <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} placeholder={onAsk ? "Find studier, pipelines, datasæt … eller spørg AI" : "Find studier, endpoints, pipelines, datasæt og handlinger"}
                  aria-label="Søg" role="combobox" aria-expanded="true" aria-controls="dev-palette-list"
                  aria-activedescendant={items[index] ? `dev-cmd-${index}` : undefined} />
           <kbd>Esc</kbd>
@@ -374,7 +412,8 @@ function Palette({ onClose, onGo }: { onClose: () => void; onGo: (path: string) 
         <ul id="dev-palette-list" role="listbox" className="dev-palette-list">
           {items.map((c, i) => (
             <li key={`${c.path}-${i}`} id={`dev-cmd-${i}`} role="option" aria-selected={i === index}
-                className={i === index ? "active" : undefined} onMouseEnter={() => setIndex(i)} onClick={() => onGo(c.path)}>
+                className={[i === index ? "active" : "", c.kind === "ai" ? "ai" : ""].join(" ").trim() || undefined}
+                onMouseEnter={() => setIndex(i)} onClick={() => go(c)}>
               <span>{c.label}</span><span className="tiny muted">{c.hint}</span>
             </li>
           ))}

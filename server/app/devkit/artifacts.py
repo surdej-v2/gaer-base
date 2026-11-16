@@ -289,6 +289,9 @@ async def submit(conn, artifact: dict, *, actor_id: int, meta: RequestMeta, note
     needed = NEEDS[v["change_type"]] if artifact["approval_flow"] else ()
     if not needed:
         return await publish(conn, artifact, v["id"], actor_id=actor_id, meta=meta)
+    if config.settings.ai_api_key:
+        # specs/developer/AI.md fase 1: a short summary for the approvers ("Venter på dig"), counted on the submitter.
+        await jobs.enqueue(conn, "developer.ai_summary", {"version_id": v["id"], "user_id": actor_id}, max_attempts=2)
     raci = await roles(conn, artifact["id"])
     approvers: set[tuple[int, str]] = {(uid, r) for uid, rs in raci.items() for r in rs if r in needed}
     if v["change_type"] == "major":
@@ -495,3 +498,21 @@ async def impact_job(payload: dict, job: dict) -> dict:
         async with db.connection() as conn:
             await conn.execute("update dev_reviews set ai_analysis = %s where id = %s", (text[:8000], r["id"]))
     return {"analysed": bool(text)}
+
+
+@jobs.handler("developer.ai_summary")
+async def ai_summary_job(payload: dict, job: dict) -> dict:
+    """The AI summary of a submitted version (specs/developer/AI.md, fase 1). Only while it still waits."""
+    from app.devkit import assist
+
+    async with db.connection() as conn:
+        v = await db.fetch_one(conn, "select * from dev_artifact_versions where id = %s", (payload["version_id"],))
+        if v is None or v["status"] != "pending":
+            return {"skipped": True}
+        a = await get(conn, v["artifact_id"])
+    text = await assist.summarize_change(a, v, payload.get("user_id"))
+    if text:
+        async with db.connection() as conn:
+            await conn.execute("update dev_artifact_versions set ai_summary = %s where id = %s and status = 'pending'",
+                               (text[:2000], v["id"]))
+    return {"summarized": bool(text)}

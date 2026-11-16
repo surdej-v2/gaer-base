@@ -7,7 +7,7 @@ import { api, errorText } from "./api";
 import { saveClip } from "./clips";
 import { Alert, fmtNumber } from "./ui";
 
-export type Surface = "app" | "extension" | "word" | "outlook" | "document" | "mobile";
+export type Surface = "app" | "extension" | "word" | "outlook" | "document" | "mobile" | "developer";
 type ToolCall = { id: string; name: string; arguments: string };
 type Message = { role: "user" | "assistant" | "tool"; content: string; tool_calls?: ToolCall[]; tool_call_id?: string };
 type Status = { enabled: boolean; used?: number; limit?: number };
@@ -19,6 +19,8 @@ const TOOL_LABEL: Record<string, string> = {
   get_selection: "Læser markeringen", insert_text: "Indsætter tekst", insert_paragraph: "Tilføjer afsnit",
   add_comment: "Tilføjer kommentar", set_subject: "Sætter emne", open_reply: "Åbner svar", save_clip: "Gemmer klip",
   list_files: "Ser i filerne", read_file: "Læser fil", save_file: "Gemmer fil",
+  catalog_search: "Søger i kataloget", context_get: "Læser metadata", propose_pipeline_change: "Foreslår en ændring",
+  propose_testcases: "Foreslår testcases", propose_doc_text: "Foreslår en tekst", propose_flow_steps: "Foreslår trin",
 };
 const MAX_TOOL_ROUNDS = 4;
 
@@ -29,10 +31,10 @@ export function useAiStatus() {
   return { status, reload };
 }
 
-async function* streamChat(body: object, signal: AbortSignal): AsyncGenerator<[string, Record<string, unknown>]> {
+async function* streamChat(body: object, signal: AbortSignal, endpoint = "/api/ai/chat"): AsyncGenerator<[string, Record<string, unknown>]> {
   const headers: Record<string, string> = { "Content-Type": "application/json", "X-Gaer": "1" };
   if (window.self !== window.top) headers["X-Gaer-Embedded"] = "1";
-  const res = await fetch("/api/ai/chat", { method: "POST", headers, body: JSON.stringify(body), signal, credentials: "same-origin" });
+  const res = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(body), signal, credentials: "same-origin" });
   if (!res.ok || !res.body) {
     let msg = `Fejl ${res.status}`;
     try { msg = (await res.json()).detail ?? msg; } catch { /* not JSON */ }
@@ -81,7 +83,8 @@ async function fileTool(name: string, args: Record<string, unknown>): Promise<st
 }
 
 /** A chat panel. `getContext` adds e.g. the web page or the document; `runTool` performs client tools. */
-export function Chat({ surface, getContext, runTool, contextHint, placeholder = "Spørg om noget …", initialDraft, autoSend = false }: {
+export function Chat({ surface, getContext, runTool, contextHint, placeholder = "Spørg om noget …", initialDraft, autoSend = false,
+  endpoint, extra }: {
   surface: Surface;
   getContext?: () => Promise<ChatContext>;
   runTool?: ToolRunner;
@@ -91,6 +94,10 @@ export function Chat({ surface, getContext, runTool, contextHint, placeholder = 
   initialDraft?: string;
   /** Send initialDraft right away, once AI is known to be on. */
   autoSend?: boolean;
+  /** Another chat endpoint with the same stream, e.g. /api/admin/dev/ai/chat (the server builds the context there). */
+  endpoint?: string;
+  /** More fields for the request body, e.g. Developer's {ref: {kind, id}}. */
+  extra?: Record<string, unknown>;
 }) {
   const { status, reload } = useAiStatus();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -101,7 +108,8 @@ export function Chat({ surface, getContext, runTool, contextHint, placeholder = 
   const abort = useRef<AbortController | null>(null);
   const end = useRef<HTMLDivElement>(null);
 
-  useEffect(() => end.current?.scrollIntoView({ block: "end" }), [messages, activity]);
+  // Braces: scrollIntoView returns a Promise in newer browsers, and an effect may only return a cleanup function.
+  useEffect(() => { end.current?.scrollIntoView({ block: "end" }); }, [messages, activity]);
   const sendRef = useRef<(() => void) | null>(null);
   const autoSent = useRef(false);
   useEffect(() => {
@@ -156,7 +164,7 @@ export function Chat({ surface, getContext, runTool, contextHint, placeholder = 
         let calls: ToolCall[] = [];
         setActivity("Tænker …");
         setMessages([...history, { role: "assistant", content: "" }]);
-        for await (const [event, data] of streamChat({ surface, messages: history, context: context?.text, context_label: context?.label, page: window.location.pathname }, controller.signal)) {
+        for await (const [event, data] of streamChat({ surface, messages: history, context: context?.text, context_label: context?.label, page: window.location.pathname, ...extra }, controller.signal, endpoint)) {
           if (event === "delta") {
             answer += String(data.text ?? "");
             setActivity(null);

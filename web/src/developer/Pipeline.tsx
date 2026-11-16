@@ -7,6 +7,8 @@ import { api, errorText } from "../api";
 import { Alert, fmtBytes, fmtDate, fmtNumber, useLoad } from "../ui";
 import { DevPage, devState, useCrumb } from "./DeveloperShell";
 import { ArtifactTabs, Cls, Empty, StatusDot, Tabs, type ArtifactDetail } from "./devui";
+import { useAiContext } from "./ai/context";
+import { AiSuggestions, ExplainButton } from "./ai/patterns";
 
 type Run = { id: number; artifact_id?: number; name?: string; status: string; label: string; trigger: string; queued_at: string; started_at: string | null;
   finished_at: string | null; rows: number | null; size_bytes: number | null; small_groups: number | null; error: string | null };
@@ -72,7 +74,8 @@ export function PipelineNew() {
   const navigate = useNavigate();
   const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  // From "Hvad vil du bygge?" on the overview (specs/developer/AI.md): the description comes along.
+  const [description, setDescription] = useState(() => new URLSearchParams(window.location.search).get("beskrivelse") ?? "");
   const [yaml, setYaml] = useState(TEMPLATE);
   const [suggested, setSuggested] = useState<Record<string, unknown>[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -157,6 +160,7 @@ const STAGE_DA: Record<string, string> = { source: "Kilde", match: "Filtrer ($ma
 
 export function PipelineEditor() {
   const { id } = useParams();
+  useAiContext("artifact", id);
   const { data, error, reload, setData } = useLoad(() => api.get<Detail>(`/api/admin/dev/pipelines/${id}`), [id]);
   const [tab, setTab] = useState("editor");
   const [mode, setMode] = useState<"visual" | "text">("visual");
@@ -348,6 +352,7 @@ export function PipelineEditor() {
   return (
     <DevPage title={<span className="mono">{data.artifact.slug}</span>} intro={<>{data.artifact.name} · v{data.artifact.version ?? "—"}{data.snapshot && <> · <Link to={`/developer/katalog/${data.snapshot.id}`}>{data.snapshot.key}</Link></>}</>}
              actions={<StatusDot status={data.artifact.status} label={data.artifact.statusLabel} />}>
+      <AiSuggestions scope={`artifact:${data.artifact.id}`} />
       <Tabs tabs={[["editor", "Editor"], ["plan", "Plan"], ["runs", "Kørsler"], ["lineage", "Lineage"], ["owners", "Versioner og ejere"]]} value={tab} onChange={setTab} />
       {tab === "editor" && editor}
       {tab === "plan" && plan}
@@ -409,6 +414,7 @@ type RunDetail = Run & { name: string; slug: string; phases: { phase: string; la
 
 export function RunPage() {
   const { id } = useParams();
+  useAiContext("run", id);
   const { data, error } = useLoad(() => api.get<RunDetail>(`/api/admin/dev/runs/${id}`), [id]);
   useCrumb(data ? `${data.slug} #${data.id}` : null);
   if (error) return <Alert>{error}</Alert>;
@@ -417,7 +423,8 @@ export function RunPage() {
   let offset = 0;
   const fmt = (ms: number) => (ms >= 60000 ? `${Math.floor(ms / 60000)} min ${Math.round((ms % 60000) / 1000)} s` : ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${ms} ms`);
   return (
-    <DevPage title={`Kørsel #${data.id}: tid pr. fase`} intro={<>{data.name} · {data.trigger === "manual" ? "manuel" : "planlagt"} · <StatusDot status={runStatus(data.status)} label={data.label} /></>}>
+    <DevPage title={`Kørsel #${data.id}: tid pr. fase`} intro={<>{data.name} · {data.trigger === "manual" ? "manuel" : "planlagt"} · <StatusDot status={runStatus(data.status)} label={data.label} /></>}
+             actions={data.status === "failed" ? <ExplainButton question="Hvorfor fejlede kørslen, og hvad kan jeg ændre?">Forklar fejlen</ExplainButton> : undefined}>
       {data.error && <Alert>{data.error}</Alert>}
       <div className="dev-card">
         {data.phases.map((p, i) => {

@@ -1,6 +1,6 @@
 # AI i Gær Developer — chat og forslag overalt
 
-Status: fase 0 er bygget (backend). Fase 1–6 er planlagt. Designet ligger på canvasset „Developer med AI“
+Status: fase 0 (backend) og fase 1 (shell, oversigt, ⌘K) er bygget. Fase 2–6 er planlagt. Designet ligger på canvasset „Developer med AI“
 (artboards: Oversigt, Pipeline-editor, ⌘K, MCP-testbænk, Action-studie, API-dokumentation, AI-mønstre, telefon).
 
 ## Mål
@@ -36,15 +36,19 @@ AI-chat og AI-forslag i alle studier i `/developer`, bygget på det AI-lag, der 
 | Forslag | `devkit/ai_suggestions.py` + `GET /api/admin/dev/ai/suggestions?scope=overview\|artifact:<id>`: kørsler der fejlede, datasæt uden beskrivelse, MCP-endpoints uden testcases |
 | Afvisninger | `POST /api/admin/dev/ai/suggestions/dismiss`, `DELETE …/dismiss/{key}` (fortryd); tabel `dev_ai_dismissals` (migration 0043), audit `dev.ai.suggestion.dismissed` / `.restored`, event `developer.ai.dismissed`, retention `dev_ai_dismissals` |
 
-## Fase 1 — shell, oversigt og ⌘K (frontend)
+## Fase 1 — shell, oversigt og ⌘K (bygget)
 
-- `web/src/developer/ai/`: `AiProvider` (åbent/lukket, ⌘J, `useAiContext({kind, id, label})`), `AiDock` (bygger på `Chat`
-  fra `ai.tsx`), mønsterkomponenter `Suggestion`, `InlineSuggestion`, `GhostText`, `ExplainButton`, `AiDiff`,
-  `AiBudgetNotice`; styling `.dev-ai-*` i `developer.css`.
-- `DeveloperShell.tsx`: „Spørg AI“ i topbaren, punkt i sidebarens bund, ⌘J; paletten svarer på spørgsmål („Svar fra AI“).
-- `Overview.tsx`: „Hvad vil du bygge?“ (`POST /api/admin/dev/ai/route`), rækken „AI foreslår“, AI-resumé på det, der
-  venter (kolonne `ai_summary` på `dev_artifact_versions`).
-- Ingen nye routes — panelet er ikke en side.
+| Del | Hvor |
+| --- | --- |
+| Panelet | `web/src/developer/ai/`: `context.tsx` (`AiProvider`, `useDevAi`, `useAiContext(kind, id)`, `useAiProposalHandler(tool, fn)`), `AiDock.tsx` (panelet: „Kender:“-chips fra `/api/admin/dev/ai/context`, samtalen med `Chat` fra `ai.tsx` mod `/api/admin/dev/ai/chat`, forslag som ingen editor tog), `tools.ts` (værktøjerne i browseren), `patterns.tsx` (`AskAiButton`, `ExplainButton`, `AiSuggestions`); styling `.dev-ai-*` i `developer.css`. På telefon er panelet et ark nedefra |
+| Shell | `DeveloperShell.tsx`: „Spørg AI“ i topbaren, „AI-assistent“ i sidebarens bund, ⌘J, Esc lukker; ⌘K tilbyder „Spørg AI: …“ — først når forespørgslen ligner et spørgsmål, ellers sidst; Tab spørger med det samme. Alt skjules, når `/api/ai/status` siger `enabled: false` |
+| Sidernes kontekst | `useAiContext` på Oversigt, Pipeline-editor, Kørsel, Datasæt, Artefakt, Endpoint, Operation, Multisource, API og Flow |
+| Oversigt | „Hvad vil du bygge?“ → `POST /api/admin/dev/ai/route` (nøgleord, AI når den er slået til) → studiets side med `?beskrivelse=` (Ny pipeline og Datastudie udfylder beskrivelsen, Nyt flow viser den, API-studie åbner formularen); „AI foreslår“ (`AiSuggestions`); „Venter på dig“ viser ændringerne og AI-resuméet; „Forklar“ på beskeder om en kørsel |
+| AI-resumé | Migration 0044: `dev_artifact_versions.ai_summary`; `artifacts.submit` lægger jobbet `developer.ai_summary` i kø, når en version sendes til godkendelse og AI er sat op; `assist.summarize_change` (kun kontraktændringerne); forbruget tæller på den, der sendte |
+| Pipeline | „Forklar fejlen“ på en fejlet kørsel; forslag for pipelinen øverst i editoren |
+
+Undervejs rettet: `Chat` i `ai.tsx` returnerede værdien af `scrollIntoView` fra en effekt; nyere browsere giver et Promise
+tilbage, og React fejlede, når en samtale blev lukket.
 
 ## Fase 2 — Pipeline-editor
 
@@ -75,6 +79,6 @@ AI-chat og AI-forslag i alle studier i `/developer`, bygget på det AI-lag, der 
 
 ## Tests
 
-`server/tests/test_developer_ai.py`: kontekst uden værdier, citerede værdier fjernet fra fejltekster, budget nået → 429
+`server/tests/test_developer_ai.py`: kontekst uden værdier, valg af studie med og uden AI, AI-resumé på en version, der venter, citerede værdier fjernet fra fejltekster, budget nået → 429
 (også i `assist.complete`), AI slået fra → 404 og forslag virker stadig, `/api/ai/chat` afviser surface `developer`,
 afvisning og fortryd med audit, afvisninger i GDPR-eksporten og slettet med brugeren.

@@ -6,6 +6,7 @@ import { api, errorText } from "../api";
 import { Alert, fmtDate, useLoad } from "../ui";
 import { DevPage, devState, useCrumb } from "./DeveloperShell";
 import { ArtifactTabs, Cls, Empty, MASK_DA, StatusDot, type ArtifactDetail } from "./devui";
+import { useAiContext } from "./ai/context";
 
 type Row = { id: number; key: string; name: string; description: string; kind: string; kindLabel: string; source_name: string; fields: number;
   personal_fields: number; max_rank: number | null; artifact_status: string | null; refreshed_at: string | null };
@@ -56,6 +57,7 @@ const MASKS = ["", "show", "round", "interval", "aggregate", "partial", "hash", 
 
 export function CatalogDataset() {
   const { id } = useParams();
+  useAiContext("dataset", id);
   const { data, error, reload, setData } = useLoad(() => api.get<Detail>(`/api/admin/dev/catalog/datasets/${id}`), [id]);
   const [edit, setEdit] = useState<Field[] | null>(null);
   const [description, setDescription] = useState("");

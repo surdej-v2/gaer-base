@@ -16,11 +16,13 @@ from tests.test_ai import sse_lines
 
 AI = "/api/admin/dev/ai"
 sent: list[dict] = []
+reply = {"text": "Forslag"}  # what the mocked provider answers to a non-streaming call
 
 
 @pytest.fixture
 def ai_on(monkeypatch):
     sent.clear()
+    reply["text"] = "Forslag"
     monkeypatch.setattr(config, "settings", dataclasses.replace(config.settings, ai_api_key="test-key"))
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -30,7 +32,7 @@ def ai_on(monkeypatch):
             return httpx.Response(200, content=sse_lines([{"choices": [{"delta": {"content": "Kørslen ramte grænsen."}}]},
                                                           {"choices": [], "usage": {"prompt_tokens": 50, "completion_tokens": 5}}]),
                                   headers={"content-type": "text/event-stream"})
-        return httpx.Response(200, json={"choices": [{"message": {"content": "Forslag"}}],
+        return httpx.Response(200, json={"choices": [{"message": {"content": reply["text"]}}],
                                          "usage": {"prompt_tokens": 10, "completion_tokens": 2}})
     monkeypatch.setattr(ai, "transport", httpx.MockTransport(handler))
 
@@ -232,3 +234,55 @@ async def test_budget_spent_blocks_the_chat_and_assist(make_client, owner_conn, 
     assert sent == []
     # a call without a user (a job) only needs AI to be on
     assert await assist.complete("system", "bruger") == "Forslag"
+
+
+# ── Fase 1: "Hvad vil du bygge?" and the summary of a waiting version ───────
+
+async def test_route_picks_a_studio_without_ai(make_client):
+    admin = await _admin(make_client)
+    r = await admin.post(f"{AI}/route", json={"text": "Når en ny kunde oprettes, så send en velkomstmail"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["key"] == "actions" and body["ai"] is False
+    assert body["path"].startswith("/developer/actions/ny?beskrivelse=N%C3%A5r%20en%20ny%20kunde")
+    r = await admin.post(f"{AI}/route", json={"text": "Samlet årlig leje pr. ejendom, beregnet hver nat"})
+    assert r.json()["key"] == "pipeline"
+    r = await admin.post(f"{AI}/route", json={"text": "Et REST API til en partner med nøgler"})
+    assert r.json()["path"].startswith("/developer/api?ny=1&beskrivelse=")
+    assert (await admin.post(f"{AI}/route", json={"text": "x"})).status_code == 422
+
+
+async def test_route_follows_the_ai_when_it_is_on(make_client, ai_on):
+    admin = await _admin(make_client)
+    reply["text"] = '{"studio": "datastudie"}'
+    body = (await admin.post(f"{AI}/route", json={"text": "Send en mail hver morgen"})).json()
+    assert body["key"] == "datastudie" and body["ai"] is True
+    reply["text"] = '{"studio": "noget andet"}'
+    body = (await admin.post(f"{AI}/route", json={"text": "Send en mail hver morgen"})).json()
+    assert body["key"] == "actions" and body["ai"] is False   # an unknown answer: the keywords decide
+
+
+async def test_waiting_versions_carry_changes_and_the_ai_summary(make_client, owner_conn, ai_on):
+    from app.devkit import artifacts
+    admin = await _admin(make_client)
+    uid = _uid(owner_conn)
+    a = owner_conn.execute("""insert into dev_artifacts (type, slug, name, approval_flow) values ('api', 'kunder', 'Kunder', true)
+                              returning id""").fetchone()[0]
+    v = owner_conn.execute("""
+        insert into dev_artifact_versions (artifact_id, major, minor, patch, change_type, status, definition, contract, changes,
+                                           submitted_at)
+        values (%s, 3, 0, 0, 'major', 'pending', '{}', '{}', %s, now()) returning id""",
+        (a, json.dumps([{"kind": "-", "text": "Felt telefon fjernet", "type": "major"}]))).fetchone()[0]
+    owner_conn.execute("insert into dev_artifact_approvals (version_id, user_id, role, decision) values (%s, %s, 'A', 'pending')",
+                       (v, uid))
+    waiting = (await admin.get("/api/admin/dev/overview")).json()["waiting"]
+    assert waiting[0]["changes"] == ["Felt telefon fjernet"] and waiting[0]["ai_summary"] is None
+
+    reply["text"] = "Feltet telefon er fjernet. Læsere af feltet brydes."
+    assert await artifacts.ai_summary_job({"version_id": v, "user_id": uid}, {}) == {"summarized": True}
+    assert "telefon" in json.dumps(sent[-1]["messages"], ensure_ascii=False)
+    waiting = (await admin.get("/api/admin/dev/overview")).json()["waiting"]
+    assert waiting[0]["ai_summary"] == "Feltet telefon er fjernet. Læsere af feltet brydes."
+
+    owner_conn.execute("update dev_artifact_versions set status = 'published' where id = %s", (v,))
+    assert await artifacts.ai_summary_job({"version_id": v, "user_id": uid}, {}) == {"skipped": True}

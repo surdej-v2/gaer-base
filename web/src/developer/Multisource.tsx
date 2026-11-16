@@ -6,6 +6,7 @@ import { api, errorText } from "../api";
 import { Alert, useLoad } from "../ui";
 import { DevPage, useCrumb } from "./DeveloperShell";
 import { ArtifactTabs, Empty, StatusDot, type ArtifactDetail } from "./devui";
+import { useAiContext } from "./ai/context";
 
 type Item = { id: number; slug: string; name: string; version: string | null; status: string; statusLabel: string; steps: string[] };
 
@@ -73,6 +74,7 @@ type Run = { rows: Record<string, unknown>[]; count: number; partial: boolean; s
 
 export function MultisourcePage() {
   const { id } = useParams();
+  useAiContext("artifact", id);
   const { data, error, reload, setData } = useLoad(() => api.get<Detail>(`/api/admin/dev/multisource/${id}`), [id]);
   const [args, setArgs] = useState("{}");
   const [run, setRun] = useState<Run | null>(null);

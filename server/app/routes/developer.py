@@ -52,7 +52,8 @@ async def overview(p: Principal = Depends(require_admin)):
                    count(*) filter (where status = 'disabled') as disabled from dev_artifacts group by type""")}
         counts = await _counts(conn, p.user_id)
         waiting = await db.fetch_all(conn, """
-            select v.id as version_id, a.id as artifact_id, a.type, a.name, v.major, v.minor, v.patch, v.change_type, ap.role
+            select v.id as version_id, a.id as artifact_id, a.type, a.name, v.major, v.minor, v.patch, v.change_type, ap.role,
+                   v.changes, v.ai_summary
             from dev_artifact_approvals ap join dev_artifact_versions v on v.id = ap.version_id
             join dev_artifacts a on a.id = v.artifact_id
             where ap.user_id = %s and ap.decision = 'pending' and v.status = 'pending' order by v.submitted_at limit 10""",
@@ -72,7 +73,8 @@ async def overview(p: Principal = Depends(require_admin)):
     return {"studios": studios, "counts": counts, "datasets": datasets["n"],
             "connections": by_type.get("connection", {}).get("n", 0),
             "waiting": [{**w, "version": f"{w['major']}.{w['minor']}.{w['patch']}",
-                         "typeLabel": artifacts.TYPE_LABELS[w["type"]]} for w in waiting],
+                         "typeLabel": artifacts.TYPE_LABELS.get(w["type"], w["type"]),
+                         "changes": [c["text"] for c in (w["changes"] or [])][:5]} for w in waiting],
             "reviews": reviews, "notifications": notes}
 
 

@@ -169,3 +169,59 @@ async def impact(cause: dict | None, affected: dict | None, impact_data: dict) -
                           json.dumps({"ændringer": cause.get("changes"), "ny_kontrakt": cause.get("contract"),
                                       "berørt_definition": affected.get("definition"), "bruger": impact_data.get("uses")},
                                      ensure_ascii=False, default=str), max_tokens=600)
+
+
+# ── Fase 1 of specs/developer/AI.md: where to build, and what a waiting version changes ──
+
+# "Hvad vil du bygge?" on the overview: the studio and the page that starts a draft. Keywords answer without AI.
+BUILD = {
+    "actions": {"label": "Action-studie", "path": "/developer/actions/ny",
+                "words": {"flow", "flows", "når", "send", "sende", "mail", "besked", "godkend", "godkendelse", "webhook",
+                          "automatisk", "automatiser", "påmind", "påmindelse", "udløser", "hver", "trigger"}},
+    "pipeline": {"label": "Pipeline", "path": "/developer/pipeline/ny",
+                 "words": {"pipeline", "snapshot", "dagligt", "nat", "beregn", "beregning", "samlet", "sum", "antal",
+                           "gennemsnit", "aggreger", "rapport", "statistik", "måned", "måneds"}},
+    "api": {"label": "API-studie", "path": "/developer/api?ny=1",
+            "words": {"api", "rest", "partner", "partnere", "nøgle", "nøgler", "openapi", "integration", "eksterne", "system"}},
+    "datastudie": {"label": "Datastudie", "path": "/developer/datastudie/ny",
+                   "words": {"mcp", "endpoint", "tool", "tools", "ai-klient", "claude", "slå", "opslag", "spørge", "spørgsmål",
+                             "assistent", "agent"}},
+}
+
+
+def route_heuristic(text: str) -> str:
+    words = tokens(text) | set(WORD.findall((text or "").lower()))
+    best, score = "datastudie", 0
+    for key, b in BUILD.items():
+        s = len(words & b["words"])
+        if s > score:
+            best, score = key, s
+    return best
+
+
+async def route_description(text: str, user_id: int) -> dict:
+    """The studio for a description: keywords, refined by AI when it is on. {key, label, path, ai}."""
+    key, used_ai = route_heuristic(text), False
+    answer = await complete(SYSTEM + " Vælg det studie, der passer til opgaven: datastudie (et MCP-endpoint, AI-klienter "
+                            "slår data op), pipeline (data beregnes på forhånd som snapshot), api (REST-API med nøgler til "
+                            "andre systemer) eller actions (et flow: når noget sker, så gør noget). Svar som JSON "
+                            "{\"studio\": \"…\"}.", text[:2000], user_id=user_id, max_tokens=60)
+    parsed = _json(answer)
+    if isinstance(parsed, dict) and parsed.get("studio") in BUILD:
+        key, used_ai = parsed["studio"], True
+    b = BUILD[key]
+    return {"key": key, "label": b["label"], "path": b["path"], "ai": used_ai}
+
+
+async def summarize_change(artifact: dict, v: dict, user_id: int | None) -> str | None:
+    """An AI summary of a version waiting for approval, from the contract changes and the definitions (metadata only).
+    None without AI; the overview then shows the change list itself."""
+    if not v.get("changes"):
+        return None
+    return await complete(SYSTEM + " Skriv ét eller to korte sætninger til den, der skal godkende: hvad ændrer versionen, og "
+                          "bryder den nogen, der læser artefaktet? Ingen overskrift, ingen punktopstilling.",
+                          json.dumps({"type": artifact.get("type"), "navn": artifact.get("name"),
+                                      "ændring": v.get("change_type"),
+                                      "ændringer": [c.get("text") for c in v.get("changes") or []][:20],
+                                      "note": (v.get("note") or "")[:500]}, ensure_ascii=False, default=str),
+                          user_id=user_id, max_tokens=200)

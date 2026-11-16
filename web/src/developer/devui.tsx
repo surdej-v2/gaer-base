@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { api, errorText } from "../api";
 import { Alert, fmtDate, useLoad } from "../ui";
 import { DevPage, devState, useCrumb } from "./DeveloperShell";
+import { useAiContext } from "./ai/context";
 
 export const CLS_DA: Record<string, string> = { white: "Hvid", green: "Grøn", yellow: "Gul", red: "Rød" };
 export const MASK_DA: Record<string, string> = { show: "Vis", round: "Afrund", interval: "Interval", aggregate: "Kun aggregeret",
@@ -228,6 +229,7 @@ export function ArtifactTabs({ artifact, onChange, extra }: { artifact: Artifact
 
 export function ArtifactPage() {
   const { id } = useParams();
+  useAiContext("artifact", id);
   const { data, error, setData } = useLoad(() => api.get<ArtifactDetail>(`/api/admin/dev/artifacts/${id}`), [id]);
   useCrumb(data?.name);
   if (error) return <Alert>{error}</Alert>;

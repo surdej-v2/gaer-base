@@ -7,6 +7,7 @@ import { Alert, fmtDate, useLoad } from "../ui";
 import { DevPage, devState, useCrumb } from "./DeveloperShell";
 import { ArtifactTabs, Cls, Empty, StatusDot, Tabs, type ArtifactDetail } from "./devui";
 import { copy } from "./parts";
+import { useAiContext } from "./ai/context";
 
 type ApiItem = { id: number; slug: string; name: string; version: string | null; status: string; statusLabel: string; operations: number; url: string | null };
 
@@ -30,7 +31,7 @@ const EXAMPLE = { name: "Lejedata", cors: [], limits: { per_key: 60 }, sunset_mo
 export function ApiList() {
   const { data, error, reload } = useApis();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => new URLSearchParams(window.location.search).get("ny") === "1");
   const [slug, setSlug] = useState("");
   const [def, setDef] = useState(JSON.stringify(EXAMPLE, null, 2));
   const [err, setErr] = useState<string | null>(null);
@@ -79,6 +80,7 @@ type Detail = { artifact: ArtifactDetail; operations: Op[]; definition: Record<s
 
 export function ApiPage() {
   const { id } = useParams();
+  useAiContext("artifact", id);
   const { data, error, setData, reload } = useLoad(() => api.get<Detail>(`/api/admin/dev/apis/${id}`), [id]);
   const [tab, setTab] = useState("ops");
   const [copied, setCopied] = useState(false);

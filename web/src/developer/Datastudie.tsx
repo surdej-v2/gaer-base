@@ -7,6 +7,7 @@ import { Alert, fmtDate, useLoad } from "../ui";
 import { DevPage, devState, useCrumb } from "./DeveloperShell";
 import { ArtifactTabs, Cls, Empty, MASK_DA, StatusDot, Tabs, type ArtifactDetail } from "./devui";
 import { copy } from "./parts";
+import { useAiContext } from "./ai/context";
 
 type EndpointItem = { id: number; slug: string; name: string; version: string | null; status: string; statusLabel: string; url: string;
   audience: string; tools: number; owners: string[]; open: string | null };
@@ -47,7 +48,7 @@ export function Guide() {
   const [id, setId] = useState<number | null>(null);
   const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(() => new URLSearchParams(window.location.search).get("beskrivelse") ?? "");  // from "Hvad vil du bygge?"
   const [instructions, setInstructions] = useState("");
   const [sources, setSources] = useState<Source[]>([]);
   const [all, setAll] = useState<{ id: number; name: string; kind: string; source: string }[]>([]);
@@ -209,6 +210,7 @@ type LogRow = { ts: string; method: string; tool: string | null; status: string;
 
 export function EndpointPage() {
   const { id } = useParams();
+  useAiContext("artifact", id);
   const { data, error, setData } = useLoad(() => api.get<EndpointDetail>(`/api/admin/dev/datastudie/endpoints/${id}`), [id]);
   const [tab, setTab] = useState("tools");
   const [copied, setCopied] = useState(false);
@@ -288,6 +290,7 @@ export function OperationList() {
 
 export function OperationPage() {
   const { id } = useParams();
+  useAiContext("artifact", id);
   const { data, error, setData } = useLoad(() => api.get<ArtifactDetail>(`/api/admin/dev/operations/${id}`), [id]);
   const [args, setArgs] = useState("{}");
   const [draft, setDraft] = useState(false);

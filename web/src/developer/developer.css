@@ -101,3 +101,45 @@
 .dev-bar { height: 10px; border-radius: 4px; background: #93c5fd; }
 @media (max-width: 767px) { .dev-content { padding: 16px; } }
 .dev-page .segmented button[aria-selected="true"] { background: #fff; color: var(--hm-foreground); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+
+/* AI in /developer (specs/developer/AI.md, fase 1): the panel beside the page, the "Spørg AI" button, suggestion cards.
+   Blue and the sparkle always mean: from AI, not saved. */
+.dev-body { flex: 1; min-height: 0; display: flex; align-items: flex-start; }
+.dev-body > .dev-content { flex: 1; min-width: 0; }
+.dev-ai-btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid #c7d7fb;
+  background: #f5f8ff; color: #1e40af; font: 600 13px var(--hm-font-sans); cursor: pointer; }
+.dev-ai-btn.on { background: #e0ecff; }
+.dev-ai-btn kbd { font: 11px var(--hm-font-sans); padding: 0 5px; border: 1px solid #c7d7fb; border-radius: 5px; color: #1e40af; }
+.dev-ai-btn:focus-visible, .dev-ai-chipbtn:focus-visible { outline: 2px solid var(--hm-primary); outline-offset: 1px; }
+.dev-ai-icon { color: var(--hm-primary); flex: none; }
+.dev-ai-dock { position: sticky; top: 48px; flex: none; width: 380px; height: calc(100vh - 48px); display: flex; flex-direction: column;
+  background: #fff; border-left: 1px solid var(--hm-border); }
+.dev-ai-head { display: flex; align-items: center; gap: 6px; padding: 10px 10px 10px 14px; border-bottom: 1px solid var(--hm-border); }
+.dev-ai-head strong { flex: 1; font-size: 14px; }
+.dev-ai-known { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 14px; border-bottom: 1px solid #f1f5f9; }
+.dev-ai-chip { padding: 2px 8px; border-radius: 9999px; font-size: 12px; background: #f1f5f9; color: #334155; }
+.dev-ai-proposals { display: flex; flex-direction: column; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #f1f5f9; max-height: 45%; overflow-y: auto; }
+.dev-ai-chat { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px 14px; }
+.dev-ai-chat .chat { flex: 1; min-height: 0; }
+.dev-ai-chat .chat-log { flex: 1; max-height: none; }
+.dev-ai-chat .bubble { font-size: 13px; }
+.dev-ai-foot { margin: 0; padding: 0 14px 12px; }
+.dev-ai-budget { border: 1px solid #fde68a; background: #fffbeb; color: #92400e; border-radius: 10px; padding: 10px; font-size: 13px; }
+.dev-ai-budget a { color: #92400e; text-decoration: underline; }
+.dev-ai-suggestions { display: flex; flex-direction: column; gap: 8px; }
+.dev-ai-title { margin: 0; font-size: 13px; font-weight: 700; color: #1e40af; }
+.dev-ai-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.dev-ai-card { background: #f5f8ff; border: 1px solid #c7d7fb; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.dev-ai-where { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #1e40af; }
+.dev-ai-chipbtn { height: 26px; padding: 0 9px; border-radius: 9999px; border: 1px solid #c7d7fb; background: #f5f8ff; color: #1e40af;
+  font: 600 12px var(--hm-font-sans); cursor: pointer; white-space: nowrap; }
+.dev-ai-build { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #fff; border: 1px solid #c7d7fb; border-radius: 12px; padding: 8px 8px 8px 14px; }
+.dev-ai-build input { flex: 1 1 260px; min-width: 0; height: 34px; border: 0; outline: none; font: 14px var(--hm-font-sans); background: transparent; }
+.dev-ai-summary { font-size: 12px; color: #475569; }
+.dev-ai-summary b { color: #1e40af; }
+.dev-palette-list li.ai { color: #1e40af; }
+@media (max-width: 1100px) { .dev-ai-dock { width: 340px; } .dev-ai-btn-text, .dev-ai-btn kbd { display: none; } }
+@media (max-width: 767px) {
+  .dev-ai-dock { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; height: 75vh; z-index: 50;
+    border-left: 0; border-radius: 16px 16px 0 0; box-shadow: 0 -8px 24px rgb(15 23 42 / 0.18); }
+}
