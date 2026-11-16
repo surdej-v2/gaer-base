@@ -1,4 +1,4 @@
-"""Object Storage. OVHcloud Object Storage is S3-compatible; MinIO stands in locally; Azure Blob Storage on AKS."""
+"""Object Storage. OVHcloud Object Storage is S3-compatible; MinIO stands in locally; Azure Blob Storage (STORAGE_BACKEND=azure)."""
 
 import asyncio
 import base64

@@ -77,6 +77,7 @@ EVENTS: dict[str, str] = {
     "message.report.created": "En bruger har anmeldt en besked i en samtale (anmeldelse-id, besked-id)",
     "message.report.reviewed": "En moderator har afgjort anmeldelser af en besked (besked-id, afvist eller fjernet)",
     "killswitch.changed": "Et nødstop er lukket eller åbnet, i hånden eller af en regel (nøgle, lukket, automatisk)",
+    "config.changed": "Konfigurationen i /admin/config er ændret (afsnit, nøgler — aldrig værdier)",
     "auth.provider.updated": "En login-udbyder er oprettet, ændret eller slettet (udbyder-id, type)",
     "auth.provider.enabled": "En login-udbyder er slået til (udbyder-id, type)",
     "auth.provider.disabled": "En login-udbyder er slået fra (udbyder-id, type)",

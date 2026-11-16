@@ -71,6 +71,8 @@ async def _claim(conn) -> dict | None:
 
 async def run_one() -> bool:
     """Runs the next ready job, if any. Returns whether a job was run."""
+    from app import config_store
+    await config_store.refresh()  # /admin/config, as for requests
     async with db.connection() as conn:
         job = await _claim(conn)
     if job is None:

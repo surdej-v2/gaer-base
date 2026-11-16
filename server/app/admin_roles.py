@@ -71,6 +71,8 @@ SECTIONS: dict[str, list[str]] = {
     "/mail": ["/api/admin/mail"],
     "/resources": ["/api/admin/resources"],
     "/settings": ["/api/admin/settings"],
+    # Konfiguration: each group has its own roles (app/config_registry.GROUPS); login and security only for fuld.
+    "/config": ["/api/admin/config"],
     "/groups": ["/api/admin/groups"],
     "/secrets": ["/api/admin/secrets"],
     "/messages": ["/api/admin/messages/overview"],
@@ -87,11 +89,11 @@ ROLE_SECTIONS: dict[str, list[str]] = {
                 "/messages/moderation"],
     "indhold": ["/web", "/files", "/app-stores", "/knowledge", "/meta"],
     "produkt": ["/analytics", "/heatmaps", "/features", "/ai", "/consumption", "/adoption", "/adoption/journeys",
-                "/adoption/routes", "/adoption/console", "/adoption/access"],
-    "data": ["/data", "/data/explore", "/data/connect", "/data/tools", "/data/store", "/developer"],
+                "/adoption/routes", "/adoption/console", "/adoption/access", "/config"],
+    "data": ["/data", "/data/explore", "/data/connect", "/data/tools", "/data/store", "/developer", "/config"],
     "privatliv": ["/gdpr", "/consent", "/retention", "/logs/audit", "/logs/auth", "/access", "/messages/moderation"],
     "drift": ["/login-providers", "/mail", "/secrets", "/mcp", "/integrations", "/webhooks", "/jobs", "/nats", "/resources", "/settings",
-              "/messages", "/messages/delivery", "/messages/settings"],
+              "/config", "/messages", "/messages/delivery", "/messages/settings"],
     # Gær Developer (specs/developer/ROLES.md): both open /developer; what only Udvikler-admin may change is DEV_ADMIN.
     "udvikler": ["/developer"],
     "udvikler_admin": ["/developer"],
