@@ -37,16 +37,5 @@
   },
   "otherPortsAttributes": {
     "onAutoForward": "silent"
-  },
-  "customizations": {
-    "codespaces": {
-      "repositories": {
-        "hoejde/surdej-v2": {
-          "permissions": {
-            "contents": "read"
-          }
-        }
-      }
-    }
   }
 }
