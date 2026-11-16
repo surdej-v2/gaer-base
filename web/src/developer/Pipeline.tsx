@@ -1,13 +1,13 @@
 // /developer/pipeline — Pipeline (PL-1 … PL-17): the list with status, last and next run; a new pipeline (from a
 // description with AI, or a template); the editor with the visual stage list and the YAML text kept in sync, a masked
 // preview after each stage and the generated SQL; the plan, the runs with time per phase, and the snapshots.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, errorText } from "../api";
 import { Alert, fmtBytes, fmtDate, fmtNumber, useLoad } from "../ui";
 import { DevPage, devState, useCrumb } from "./DeveloperShell";
 import { ArtifactTabs, Cls, Empty, StatusDot, Tabs, type ArtifactDetail } from "./devui";
-import { useAiContext } from "./ai/context";
+import { useAiContext, useAiProposalHandler, useDevAi } from "./ai/context";
 import { AiSuggestions, ExplainButton } from "./ai/patterns";
 
 type Run = { id: number; artifact_id?: number; name?: string; status: string; label: string; trigger: string; queued_at: string; started_at: string | null;
@@ -146,6 +146,23 @@ type Detail = { artifact: ArtifactDetail; yaml: string; definition: { stages: Re
   compiled: { columns: Column[]; warnings: string[]; stages: { index: number; kind: string; label: string }[] } | null; error: string | null;
   runs: Run[]; snapshot: { id: number; key: string; refreshed_at: string | null } | null; loadSources: string[];
   dependsOn: { id: number; name: string; slug: string }[]; dependents: { id: number; name: string }[]; next: string | null };
+// specs/developer/AI.md fase 2: the editor's help from POST /api/admin/dev/pipelines/help (rules, no AI).
+type Hint = { key: string; title: string; text: string; from: number; to: number; stages: Record<string, unknown>[] };
+type Completion = { key?: string; value?: unknown; item?: string; why: string; ai?: boolean };
+type Help = { hints: Hint[]; describe: string[]; completion: Completion | null; error: string | null };
+
+/** A stage with a completion added (the grey text taken). */
+function withCompletion(stage: Record<string, unknown>, c: Completion): Record<string, unknown> {
+  const [kind, body] = Object.entries(stage)[0];
+  if (c.item !== undefined && Array.isArray(body)) return { [kind]: [...body, c.item] };
+  if (c.key !== undefined && body && typeof body === "object" && !Array.isArray(body)) return { [kind]: { ...(body as object), [c.key]: c.value } };
+  return stage;
+}
+
+function completionLine(c: Completion): string {
+  return c.item !== undefined ? `+ ${JSON.stringify(c.item)}` : `+ ${JSON.stringify(c.key)}: ${JSON.stringify(c.value)}`;
+}
+
 type Preview = { stage: number; columns: Column[]; rows: Record<string, unknown>[]; sql: string; warnings: string[]; smallGroups: number;
   minGroupSize: number; sensitive: string[] };
 
@@ -171,6 +188,14 @@ export function PipelineEditor() {
   const [stageText, setStageText] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [msg, setMsg] = useState<{ kind: "error" | "success" | "info" | "warn"; text: string } | null>(null);
+  const ai = useDevAi();
+  const [help, setHelp] = useState<Help | null>(null);
+  const [hidden, setHidden] = useState<string[]>([]);       // hints the user said no to, this session
+  const [ghostOff, setGhostOff] = useState(false);          // Esc hides the grey text until the stage changes
+  const [aiGhost, setAiGhost] = useState<Completion | null>(null);
+  const [undo, setUndo] = useState<{ stages: Record<string, unknown>[]; meta: Record<string, unknown>; label: string } | null>(null);
+  const [note, setNote] = useState("");
+  const [noteInfo, setNoteInfo] = useState<{ changeType: string; ai: boolean } | null>(null);
   useCrumb(data?.artifact.slug);
   useEffect(() => {
     if (!data) return;
@@ -181,6 +206,28 @@ export function PipelineEditor() {
   }, [data]);
   useEffect(() => setStageText(stages[selected] ? JSON.stringify(Object.values(stages[selected])[0], null, 2) : ""), [stages, selected]);
   const definition = useMemo(() => ({ ...meta, stages }), [meta, stages]);
+  // The help follows the stages as they are edited (rules only, so it is cheap); the grey text is for the selected stage.
+  useEffect(() => {
+    if (!stages.length || mode !== "visual") return;
+    setGhostOff(false);
+    setAiGhost(null);
+    const t = setTimeout(() => {
+      api.post<Help>("/api/admin/dev/pipelines/help", { definition: { ...meta, stages }, stage: selected }).then(setHelp, () => setHelp(null));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [meta, stages, selected, mode]);
+  // A change the AI proposes for this pipeline goes into the editor (not saved); for another pipeline it stays in the panel.
+  useAiProposalHandler("propose_pipeline_change", async (args) => {
+    if (Number(args.artifact_id) !== Number(id)) return null;
+    const r = await api.post<{ definition: Detail["definition"] }>("/api/admin/dev/pipelines/format", { yaml: String(args.yaml ?? "") });
+    const { stages: st, ...rest } = r.definition;
+    setUndo({ stages, meta, label: String(args.summary ?? "Forslag fra AI") });
+    setStages(st);
+    setMeta(rest);
+    setMode("visual");
+    setSelected(0);
+    return "Forslaget er lagt i editoren. Brugeren ser det og gemmer selv; intet er gemt endnu.";
+  });
   if (error) return <Alert>{error}</Alert>;
   if (!data) return null;
 
@@ -233,8 +280,8 @@ export function PipelineEditor() {
   };
   const submit = async () => {
     try {
-      await api.put(`/api/admin/dev/pipelines/${id}`, { definition: current() });
-      const v = await api.post<{ version: string; statusLabel: string }>(`/api/admin/dev/artifacts/${id}/submit`, {});
+      await api.put(`/api/admin/dev/pipelines/${id}`, { definition: current(), note });
+      const v = await api.post<{ version: string; statusLabel: string }>(`/api/admin/dev/artifacts/${id}/submit`, { note });
       setMsg({ kind: "success", text: `Version ${v.version}: ${v.statusLabel.toLowerCase()}.` });
       reload();
       devState.refresh();
@@ -242,6 +289,51 @@ export function PipelineEditor() {
       setMsg({ kind: "error", text: errorText(e) });
     }
   };
+  const writeNote = async () => {
+    try {
+      const r = await api.post<{ note: string; changeType: string; ai: boolean }>(`/api/admin/dev/pipelines/${id}/note`, { definition: current() });
+      setNote(r.note);
+      setNoteInfo({ changeType: r.changeType, ai: r.ai });
+    } catch (e) {
+      setMsg({ kind: "error", text: errorText(e) });
+    }
+  };
+  const ghost = !ghostOff ? (aiGhost ?? help?.completion ?? null) : null;
+  const takeGhost = () => {
+    if (!ghost || !stages[selected]) return;
+    // What is typed in the field and not yet applied counts: the completion goes on top of it.
+    let base = stages[selected];
+    try {
+      base = { [Object.keys(base)[0]]: JSON.parse(stageText) };
+    } catch {
+      /* not valid JSON yet: use the stage as it was */
+    }
+    setStages((s) => s.map((x, i) => (i === selected ? withCompletion(base, ghost) : x)));
+  };
+  const otherGhost = async () => {
+    try {
+      const r = await api.post<{ completion: Completion | null }>("/api/admin/dev/pipelines/complete", { definition: { ...meta, stages }, stage: selected });
+      if (r.completion) { setAiGhost(r.completion); setGhostOff(false); }
+      else setMsg({ kind: "info", text: "Intet andet forslag til trinnet." });
+    } catch (e) {
+      setMsg({ kind: "error", text: errorText(e) });
+    }
+  };
+  const onStageKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!ghost) return;
+    if (e.key === "Tab" && !e.shiftKey) {
+      e.preventDefault();
+      takeGhost();
+    } else if (e.key === "Escape") {
+      setGhostOff(true);
+    }
+  };
+  const applyHint = (h: Hint) => {
+    setUndo({ stages, meta, label: h.title });
+    setStages(h.stages);
+    setSelected(h.to);
+  };
+  const lastRun = data.runs[0];
   const runNow = async () => {
     try {
       await api.post(`/api/admin/dev/pipelines/${id}/run`);
@@ -278,6 +370,17 @@ export function PipelineEditor() {
       ) : (
         <div className="grid" style={{ gridTemplateColumns: "minmax(220px, 300px) 1fr", gap: 12 }}>
           <div className="stack" style={{ "--gap": "6px" } as React.CSSProperties}>
+            {(help?.hints ?? []).filter((h) => !hidden.includes(h.key)).map((h) => (
+              <div key={h.key} className="dev-ai-inline">
+                <span className="dev-ai-where">Forslag · samme resultat</span>
+                <strong className="small">{h.title}</strong>
+                <span className="small">{h.text}</span>
+                <div className="row" style={{ gap: 6 }}>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => applyHint(h)}>Brug</button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setHidden((x) => [...x, h.key])}>Afvis</button>
+                </div>
+              </div>
+            ))}
             {stages.map((st, i) => {
               const kind = Object.keys(st)[0];
               return (
@@ -299,8 +402,29 @@ export function PipelineEditor() {
             </select>
           </div>
           <div className="stack">
-            <strong>Trin {selected + 1}: {STAGE_DA[Object.keys(stages[selected] ?? { x: 1 })[0]] ?? ""}</strong>
-            <textarea className="dev-textarea" style={{ minHeight: 120 }} value={stageText} onChange={(e) => setStageText(e.target.value)} onBlur={applyStage} spellCheck={false} aria-label="Trinnets indstillinger (JSON)" />
+            <div className="row" style={{ gap: 8, alignItems: "center" }}>
+              <strong style={{ flex: 1 }}>Trin {selected + 1}: {STAGE_DA[Object.keys(stages[selected] ?? { x: 1 })[0]] ?? ""}</strong>
+              {stages[selected] && (
+                <ExplainButton question={`Forklar trin ${selected + 1} i pipelinen, og om det kan gøres bedre: ${JSON.stringify(stages[selected])}`}>
+                  Forklar trinnet
+                </ExplainButton>
+              )}
+            </div>
+            {help?.describe[selected] && <span className="small muted">{help.describe[selected]}</span>}
+            <textarea className="dev-textarea" style={{ minHeight: 120 }} value={stageText} onChange={(e) => setStageText(e.target.value)} onBlur={applyStage}
+                      onKeyDown={onStageKey} spellCheck={false} aria-label="Trinnets indstillinger (JSON)"
+                      aria-describedby={ghost ? "dev-ai-ghost" : undefined} />
+            {ghost && (
+              <div id="dev-ai-ghost" className="dev-ai-ghost">
+                <code>{completionLine(ghost)}</code>
+                <span className="tiny muted">{ghost.ai ? "AI: " : ""}{ghost.why}</span>
+                <div className="row" style={{ gap: 6 }}>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={takeGhost}>Tag forslaget (Tab)</button>
+                  {ai.enabled && <button type="button" className="btn btn-ghost btn-sm" onClick={otherGhost}>Andet forslag</button>}
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setGhostOff(true)}>Skjul (Esc)</button>
+                </div>
+              </div>
+            )}
             {preview && preview.stage === selected && <PreviewView p={preview} />}
           </div>
         </div>
@@ -308,6 +432,30 @@ export function PipelineEditor() {
       <span className="tiny muted">
         {s.type === "daily" ? `Kører dagligt${data.definition.wait_for_load ? ", når indlæsningen er færdig" : ""}, tidligst kl. ${s.earliest}` : s.type === "hourly" ? "Kører hver time" : "Køres manuelt"}
       </span>
+      {undo && (
+        <div className="dev-ai-inline" role="status">
+          <span className="small"><b>{undo.label}</b> er lagt i editoren. Intet er gemt endnu.</span>
+          <div className="row" style={{ gap: 6 }}>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => { setStages(undo.stages); setMeta(undo.meta); setUndo(null); }}>Fortryd</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setUndo(null)}>Behold</button>
+          </div>
+        </div>
+      )}
+      {lastRun?.status === "failed" && (
+        <Alert kind="warn">
+          Seneste kørsel (#{lastRun.id}) fejlede{lastRun.error ? `: ${lastRun.error}` : "."}{" "}
+          <ExplainButton question="Hvorfor fejlede kørslen, og hvad kan jeg ændre i pipelinen?" about={{ kind: "run", id: lastRun.id }}>Forklar fejlen</ExplainButton>
+        </Alert>
+      )}
+      <div className="stack" style={{ "--gap": "4px" } as React.CSSProperties}>
+        <label className="small" htmlFor="pl-note">Ændringsnote (følger versionen til godkendelse)</label>
+        <textarea id="pl-note" className="dev-input" style={{ height: 64, padding: 8 }} value={note} maxLength={2000}
+                  onChange={(e) => setNote(e.target.value)} placeholder="Hvad ændrer versionen, og hvorfor?" />
+        <div className="row" style={{ gap: 8, alignItems: "center" }}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={writeNote}>{ai.enabled ? "Skriv ændringsnote med AI" : "Skriv ændringsnote ud fra ændringerne"}</button>
+          {noteInfo && <span className="tiny muted">Serveren vurderer ændringen som {noteInfo.changeType}{noteInfo.ai ? " · teksten er skrevet af AI" : ""}</span>}
+        </div>
+      </div>
       <div className="row" style={{ gap: 8 }}>
         <button className="btn btn-outline btn-sm" onClick={() => doPreview()}>Forhåndsvis</button>
         <button className="btn btn-outline btn-sm" onClick={save}>Gem kladde</button>

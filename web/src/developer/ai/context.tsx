@@ -7,7 +7,8 @@ import { api } from "../../api";
 export type AiKind = "overview" | "artifact" | "dataset" | "run";
 export type AiRef = { kind: AiKind; id?: number };
 export type Proposal = { id: number; tool: string; args: Record<string, unknown> };
-type Handler = (args: Record<string, unknown>) => string | Promise<string>;
+/** A page's handler for a kind of proposal; null = not for this page (it goes to the panel instead). */
+type Handler = (args: Record<string, unknown>) => string | null | Promise<string | null>;
 type Status = { enabled: boolean; blocked?: boolean; status?: string };
 
 type Ctx = {
@@ -58,7 +59,8 @@ export function AiProvider({ children }: { children: ReactNode }) {
   }, []);
   const propose = useCallback(async (tool: string, args: Record<string, unknown>) => {
     const handler = handlers.current[tool];
-    if (handler) return await handler(args);
+    const taken = handler ? await handler(args) : null;
+    if (taken !== null) return taken;
     seq.current += 1;
     const id = seq.current;
     setProposals((p) => [...p, { id, tool, args }]);

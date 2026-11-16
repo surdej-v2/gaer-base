@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app import db
-from app.devkit import artifacts, assist, connections, pipeline_runs, pipelines
+from app.devkit import artifacts, assist, connections, contracts, pipeline_hints, pipeline_runs, pipelines
 from app.devkit import secrets as dev_secrets
 from app.logs import audit
 from app.sessions import Principal, require_admin
@@ -342,6 +342,66 @@ async def format_pipeline(body: FormatIn):
     """The visual editor and the text view stay in sync (PL-3): YAML ↔ the normalized definition."""
     d = _parse(body.yaml if body.yaml is not None else body.definition or {})
     return {"definition": d, "yaml": pipelines.to_yaml(d)}
+
+
+class HelpIn(BaseModel):
+    definition: dict | str
+    stage: int | None = Field(default=None, ge=0, le=200)
+
+
+@router.post("/pipelines/help")
+async def pipeline_help(body: HelpIn):
+    """The editor's help (specs/developer/AI.md, fase 2), all rules, no AI: changes that give the same result faster,
+    what each stage does, and a completion for the selected stage (the grey text). A definition that does not compile
+    gets its error and the descriptions."""
+    d = _parse(body.definition)
+    describe = [pipeline_hints.describe(s) for s in d["stages"]]
+    async with db.connection() as conn:
+        try:
+            compiled = await pipelines.compile_definition(conn, d)
+        except HTTPException as e:
+            return {"hints": [], "describe": describe, "completion": None, "error": e.detail}
+    completion = pipeline_hints.heuristic_completion(d, compiled, body.stage) if body.stage is not None else None
+    return {"hints": pipeline_hints.hints(d, compiled), "describe": describe, "completion": completion, "error": None}
+
+
+class CompleteIn(BaseModel):
+    definition: dict | str
+    stage: int = Field(ge=1, le=200)
+
+
+@router.post("/pipelines/complete")
+async def pipeline_complete(body: CompleteIn, p: Principal = Depends(require_admin)):
+    """"Andet forslag": the AI's addition to a stage, checked by compiling it; the rule's when AI is off or fails."""
+    d = _parse(body.definition)
+    if body.stage >= len(d["stages"]):
+        raise HTTPException(422, "Trinnet findes ikke")
+    async with db.connection() as conn:
+        compiled = await pipelines.compile_definition(conn, d)
+        completion = await pipeline_hints.ai_completion(conn, d, compiled, body.stage, p.user_id)
+    return {"completion": completion or pipeline_hints.heuristic_completion(d, compiled, body.stage)}
+
+
+class NoteIn(BaseModel):
+    definition: dict | str
+
+
+@router.post("/pipelines/{artifact_id}/note")
+async def pipeline_note(artifact_id: int, body: NoteIn, p: Principal = Depends(require_admin)):
+    """A change note for the version: the contract diff against the published version, as the server rates it
+    (patch/minor/major), written up by AI when it is on, else the list of changes."""
+    d = _parse(body.definition)
+    async with db.connection() as conn:
+        a = await artifacts.get(conn, artifact_id)
+        if a["type"] != "pipeline":
+            raise HTTPException(404, "Pipelinen findes ikke")
+        prepared, _ = await pipelines.prepare(conn, d)
+        cur = await artifacts.current(conn, a)
+    diff = contracts.diff(cur["contract"] if cur else None, pipelines.contract(prepared))
+    texts = [c["text"] for c in diff["changes"]]
+    note = await assist.summarize_change(a, {"change_type": diff["type"], "changes": diff["changes"], "note": ""}, p.user_id)
+    return {"changeType": diff["type"], "changes": texts, "note": (note or "; ".join(texts) or "Ingen ændringer i kontrakten")[:2000],
+            "ai": bool(note)}
 
 
 class SuggestIn(BaseModel):

@@ -143,3 +143,10 @@
   .dev-ai-dock { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; height: 75vh; z-index: 50;
     border-left: 0; border-radius: 16px 16px 0 0; box-shadow: 0 -8px 24px rgb(15 23 42 / 0.18); }
 }
+/* Fase 2: suggestions between the stages (dashed: not applied), the grey completion under a stage */
+.dev-ai-inline { border: 1px dashed #93b4f5; background: #f5f8ff; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.dev-ai-ghost { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px dashed #c7d7fb; border-radius: 10px; background: #fbfcff; }
+.dev-ai-ghost code { font: italic 12px/1.5 var(--hm-font-mono); color: #64748b; white-space: pre-wrap; }
+/* A stage's JSON is cut with an ellipsis, so the stage list never runs into its arrows or the preview */
+.dev-stage { min-width: 0; overflow: hidden; }
+.dev-stage .mono { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -1,6 +1,6 @@
 # AI i Gær Developer — chat og forslag overalt
 
-Status: fase 0 (backend) og fase 1 (shell, oversigt, ⌘K) er bygget. Fase 2–6 er planlagt. Designet ligger på canvasset „Developer med AI“
+Status: fase 0 (backend), fase 1 (shell, oversigt, ⌘K) og fase 2 (pipeline-editoren) er bygget. Fase 3–6 er planlagt. Designet ligger på canvasset „Developer med AI“
 (artboards: Oversigt, Pipeline-editor, ⌘K, MCP-testbænk, Action-studie, API-dokumentation, AI-mønstre, telefon).
 
 ## Mål
@@ -50,11 +50,13 @@ AI-chat og AI-forslag i alle studier i `/developer`, bygget på det AI-lag, der 
 Undervejs rettet: `Chat` i `ai.tsx` returnerede værdien af `scrollIntoView` fra en effekt; nyere browsere giver et Promise
 tilbage, og React fejlede, når en samtale blev lukket.
 
-## Fase 2 — Pipeline-editor
+## Fase 2 — Pipeline-editor (bygget)
 
-- Regel i compileren: `$match` på felter, der ikke kommer fra `$lookup`, kan flyttes tidligere → advarsel med en ændring.
-- Grå tekst: `POST /api/admin/dev/pipelines/{id}/complete` (trin + katalogets kolonner).
-- „Forklar trinnet“, „Forklar fejlen“ (fra `dev_pipeline_run_phases`), ændringsnote fra kontraktforskellen.
+| Del | Hvor |
+| --- | --- |
+| Regler | `devkit/pipeline_hints.py`: `hints()` — en `$match`, der kun læser felter fra før et `$lookup`, kan flyttes op over det (opslaget er en left join, der aldrig overskriver en kolonne, så rækkerne er de samme; testen sammenligner forhåndsvisningerne); `describe()` — hvad et trin gør på dansk; `heuristic_completion()` — grå tekst: læg et tal sammen, som ikke er aggregeret endnu (`$group`), eller tag et felt med, der mangler (`$project`) |
+| Endpoints | `POST /api/admin/dev/pipelines/help` (regler, ingen AI: forslag, beskrivelser, grå tekst for det valgte trin); `POST /api/admin/dev/pipelines/complete` („Andet forslag“: AI's tilføjelse, beholdt kun hvis pipelinen stadig kan kompileres, ellers reglens); `POST /api/admin/dev/pipelines/{id}/note` (ændringsnote ud fra kontraktforskellen mod den udgivne version — serverens patch/minor/major, teksten skrevet af AI eller listen af ændringer) |
+| Editoren | `Pipeline.tsx`: forslag med stiplet kant over trinene („Brug“ / „Afvis“), beskrivelse under det valgte trin, grå tekst under feltet (Tab tager den, Esc skjuler, „Andet forslag“ med AI), „Forklar trinnet“, „Forklar fejlen“ når seneste kørsel fejlede, ændringsnote der følger versionen til godkendelse. Et `propose_pipeline_change` for den åbne pipeline lægges i editoren med „Fortryd“ (`useAiProposalHandler`; for en anden pipeline bliver det i panelet). Intet gemmes, før brugeren trykker Gem kladde eller Send til godkendelse |
 
 ## Fase 3 — MCP-testbænk
 
@@ -79,6 +81,6 @@ tilbage, og React fejlede, når en samtale blev lukket.
 
 ## Tests
 
-`server/tests/test_developer_ai.py`: kontekst uden værdier, valg af studie med og uden AI, AI-resumé på en version, der venter, citerede værdier fjernet fra fejltekster, budget nået → 429
+`server/tests/test_developer_ai.py`: kontekst uden værdier, valg af studie med og uden AI, AI-resumé på en version, der venter, og i `test_developer_ai_pipeline.py` flytningen af en `$match` (samme rækker), beskrivelser, grå tekst med og uden AI og ændringsnoten, citerede værdier fjernet fra fejltekster, budget nået → 429
 (også i `assist.complete`), AI slået fra → 404 og forslag virker stadig, `/api/ai/chat` afviser surface `developer`,
 afvisning og fortryd med audit, afvisninger i GDPR-eksporten og slettet med brugeren.
