@@ -123,6 +123,9 @@ async def build_user_export(conn, user_id: int) -> dict:
                                                   where user_id = %s order by id""", user_id),
         "developer_api_calls": await rows("""select ts, api, major, method, path, status from dev_api_log
                                               where user_id = %s order by id""", user_id),
+        "developer_api_docs_approved": await rows("""select a.slug, d.major, d.section, d.approved_at from dev_api_docs d
+                                                      join dev_artifacts a on a.id = d.api_artifact_id
+                                                      where d.approved_by = %s order by d.approved_at""", user_id),
         "developer_ai_dismissed_suggestions": await rows("""select key, kind, dismissed_at from dev_ai_dismissals
                                                              where user_id = %s order by dismissed_at""", user_id),
         "groups": await rows("""select g.name, g.slug, m.role, m.added_at from group_members m join groups g on g.id = m.group_id

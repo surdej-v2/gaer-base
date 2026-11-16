@@ -7,7 +7,7 @@ import { Alert, fmtDate, useLoad } from "../ui";
 import { DevPage, devState, useCrumb } from "./DeveloperShell";
 import { ArtifactTabs, Cls, Empty, StatusDot, Tabs, type ArtifactDetail } from "./devui";
 import { copy } from "./parts";
-import { useAiContext } from "./ai/context";
+import { useAiContext, useAiProposalHandler, useDevAi } from "./ai/context";
 
 type ApiItem = { id: number; slug: string; name: string; version: string | null; status: string; statusLabel: string; operations: number; url: string | null };
 
@@ -319,12 +319,15 @@ export function DocsPage() {
   useEffect(() => {
     if (apiId) api.get<Detail>(`/api/admin/dev/apis/${apiId}`).then((d) => setSpec(d.openapi as unknown as Spec)); else setSpec(null);
   }, [apiId]);
+  useAiContext("artifact", apiId || null);
   return (
-    <DevPage title="Dokumentation" intro="Genereret fra OpenAPI 3.1 med feltbeskrivelser, klassifikation og maskerede felter."
+    <DevPage title="Dokumentation" intro="Genereret fra OpenAPI 3.1 med feltbeskrivelser, klassifikation og maskerede felter. Teksterne skrives ud fra reglerne (og af AI, når den er slået til) og udgives først, når en ejer har godkendt dem."
              actions={<ApiPicker value={apiId} onChange={(v) => setParams(v ? { api: v } : {})} />}>
       {!apiId && <Empty>Vælg et API.</Empty>}
+      {apiId && <DocsTexts apiId={Number(apiId)} />}
       {spec && (
         <div className="stack">
+          <h2 style={{ margin: 0, fontSize: 17 }}>Felter og klassifikation</h2>
           <span className="mono small">{spec.servers[0].url} · v{spec.info.version}</span>
           {Object.entries(spec.paths).map(([path, ops]) => Object.entries(ops).map(([m, op]) => (
             <div key={`${m}${path}`} className="dev-card">
@@ -482,5 +485,124 @@ export function ExportPage() {
         </div>
       </div>
     </DevPage>
+  );
+}
+
+// ── Fase 4 of specs/developer/AI.md: the documentation's texts, approved by an owner ────────────────────
+
+type DocSection = { section: string; title: string; draft: string | null; source: "rule" | "ai" | "human" | null;
+  approved: string | null; approvedAt: string | null; approvedBy: string | null };
+type Docs = { major: number; version: string; server: string; sections: DocSection[]; pending: number; canApprove: boolean; ai: boolean;
+  prevMajor: number | null; oldKeys: string[]; errorCounts: { status: number; count: number; pct: number }[];
+  examples: Record<string, { curl: string; python: string; typescript: string }> };
+
+const SOURCE_DA: Record<string, string> = { rule: "Forslag ud fra reglerne", ai: "AI-forslag", human: "Kladde skrevet af en person" };
+const LANGS: [keyof Docs["examples"][string], string][] = [["curl", "curl"], ["python", "Python"], ["typescript", "TypeScript"]];
+
+function DocsTexts({ apiId }: { apiId: number }) {
+  const ai = useDevAi();
+  const { data, error, reload } = useLoad(() => api.get<Docs>(`/api/admin/dev/apis/${apiId}/docs`), [apiId]);
+  const [editing, setEditing] = useState<Record<string, string>>({});
+  const [lang, setLang] = useState<keyof Docs["examples"][string]>("curl");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ kind: "error" | "success"; text: string } | null>(null);
+  // A text the AI proposes for this API goes into the section's editor, unsaved; the user saves it as a draft.
+  useAiProposalHandler("propose_doc_text", (args) => {
+    if (Number(args.artifact_id) !== apiId || !data) return null;
+    const section = String(args.section ?? "");
+    if (!data.sections.some((x) => x.section === section)) return null;
+    setEditing((e) => ({ ...e, [section]: String(args.text ?? "") }));
+    return "Teksten er lagt i afsnittets editor. Brugeren gemmer den som kladde; en ejer godkender den.";
+  });
+  if (error) return <Alert kind="info">{error}</Alert>;
+  if (!data) return null;
+  const act = async (action: "approve" | "reject" | "edit", s: DocSection, text?: string) => {
+    setMsg(null);
+    try {
+      await api.post(`/api/admin/dev/apis/${apiId}/docs/${action}`, { major: data.major, section: s.section, text });
+      if (action === "edit") setEditing(({ [s.section]: _, ...rest }) => rest);
+      reload();
+    } catch (e) {
+      setMsg({ kind: "error", text: errorText(e) });
+    }
+  };
+  const generate = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await api.post<{ written: number; ai: boolean }>(`/api/admin/dev/apis/${apiId}/docs/generate`);
+      setMsg({ kind: "success", text: r.written ? `${r.written} afsnit har fået en ny kladde${r.ai ? " skrevet af AI" : ""}.` : "Ingen afsnit havde noget nyt." });
+      reload();
+    } catch (e) {
+      setMsg({ kind: "error", text: errorText(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="stack">
+      <div className="dev-ai-card" style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+        <span className="small" style={{ flex: 1, minWidth: 240 }}>
+          v{data.version} · <b>{data.pending} {data.pending === 1 ? "tekst venter" : "tekster venter"}</b> på godkendelse.
+          Kun godkendte tekster står i OpenAPI-dokumentet på <span className="mono">{data.server}/openapi.json</span>.
+        </span>
+        <button className="btn btn-outline btn-sm" onClick={generate} disabled={busy}>{busy ? "Skriver …" : ai.enabled ? "Skriv alt igen med AI" : "Skriv alt igen"}</button>
+      </div>
+      {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
+      {data.sections.map((s) => {
+        const ex = s.section.startsWith("operation:") ? data.examples[s.section.slice(10).replace(/:([a-z_][a-z0-9_]*)/g, "{$1}")] : null;
+        const edit = editing[s.section];
+        return (
+          <section key={s.section} className="dev-card" aria-label={s.title}>
+            <div className="row" style={{ gap: 8, alignItems: "center" }}>
+              <h3 className={s.section.startsWith("operation:") ? "mono" : undefined} style={{ margin: 0, fontSize: 15, flex: 1 }}>{s.title}</h3>
+              {s.approved && <span className="tiny" style={{ color: "#15803d", fontWeight: 600 }}>Godkendt{s.approvedBy ? ` af ${s.approvedBy}` : ""}{s.approvedAt ? ` ${fmtDate(s.approvedAt)}` : ""}</span>}
+              {edit === undefined && <button className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...editing, [s.section]: s.draft ?? s.approved ?? "" })}>Ret</button>}
+            </div>
+            {s.approved && <p className="small" style={{ margin: 0, whiteSpace: "pre-wrap" }}>{s.approved}</p>}
+            {s.draft && edit === undefined && (
+              <div className={s.source === "human" ? "dev-card" : "dev-ai-inline"} style={{ padding: "10px 12px" }}>
+                <span className="dev-ai-where">{SOURCE_DA[s.source ?? "rule"]} · {s.approved ? "erstatter den godkendte tekst" : "ikke udgivet"}</span>
+                <p className="small" style={{ margin: 0, whiteSpace: "pre-wrap" }}>{s.draft}</p>
+                <div className="row" style={{ gap: 6 }}>
+                  {data.canApprove ? <button className="btn btn-primary btn-sm" onClick={() => act("approve", s)}>Godkend</button>
+                    : <span className="tiny muted">Godkendes af API'ets ejere (A eller R).</span>}
+                  <button className="btn btn-ghost btn-sm" onClick={() => act("reject", s)}>Afvis</button>
+                </div>
+              </div>
+            )}
+            {edit !== undefined && (
+              <div className="stack" style={{ "--gap": "6px" } as React.CSSProperties}>
+                <label className="sr-only" htmlFor={`doc-${s.section}`}>Tekst til {s.title}</label>
+                <textarea id={`doc-${s.section}`} className="dev-input" style={{ height: 120, padding: 8 }} maxLength={8000} value={edit}
+                          onChange={(e) => setEditing({ ...editing, [s.section]: e.target.value })} />
+                <div className="row" style={{ gap: 6 }}>
+                  <button className="btn btn-primary btn-sm" onClick={() => act("edit", s, edit)} disabled={!edit.trim()}>Gem som kladde</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setEditing(({ [s.section]: _, ...rest }) => rest)}>Annullér</button>
+                </div>
+              </div>
+            )}
+            {!s.approved && !s.draft && edit === undefined && <span className="small muted">Ingen tekst endnu. Tryk „Skriv alt igen“.</span>}
+            {s.section === "migration" && data.oldKeys.length > 0 && (
+              <span className="tiny muted">Kun her (ikke i dokumentationen): nøgler, der kaldte v{data.prevMajor} de seneste 30 dage: {data.oldKeys.join(", ")}</span>
+            )}
+            {s.section === "errors" && data.errorCounts.length > 0 && (
+              <span className="tiny muted">Fejl de seneste 30 dage: {data.errorCounts.map((c) => `${c.status} × ${c.count}`).join(" · ")}</span>
+            )}
+            {ex && (
+              <div className="stack" style={{ "--gap": "6px" } as React.CSSProperties}>
+                <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                  <div className="segmented" role="tablist" aria-label="Eksempel" style={{ width: 260 }}>
+                    {LANGS.map(([k, label]) => <button key={k} type="button" role="tab" aria-selected={lang === k} onClick={() => setLang(k)}>{label}</button>)}
+                  </div>
+                  <span className="tiny muted">Lavet ud fra OpenAPI-beskrivelsen og operationens første eksempel</span>
+                </div>
+                <pre className="dev-code">{ex[lang]}</pre>
+              </div>
+            )}
+          </section>
+        );
+      })}
+    </div>
   );
 }

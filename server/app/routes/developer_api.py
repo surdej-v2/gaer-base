@@ -67,13 +67,14 @@ async def api_detail(artifact_id: int):
                                     (artifact_id,))
         keys = await _keys(conn, artifact_id)
         cur = await artifacts.current(conn, a)
+        docs = await api_docs.approved(conn, artifact_id, cur["major"]) if cur else {}
     working = detail["draft"] or detail["current"]
     ops = [{k: v for k, v in o.items() if not k.startswith("_")} for o in working["definition"]["operations"]]
     return {"artifact": detail, "operations": ops, "definition": {k: v for k, v in working["definition"].items() if k != "operations"},
             "majors": [{"major": m["major"], "version": f"{m['vmajor']}.{m['minor']}.{m['patch']}" if m["vmajor"] is not None else None,
                         "publishedAt": m["published_at"], "sunsetAt": m["sunset_at"], "url": f"{_origin()}/gaer/v{m['major']}/{a['slug']}"}
                        for m in majors],
-            "keys": keys, "openapi": apis.openapi(a, cur, _origin()) if cur else None}
+            "keys": keys, "openapi": api_docs.apply(apis.openapi(a, cur, _origin()), docs) if cur else None}
 
 
 class ApiEdit(BaseModel):
@@ -376,3 +377,69 @@ async def run_import(body: ImportIn, p: Principal = Depends(require_admin_stepup
         await audit(conn, "dev.import", actor_id=p.user_id, meta=p.meta, table="dev_artifacts", row_id=None,
                     signer=result["signer"], artifacts=[f"{x['type']}/{x['slug']}" for x in result["imported"]])
     return result
+
+
+# ── Fase 4 of specs/developer/AI.md: the documentation's texts, approved by an owner ──
+
+from app.devkit import api_docs  # noqa: E402
+from app.devkit.assist import enabled as ai_enabled  # noqa: E402
+
+
+async def _published(conn, artifact_id: int) -> tuple[dict, dict]:
+    a = await artifacts.get(conn, artifact_id)
+    if a["type"] != "api":
+        raise HTTPException(404, "API'et findes ikke")
+    v = await artifacts.current(conn, a)
+    if v is None:
+        raise HTTPException(409, "API'et er ikke udgivet endnu. Dokumentationen skrives, når en version udgives")
+    return a, v
+
+
+@router.get("/apis/{artifact_id}/docs")
+async def docs(artifact_id: int, p: Principal = Depends(require_admin)):
+    """The texts of the published major per section (draft and approved), examples made from the OpenAPI document,
+    and the facts behind the guides (keys still on the major before, errors per status)."""
+    async with db.connection() as conn:
+        a, v = await _published(conn, artifact_id)
+        out = await api_docs.sections(conn, a, v)
+        can = await artifacts.is_owner(conn, artifact_id, p.user_id)
+    spec = apis.openapi(a, v, _origin())
+    return {"major": v["major"], "version": artifacts.version_str(v), "server": spec["servers"][0]["url"],
+            "examples": api_docs.examples(spec), "canApprove": can, "ai": ai_enabled(), **out}
+
+
+@router.post("/apis/{artifact_id}/docs/generate")
+async def docs_generate(artifact_id: int, p: Principal = Depends(require_admin)):
+    """"Skriv alt igen": new drafts for every section from the rules, rewritten by AI when it is on."""
+    async with db.connection() as conn:
+        a, v = await _published(conn, artifact_id)
+        out = await api_docs.generate(conn, a, v, p.user_id)
+        await audit(conn, "dev.api.docs.generated", actor_id=p.user_id, meta=p.meta, table="dev_artifacts", row_id=artifact_id,
+                    major=v["major"], written=out["written"], ai=out["ai"])
+    return out
+
+
+class DocIn(BaseModel):
+    major: int = Field(ge=1)
+    section: str = Field(min_length=1, max_length=300)
+    text: str | None = Field(default=None, max_length=8000)
+
+
+@router.post("/apis/{artifact_id}/docs/{action}")
+async def docs_change(artifact_id: int, action: str, body: DocIn, p: Principal = Depends(require_admin)):
+    """approve (owners A or R), edit (a person's draft), reject (the draft goes)."""
+    async with db.connection() as conn:
+        a = await artifacts.get(conn, artifact_id, lock=True)
+        if a["type"] != "api":
+            raise HTTPException(404, "API'et findes ikke")
+        if action == "approve":
+            await api_docs.approve(conn, a, body.major, body.section, actor_id=p.user_id, meta=p.meta)
+        elif action == "edit":
+            if not (body.text or "").strip():
+                raise HTTPException(422, "Teksten er tom")
+            await api_docs.edit(conn, a, body.major, body.section, body.text.strip(), actor_id=p.user_id, meta=p.meta)
+        elif action == "reject":
+            await api_docs.reject(conn, a, body.major, body.section, actor_id=p.user_id, meta=p.meta)
+        else:
+            raise HTTPException(404, "Ukendt handling")
+    return {"ok": True}

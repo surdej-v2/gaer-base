@@ -11,8 +11,8 @@ from types import SimpleNamespace
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 
-from app import config
-from app.devkit import apis, cache
+from app import config, db
+from app.devkit import api_docs, apis, cache
 from app.mcp import oauth
 from app.sessions import request_meta
 
@@ -66,7 +66,9 @@ async def gateway(major: int, slug: str, path: str, request: Request):
     if m["sunset_at"] and m["sunset_at"] <= datetime.now(timezone.utc):
         return _err(410, f"v{major} er lukket. Brug den nyeste major", cors)
     if path in ("openapi.json", "openapi") and request.method == "GET":
-        return JSONResponse(apis.openapi(a, v, config.settings.origin.rstrip("/")), headers={**cors, **dep})
+        async with db.connection() as conn:   # only texts an owner approved are published (specs/developer/AI.md fase 4)
+            docs = await api_docs.approved(conn, a["id"], v["major"])
+        return JSONResponse(api_docs.apply(apis.openapi(a, v, config.settings.origin.rstrip("/")), docs), headers={**cors, **dep})
     o, path_params, other = apis.match(d, request.method, path)
     if o is None:
         return _err(405 if other else 404, "Metoden findes ikke på stien" if other else "Stien findes ikke", {**cors, **dep})

@@ -105,7 +105,10 @@ async def dependencies(conn, definition: dict) -> list[tuple[int, str]]:
 
 
 async def on_publish(conn, artifact: dict, v: dict, prev: dict | None) -> None:
-    """API-9: a new major gets its own line; the one before it is phased out after sunset_months."""
+    """API-9: a new major gets its own line; the one before it is phased out after sunset_months. The documentation's
+    texts for the major get new drafts (job developer.docs, specs/developer/AI.md fase 4)."""
+    await jobs.enqueue(conn, "developer.docs", {"artifact_id": artifact["id"], "version_id": v["id"], "user_id": v.get("created_by")},
+                       dedupe_key=f"developer.docs:{v['id']}", max_attempts=2)
     await conn.execute("""insert into dev_api_majors (api_artifact_id, major, version_id) values (%s, %s, %s)
                           on conflict (api_artifact_id, major) do update set version_id = excluded.version_id""",
                        (artifact["id"], v["major"], v["id"]))

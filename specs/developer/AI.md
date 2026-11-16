@@ -1,6 +1,6 @@
 # AI i Gær Developer — chat og forslag overalt
 
-Status: fase 0 (backend), fase 1 (shell, oversigt, ⌘K), fase 2 (pipeline-editoren) og fase 3 (MCP-testbænken) er bygget. Fase 4–6 er planlagt. Designet ligger på canvasset „Developer med AI“
+Status: fase 0 (backend), fase 1 (shell, oversigt, ⌘K), fase 2 (pipeline-editoren), fase 3 (MCP-testbænken) og fase 4 (API-dokumentationen) er bygget. Fase 5–6 er planlagt. Designet ligger på canvasset „Developer med AI“
 (artboards: Oversigt, Pipeline-editor, ⌘K, MCP-testbænk, Action-studie, API-dokumentation, AI-mønstre, telefon).
 
 ## Mål
@@ -68,11 +68,17 @@ tilbage, og React fejlede, når en samtale blev lukket.
 | Endpoints | `GET /api/admin/dev/mcp/{key}/suggestions[?ai=true]` (dækning pr. tool + forslag), `POST /api/admin/dev/mcp/{key}/variants`, `GET /api/admin/dev/mcp/{key}/testcases/{id}/explain`. Forslag gemmes med det eksisterende `POST /{key}/testcases`, som logger i audit-loggen |
 | Testbænken | `McpStudie.tsx`: på fanen Gemte testcases dækning pr. tool og forslag med flueben og redigerbare argumenter („Tilføj N valgte“, „Lav spørgsmål med AI“), „Forklar“ på en fejlet testcase med forskellen i beskrivelsen og et link til endpointet; i AI-testen kontroller at gemme med (samme argumenter, ingen andre tools, svaret skal nævne …) og „Lav 3 varianter af spørgsmålet“ |
 
-## Fase 4 — API-dokumentation
+## Fase 4 — API-dokumentation (bygget)
 
-- Tabel `dev_api_docs (api_id, major, section, text, status, source, approved_by, approved_at)`, godkendelse i audit-loggen.
-- Job `developer.docs` skriver teksterne, når en version godkendes; eksempler fra beståede testcases; vejledning til skift af
-  major fra `contracts.py`; afsnit om fejl fra `dev_api_log` (kun stier som skabeloner, aldrig nøgler, IP-adresser, bruger-id'er).
+| Del | Hvor |
+| --- | --- |
+| Tabel | Migration 0045: `dev_api_docs (api_artifact_id, major, section, draft_text, draft_source rule\|ai\|human, approved_text, approved_by, approved_at)`. Afsnit: `intro` (Kom i gang), `operation:<METHOD> <path>`, `migration` (fra majoren før) og `errors` (Fejl og grænser). Godkendte tekster er med i GDPR-eksporten (`developer_api_docs_approved`); `approved_by` bliver null ved sletning |
+| Regler | `devkit/api_docs.py` skriver hvert afsnit ud fra det, der er kendt: definitionen og kontrakten (operationer, parametre, felter, hvilke felter der maskeres, limit, Idempotency-Key), kontraktforskellen til majoren før, dens udfasningsdato og antallet af nøgler, der stadig kalder den, og fejl pr. status i `dev_api_log` de seneste 30 dage (kun antal og andel — aldrig nøgler, IP-adresser, bruger-id'er eller konkrete stier). Kun kald, der når en operation, logges; auth-fejl og ukendte stier er derfor ikke i tallene |
+| AI | `ai_texts()` omskriver regelteksterne med de samme fakta (samme nøgler, ingen nye afsnit); uden AI står regelteksterne |
+| Kladder og godkendelse | Jobbet `developer.docs` skriver kladder, når en version af et API udgives (`apis.on_publish`); „Skriv alt igen“ gør det med det samme. Et afsnit, hvor kladden er den godkendte tekst, eller hvor en person har en kladde, overskrives ikke. En ejer (A eller R) godkender; alle kan rette (kladde fra en person) og afvise. Godkendelse, rettelse, afvisning og „Skriv alt igen“ logges i audit-loggen (`dev.api.docs.*`) |
+| Udgivelse | `api_docs.apply()` lægger de godkendte tekster i OpenAPI-dokumentet på `/gaer/v<major>/<slug>/openapi.json`: Kom i gang som `info.description`, en operations tekst som dens `description`, vejledningerne som `info.x-gaer-guides` |
+| Eksempler | curl, Python og TypeScript pr. operation, lavet ud fra OpenAPI-dokumentet og operationens første eksempel |
+| Endpoints og UI | `GET /api/admin/dev/apis/{id}/docs`, `POST …/docs/generate`, `POST …/docs/{approve\|edit\|reject}`; siden Dokumentation (`ApiStudie.tsx`) viser afsnittene med godkendt tekst og kladde, Godkend/Ret/Afvis, eksemplerne, nøglerne på den gamle major (kun i admin) og fejltallene. Et `propose_doc_text` for det åbne API lægges i afsnittets editor, ikke gemt |
 
 ## Fase 5 — Action-studie
 
@@ -85,6 +91,6 @@ tilbage, og React fejlede, når en samtale blev lukket.
 
 ## Tests
 
-`server/tests/test_developer_ai.py`: kontekst uden værdier, valg af studie med og uden AI, AI-resumé på en version, der venter, i `test_developer_ai_pipeline.py` flytningen af en `$match` (samme rækker), beskrivelser, grå tekst med og uden AI og ændringsnoten, og i `test_developer_ai_mcp.py` forslag, dækning, de nye kontroller, AI-spørgsmål og varianter, forklaringen af en fejlet testcase og budgettet i AI-testen, citerede værdier fjernet fra fejltekster, budget nået → 429
+`server/tests/test_developer_ai.py`: kontekst uden værdier, valg af studie med og uden AI, AI-resumé på en version, der venter, i `test_developer_ai_pipeline.py` flytningen af en `$match` (samme rækker), beskrivelser, grå tekst med og uden AI og ændringsnoten, og i `test_developer_ai_mcp.py` forslag, dækning, de nye kontroller, AI-spørgsmål og varianter, forklaringen af en fejlet testcase og budgettet i AI-testen, og i `test_developer_ai_apidocs.py` kladder ud fra reglerne, godkendelse og udgivelse i OpenAPI, vejledningen til en ny major, fejl ud fra tal og AI-omskrivning, citerede værdier fjernet fra fejltekster, budget nået → 429
 (også i `assist.complete`), AI slået fra → 404 og forslag virker stadig, `/api/ai/chat` afviser surface `developer`,
 afvisning og fortryd med audit, afvisninger i GDPR-eksporten og slettet med brugeren.
