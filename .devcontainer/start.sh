@@ -20,7 +20,12 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 
-(cd server && ../.venv/bin/python -m app.migrate) >>"$LOGS/compose.log" 2>&1
+echo running >"$LOGS/migrate.state"
+if (cd server && ../.venv/bin/python -m app.migrate) >>"$LOGS/compose.log" 2>&1; then
+  echo done >"$LOGS/migrate.state"
+else
+  echo failed >"$LOGS/migrate.state"
+fi
 
 # Python server on :8000 (reads .env)
 if ! curl -sf http://localhost:8000/health >/dev/null 2>&1; then
