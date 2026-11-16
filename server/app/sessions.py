@@ -20,7 +20,8 @@ from app.security import client_ip, new_token, token_hash, user_agent
 
 COOKIE = "gaer_session"
 IMP_COOKIE = "gaer_imp"  # the impersonated test account's session, used only by the app on /
-REAL_ONLY_PATHS = ("/api/admin", "/api/impersonation")
+IMPERSONATION_PATH = "/api/impersonation"
+REAL_ONLY_PATHS = ("/api/admin", IMPERSONATION_PATH)
 
 
 @dataclass
@@ -41,6 +42,9 @@ class Principal:
     yubikey_at: datetime | None = None   # when this session proved a YubiKey
     yubikey_required: bool = False       # users.yubikey_required: /admin and step-up count only a YubiKey
     created_at: datetime | None = None
+    # The real admin while this browser impersonates a test account with the role user: /admin is closed until the
+    # impersonation stops (only /api/impersonation answers), so the admin cannot see admin content "as" a user.
+    impersonating_user: bool = False
 
     @property
     def contact(self) -> str | None:
@@ -48,7 +52,8 @@ class Principal:
 
     @property
     def is_admin(self) -> bool:
-        return self.role == "admin" and self.scope == "full" and self.impersonator_id is None
+        return (self.role == "admin" and self.scope == "full" and self.impersonator_id is None
+                and not self.impersonating_user)
 
 
 def request_meta(request: Request) -> RequestMeta:
@@ -151,17 +156,20 @@ async def _load(request: Request) -> Principal | None:
         if row is None:
             return None
         meta = request_meta(request)
-        if imp_token and row["role"] == "admin" and row["scope"] == "full" and not wants_real_session(request):
+        impersonating_user = False
+        if imp_token and row["role"] == "admin" and row["scope"] == "full":
             imp = await _session_row(conn, imp_token, impersonator_id=row["user_id"])
-            if imp is not None:
+            if imp is not None and not wants_real_session(request):
                 meta.impersonator_id = row["user_id"]
                 return Principal(session_id=imp["session_id"], user_id=imp["user_id"], email=imp["email"],
                                  phone=imp["phone"], role=imp["role"], scope=imp["scope"],
                                  display_name=imp["display_name"], meta=meta, impersonator_id=row["user_id"])
+            impersonating_user = imp is not None and imp["role"] != "admin"
     return Principal(session_id=row["session_id"], user_id=row["user_id"], email=row["email"], phone=row["phone"],
                      role=row["role"], scope=row["scope"], display_name=row["display_name"], meta=meta,
                      super_admin=row["super_admin"], admin_roles=tuple(row["admin_roles"] or ()), mfa_at=row["mfa_at"], grace=row["grace"],
-                     created_at=row["created_at"], yubikey_at=row["yubikey_at"], yubikey_required=row["yubikey_required"])
+                     created_at=row["created_at"], yubikey_at=row["yubikey_at"], yubikey_required=row["yubikey_required"],
+                     impersonating_user=impersonating_user)
 
 
 async def optional_principal(request: Request) -> Principal | None:
@@ -194,8 +202,14 @@ def admin_mfa_ok(principal: Principal) -> bool:
 async def require_admin(request: Request, principal: Principal = Depends(current_user)) -> Principal:
     """Everything in /admin is audited. Changes write their own detailed entries;
     reads are logged here as admin.read with the path and query.
-    After the grace logins /admin also needs a second factor (403 + X-Gaer-Error: mfa_required / mfa_setup_required)."""
-    if not principal.is_admin:
+    After the grace logins /admin also needs a second factor (403 + X-Gaer-Error: mfa_required / mfa_setup_required).
+    While this browser impersonates a test account with the role user, /admin is closed (403 + X-Gaer-Error: impersonating)."""
+    if principal.impersonating_user:
+        # Only the impersonation endpoints answer (status, stop, switch), so the admin can get back.
+        if not request.url.path.startswith(IMPERSONATION_PATH + "/"):
+            raise HTTPException(403, "Du efterligner en almindelig bruger. Stop efterligningen for at bruge /admin.",
+                                headers={mfa.ERROR_HEADER: "impersonating"})
+    elif not principal.is_admin:
         raise HTTPException(403, "Kræver admin-rollen")
     if not admin_roles.allows(principal.admin_roles, request.method, request.url.path):
         raise HTTPException(403, "Din admin-rolle giver ikke adgang til denne del af /admin")

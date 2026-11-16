@@ -35,7 +35,9 @@ export default function Impersonation() {
     say(r.created.length ? `${r.created.map((u) => u.display_name).join(" og ")} er oprettet` : "Du har allerede én testkonto pr. rolle");
   });
   const switchTo = (t: TestUser) => act(() => api.post("/api/impersonation/start", { user_id: t.id }),
-    () => say(`Efterligner ${t.display_name}. Appen på / viser nu testkontoen.`));
+    () => say(t.role === "user"
+      ? `Efterligner ${t.display_name}. Appen på / viser nu testkontoen, og /admin er lukket, indtil du stopper.`
+      : `Efterligner ${t.display_name}. Appen på / viser nu testkontoen.`));
   const remove = (t: TestUser) => act(() => api.del(`/api/impersonation/users/${t.id}`), () => say(`${t.display_name} er slettet`));
 
   return (

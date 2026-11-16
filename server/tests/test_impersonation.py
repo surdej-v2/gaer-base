@@ -54,7 +54,6 @@ async def test_app_runs_as_test_account_admin_stays_real(make_client, owner_conn
     me = await _me(admin)
     assert me["user"]["id"] == test["id"] and me["impersonator"]["id"] != test["id"]
     assert (await _me(admin, **ADMIN_APP))["user"]["role"] == "admin"
-    assert (await admin.get("/api/admin/users")).status_code == 200  # /api/admin is always the real admin
     assert (await admin.get("/api/impersonation/status")).json()["user"]["id"] == test["id"]
 
     # A change made as the test account is audited with the admin as actor.
@@ -114,6 +113,34 @@ async def test_test_account_never_gets_a_phone_or_deletes_itself(make_client):
     await admin.post("/api/impersonation/start", json={"user_id": test["id"]})
     assert (await admin.post("/api/me/phone/start", json={"phone": "44444444"})).status_code == 403
     assert (await admin.post("/api/me/delete", json={"confirm_phone": test["handle"]})).status_code == 403
+    assert (await _me(admin, **ADMIN_APP))["user"]["role"] == "admin"
+    await admin.post("/api/impersonation/stop")
     r = await admin.patch(f"/api/admin/users/{test['id']}/phone", json={"phone": "44444444"})
     assert r.status_code == 409
-    assert (await _me(admin, **ADMIN_APP))["user"]["role"] == "admin"
+
+
+async def test_admin_is_closed_while_impersonating_a_user(make_client):
+    admin = await _admin(make_client)
+    test = (await admin.post("/api/impersonation/users", json={"display_name": "Test Bruger", "role": "user"})).json()
+    other = (await admin.post("/api/impersonation/users", json={"display_name": "Test Admin", "role": "admin"})).json()
+    assert (await admin.get("/api/admin/users")).status_code == 200
+    await admin.post("/api/impersonation/start", json={"user_id": test["id"]})
+
+    # Neither /admin's API nor admin-only endpoints answer, from the admin app or from /.
+    for headers in ({}, ADMIN_APP):
+        r = await admin.get("/api/admin/users", headers=headers)
+        assert r.status_code == 403 and r.headers["x-gaer-error"] == "impersonating"
+    r = await admin.patch(f"/api/admin/users/{test['id']}/role", json={"role": "admin"}, headers=ADMIN_APP)
+    assert r.status_code == 403
+    # The impersonation endpoints still answer, so the admin can switch or stop.
+    assert (await admin.get("/api/impersonation/status")).json()["user"]["id"] == test["id"]
+    assert (await admin.get("/api/impersonation/users")).status_code == 200
+
+    # A test admin keeps /admin as the real admin.
+    assert (await admin.post("/api/impersonation/start", json={"user_id": other["id"]})).status_code == 200
+    assert (await admin.get("/api/admin/users")).status_code == 200
+
+    await admin.post("/api/impersonation/start", json={"user_id": test["id"]})
+    assert (await admin.get("/api/admin/users")).status_code == 403
+    assert (await admin.post("/api/impersonation/stop")).status_code == 200
+    assert (await admin.get("/api/admin/users")).status_code == 200

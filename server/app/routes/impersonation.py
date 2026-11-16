@@ -4,7 +4,8 @@ Admins create test accounts that cannot log in on their own (users.impersonation
 app on / as one of them. Each test account belongs to the admin who created it
 (impersonation_owner_id); nobody else sees or uses it. The impersonated session carries
 impersonator_id and lives in its own cookie, so /admin keeps running as the real admin and every
-change made as the test account is audited with the admin as actor.
+change made as the test account is audited with the admin as actor. While the test account has the role
+user, /admin is closed instead (only these endpoints answer), see sessions.require_admin.
 
     GET    /api/impersonation/status          the active impersonation, if any
     GET    /api/impersonation/users           your test accounts

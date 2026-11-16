@@ -1,4 +1,6 @@
-// Shell of the /admin app: dark side menu, sticky top bar and the impersonation banner.
+// Shell of the /admin app: dark side menu, sticky top bar and the impersonation banner. While the admin impersonates a
+// test account with the role user, /admin shows nothing but a notice with "Stop efterligning" (the server refuses
+// /api/admin as well).
 import { useEffect, type CSSProperties } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { GraceBanner } from "./mfa";
@@ -20,7 +22,7 @@ import { useDeepLinkFocus } from "../deeplink";
 
 export default function AdminShell() {
   const { user } = useAuth();
-  const { impersonating, refreshImpersonation, range, setRange, health } = useAdmin();
+  const { impersonating, blocked, impersonationChecked, refreshImpersonation, range, setRange, health } = useAdmin();
   const { pathname } = useLocation();
   const say = useToast();
   const me = user?.display_name || user?.email || user?.phone || "";
@@ -38,6 +40,13 @@ export default function AdminShell() {
       say(errorText(e));
     }
   };
+
+  if (!impersonationChecked) {
+    return <div className="tg-admin tg-shell" style={{ minHeight: "100vh", background: "#f1f5f9" }} />;
+  }
+  if (blocked && impersonating) {
+    return <Blocked who={impersonating.display_name} me={me} onStop={stop} />;
+  }
 
   return (
     <div className="tg-admin tg-shell" style={{ minHeight: "100vh", display: "flex", fontSize: 14, fontFamily: SANS, color: "#020817", background: "#f1f5f9" }}>
@@ -129,6 +138,34 @@ function NoAccess({ roles }: { roles: string[] }) {
         Dine admin-roller ({roles.map((r) => ROLE_LABEL[r] ?? r).join(", ") || "ingen"}) giver ikke adgang til denne del af /admin. En admin med
         fuld adgang kan give dig flere roller under Brugere og roller.
       </p>
+    </div>
+  );
+}
+
+/** Impersonating a test account with the role user: a user has no /admin, so neither does the admin until it stops. */
+function Blocked({ who, me, onStop }: { who: string; me: string; onStop: () => void }) {
+  const button: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, height: 36, padding: "0 14px", borderRadius: 8,
+    font: `500 14px ${SANS}`, textDecoration: "none", cursor: "pointer" };
+  return (
+    <div className="tg-admin tg-shell" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+      boxSizing: "border-box", fontFamily: SANS, color: "#020817", background: "#f1f5f9" }}>
+      <div role="alert" style={{ width: "100%", maxWidth: 520, display: "flex", flexDirection: "column", gap: 14, padding: 28, borderRadius: 12,
+        background: "#ffffff", border: "1px solid rgba(245,158,11,0.4)", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        <VenetianMask size={28} color="#f59e0b" strokeWidth={2} />
+        <h1 style={{ margin: 0, fontSize: 22 }}>Du efterligner {who}</h1>
+        <p style={{ margin: 0, color: "#475569", textWrap: "pretty" }}>
+          {who} er en almindelig bruger og har ikke adgang til administrationen. Derfor viser /admin intet, så længe du efterligner kontoen.
+          Stop efterligningen for at komme tilbage som {me || "dig selv"}.
+        </p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button type="button" onClick={onStop} style={{ ...button, border: 0, background: "#78350f", color: "#ffffff" }}>
+            <X size={15} strokeWidth={2} />Stop efterligning
+          </button>
+          <a href="/" style={{ ...button, border: "1px solid #e2e8f0", background: "#ffffff", color: "#020817" }}>
+            Åbn / som {who}
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
