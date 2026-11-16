@@ -189,3 +189,20 @@ async def test_other_processes_pick_up_a_change_and_skip_values_that_no_longer_p
     await config_store.refresh()
     assert config.settings.unzip_max_files == 7
     assert config.settings.grace_logins == 3   # 9 is beyond the floor: the environment's value is used
+
+
+def test_host_names_e_mail_and_domains_are_checked_without_backtracking():
+    assert reg.is_hostname("api.lettermint.co") and reg.is_hostname("a-b.c.example")
+    for bad in ("localhost", "-a.dk", "a-.dk", "a..dk", "a.d1", "a.dk.", "a" * 64 + ".dk", ""):
+        assert not reg.is_hostname(bad), bad
+    assert reg.coerce("mail_from", "login@Kunde.DK") == "login@Kunde.DK"
+    assert reg.coerce("internal_email_domains", "@firma.dk, firma.com,firma.dk") == ("firma.dk", "firma.com")
+    for key, bad in (("mail_from", "login@kunde"), ("mail_from", "lo gin@kunde.dk"), ("mail_from", "@kunde.dk"),
+                     ("mail_hostname", "mail_server.dk"), ("internal_email_domains", "firma")):
+        with pytest.raises(reg.Invalid):
+            reg.coerce(key, bad)
+    # The inputs CodeQL warned about are rejected at once.
+    for key, evil in (("mail_from", "!" * 150 + "@"), ("mail_hostname", "0." * 99 + "!"),
+                      ("internal_email_domains", "0." * 990 + "!")):
+        with pytest.raises(reg.Invalid):
+            reg.coerce(key, evil)

@@ -69,7 +69,8 @@ def _secret_state(key: str, row: dict | None, effective, decrypt: bool) -> tuple
         try:
             return "db", secrets_box.decrypt(row["value_enc"], _purpose(key)), None
         except Exception:  # noqa: BLE001 — a key removed from SECRET_BOX_KEYS: treat as not set
-            log.warning("config secret %s cannot be decrypted with SECRET_BOX_KEYS", key)
+            # Only that it happened: /admin/config shows which one.
+            log.warning("a stored configuration secret cannot be decrypted with SECRET_BOX_KEYS")
             return "db", None, "kan ikke dekrypteres med SECRET_BOX_KEYS"
     if getattr(env, key):
         if k.endpoint and reg.host(getattr(effective, k.endpoint)) != reg.host(getattr(env, k.endpoint)):

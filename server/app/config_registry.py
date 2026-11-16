@@ -267,6 +267,19 @@ class Invalid(ValueError):
     pass
 
 
+_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?")
+_TLD = re.compile(r"[a-z]{2,63}")
+
+
+def is_hostname(value: str) -> bool:
+    """A lower-case DNS name with at least two labels. Checked label by label, so no pattern can backtrack."""
+    if not 1 <= len(value) <= 253:
+        return False
+    labels = value.split(".")
+    return (len(labels) >= 2 and _TLD.fullmatch(labels[-1]) is not None
+            and all(_LABEL.fullmatch(label) for label in labels[:-1]))
+
+
 def coerce(key: str, value, *, production: bool = False):
     """The value as the field's type, or Invalid with a Danish message. Used on save and again on every load."""
     k = KEYS[key]
@@ -306,16 +319,18 @@ def coerce(key: str, value, *, production: bool = False):
             raise Invalid(f"{k.label}: skal være en https-adresse uden brugernavn")
         value = value.rstrip("/")
     elif k.kind == "email":
-        if not re.fullmatch(r"[^@\s]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", value):
+        local, at, domain = value.rpartition("@")
+        if not at or not local or len(local) > 64 or any(c.isspace() or c == "@" for c in local) \
+                or not is_hostname(domain.lower()):
             raise Invalid(f"{k.label}: ikke en gyldig e-mailadresse")
     elif k.kind == "host":
-        if not re.fullmatch(r"(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", value.lower()):
+        if not is_hostname(value.lower()):
             raise Invalid(f"{k.label}: ikke et gyldigt værtsnavn")
         value = value.lower()
     elif k.kind == "domains":
         parts = [d.strip().lower().lstrip("@") for d in value.split(",") if d.strip()]
         for d in parts:
-            if not re.fullmatch(r"([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", d):
+            if not is_hostname(d):
                 raise Invalid(f"{k.label}: {d} er ikke et domæne")
         return tuple(dict.fromkeys(parts))
     elif k.kind == "str" and k.pattern and not re.fullmatch(k.pattern, value):
