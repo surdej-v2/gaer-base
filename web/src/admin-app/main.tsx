@@ -28,6 +28,7 @@ import Integrations from "./pages/Integrations";
 import AiAdmin from "./pages/AiAdmin";
 import Consumption from "./pages/Consumption";
 import Settings from "./pages/Settings";
+import Config from "./pages/Config";
 import Mcp from "./pages/Mcp";
 import Webhooks from "./pages/Webhooks";
 import Jobs from "./pages/Jobs";
@@ -166,6 +167,7 @@ createRoot(document.getElementById("root")!).render(
                   <Route path="retention" element={legacy(<Retention />)} />
                   <Route path="consent" element={legacy(<Consent />)} />
                   <Route path="settings" element={legacy(<Settings />)} />
+                  <Route path="config" element={<Config />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>
               </Routes>

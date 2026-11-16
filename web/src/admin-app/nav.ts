@@ -102,6 +102,7 @@ export const NAV: NavGroup[] = [
       { path: "/nats", label: "NATS", icon: RadioTower },
       { path: "/resources", label: "Ressourcer", icon: Server },
       { path: "/settings", label: "Indstillinger", icon: Settings },
+      { path: "/config", label: "Konfiguration", icon: SlidersHorizontal },
     ],
   },
 ];

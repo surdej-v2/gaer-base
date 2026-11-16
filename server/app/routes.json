@@ -1262,6 +1262,13 @@
    "title": "Indstillinger"
   },
   {
+   "path": "/admin/config",
+   "group": "admin",
+   "app": "admin",
+   "access": "admin",
+   "title": "Konfiguration"
+  },
+  {
    "path": "/m",
    "group": "mobile",
    "app": "app",

@@ -1,0 +1,52 @@
+{
+  "name": "Gær",
+  // Python 3.13 + Node 22 (as in the Dockerfile). Not devcontainers/universal: that image is ~10 GB
+  // (PyTorch, .NET, Java …) and fills the Codespace's disk before the container even starts.
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.13-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  // The start page (:5170) comes up first, in parallel with the slow setup, so the editor shows it
+  // within seconds: in the browser it explains how to open VS Code Desktop, in VS Code Desktop it follows
+  // the dev stack and switches to the app when it answers.
+  "postCreateCommand": {
+    "startside": ".devcontainer/startside/start.sh",
+    "setup": ".devcontainer/setup.sh"
+  },
+  "postStartCommand": {
+    "startside": ".devcontainer/startside/start.sh",
+    "stack": ".devcontainer/start.sh"
+  },
+  "forwardPorts": [5173, 8000],
+  "portsAttributes": {
+    "5170": {
+      "label": "Gær startside",
+      "onAutoForward": "openPreview"
+    },
+    "5173": {
+      "label": "Gær app (Vite)",
+      "onAutoForward": "silent",
+      // ORIGIN and RP_ID in .env are localhost:5173; the start page sends VS Code Desktop there.
+      "requireLocalPort": true
+    },
+    "8000": {
+      "label": "Gær API (FastAPI)",
+      "onAutoForward": "silent"
+    }
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "silent"
+  },
+  "customizations": {
+    "codespaces": {
+      "repositories": {
+        "hoejde/surdej-v2": {
+          "permissions": {
+            "contents": "read"
+          }
+        }
+      }
+    }
+  }
+}

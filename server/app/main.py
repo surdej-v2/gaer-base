@@ -11,10 +11,9 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from fastapi.staticfiles import StaticFiles
 from starlette.routing import Route
 
-from app import captcha, config, db, events, jobs, killswitch, mail, og, retention, settings_store, storage, webhooks
 from app import license as gaer_license
 from app.canonical_host import CanonicalHostMiddleware
-from app import captcha, config, db, events, jobs, killswitch, mail, og, retention, settings_store, storage, tas, webhooks
+from app import captcha, config, config_store, db, events, jobs, killswitch, mail, og, retention, settings_store, storage, tas, webhooks
 from app import uploads  # noqa: F401  (registers the files.unzip, files.uploads_cleanup and storage.cors jobs)
 from app.mailbox import tasks as mailbox_tasks  # noqa: F401  (registers the mail.* jobs and the Lettermint handler)
 from app.mcp import hub as mcp_hub
@@ -25,7 +24,7 @@ from app.routes import access as access_routes
 from app.routes import (admin, admin_files, admin_ops, adoption, ai, app_store, auth, clips, consumption, data, features, files,
                         hooks, impersonation, knowledge, knowledge_admin, me, mcp_tools, nats, office, public, resources, review,
                         security, studio, tas as tas_routes, user_area, web)
-from app.routes import admin_mail
+from app.routes import admin_config, admin_mail
 from app.routes import admin_secrets
 from app.routes import admin_datastore
 from app.routes import datastore as datastore_routes
@@ -106,6 +105,8 @@ def _route(request: Request) -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log = logging.getLogger("gaer")
+    await db.open_pools()
+    await config_store.refresh(force=True)  # /admin/config before the checks below and before jobs and events start
     # Both raise on an invalid BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PHONE.
     bootstrap = bootstrap_admin_email() or (bootstrap_admin_phone() if config.settings.sms_login else None)
     if config.settings.is_production and not bootstrap:
@@ -118,7 +119,6 @@ async def lifespan(app: FastAPI):
         log.warning("CAPTCHA=off: account creation and login with a code have no robot check")
     if not (lic := gaer_license.current()).valid:
         log.warning("license: %s (%s) — /w pages say this installation is unlicensed", lic.status, lic.reason)
-    await db.open_pools()
     async with db.connection() as conn:  # TAS: a new instance gets the simulator's menus and knowledge (app/tas.py)
         if seeded := await tas.seed_if_empty(conn):
             log.info("TAS: seeded %d documents", seeded)
@@ -178,6 +178,8 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def guard(request: Request, call_next):
         path = request.url.path
+        # /admin/config: values from Postgres over the environment, read again at most every ~2 s (app.config_store).
+        await config_store.refresh()
         if (path.startswith("/api/") and request.method not in ("GET", "HEAD", "OPTIONS")
                 and path not in CSRF_EXEMPT and not path.startswith(CSRF_EXEMPT_PREFIXES)
                 and not CSRF_EXEMPT_RE.match(path)
@@ -220,7 +222,7 @@ def create_app() -> FastAPI:
 
     for r in (auth.router, ai.router, me.router, security.router, files.router, clips.router, public.router,
               admin_files.router, admin.router,  # admin_files first: /files/folders before /files/{file_id}
-              admin_users.router, yubikey_routes.admin_router, yubikey_routes.router,
+              admin_config.router, admin_users.router, yubikey_routes.admin_router, yubikey_routes.router,
               app_store.router, mcp_tools.router, data.router, studio.router, access_routes.router, features.router, features.admin_router,
               impersonation.router, mcp_oauth.router,
               mcp_hub.router, office.router, review.router, admin_ops.router, hooks.router, nats.router, resources.router, consumption.router,

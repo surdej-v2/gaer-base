@@ -73,7 +73,10 @@ async function putWithRetry(url: () => Promise<string>, body: Blob, contentType:
 }
 
 /** A started direct upload: one presigned PUT link, or multipart (part_size, parts) with links asked for as it goes. */
-export type BucketStart = { id: string | number; content_type: string; multipart: boolean; url?: string; part_size?: number; parts?: number };
+export type BucketStart = {
+  id: string | number; content_type: string; multipart: boolean; url?: string; part_size?: number; parts?: number;
+  headers?: Record<string, string>; part_etags?: boolean;
+};
 
 /**
  * Sends a file's bytes to the bucket on the links of a started upload (`partsUrl` gives the links of multipart parts).
@@ -82,7 +85,7 @@ export type BucketStart = { id: string | number; content_type: string; multipart
 export async function sendToBucket(file: File, start: BucketStart, partsUrl: string,
   onProgress: (sent: number, total: number) => void = () => {}): Promise<{ number: number; etag: string }[]> {
   if (!start.multipart) {
-    await putWithRetry(async () => start.url!, file, start.content_type, (sent) => onProgress(sent, file.size));
+    await putWithRetry(async () => start.url!, file, start.content_type, (sent) => onProgress(sent, file.size), start.headers);
     onProgress(file.size, file.size);
     return [];
   }
@@ -105,7 +108,9 @@ export async function sendToBucket(file: File, start: BucketStart, partsUrl: str
     while (next <= count) {
       const n = next++;
       const blob = file.slice((n - 1) * size, Math.min(file.size, n * size));
-      const etag = await putWithRetry(() => urlFor(n), blob, null, (s) => { sent[n] = s; report(); });
+      const got = await putWithRetry(() => urlFor(n), blob, null, (s) => { sent[n] = s; report(); });
+      // Azure Blob's Put Block returns no ETag; the server commits the blocks by number
+      const etag = start.part_etags === false ? got || String(n) : got;
       if (!etag) throw new Error("Object Storage sendte ikke ETag tilbage – bucketens CORS skal vise ETag-headeren");
       sent[n] = blob.size;
       report();

@@ -51,7 +51,8 @@ use `MAIL_PROVIDER=console` (and `SMS_PROVIDER=console`).
 | `server/app/tas.py`, `routes/tas.py`, `web_static/tas/` | **TAS — Terminal Assistance Simulator** (`specs/tas/`): the virtual payment terminal with its assistant on `/w/` (setting `web_front = "tas"`, this fork's default) and its Admin Portal in `/backoffice` (an iframe of `/w/tas/backoffice`). The artifact's own scripts run unchanged; `gaer.js` answers their `window.claude` calls with `/api/tas` (documents in `tas_docs`, images in `tas_assets`). Published collections are public, drafts and writes are for editors (admin role Fuld adgang or Indhold + second factor), every write audited; AI via `POST /api/tas/ai` (surface `tas`); seeded from `tas_seed/` on an empty instance |
 | `server/app/delegation.py` | Mit område (`/user`): sharing your area with another user as reader or author (`/user/<id>`), access checks, the activity list; delegates' changes are audited with `on_behalf_of` |
 | `server/app/db.py` | connection pools: `db.connection()`, `db.purge_connection()`, `fetch_one`, `fetch_all` |
-| `server/app/config.py` | all settings from environment variables |
+| `server/app/config.py` | all settings: the environment, overlaid by /admin/config |
+| `server/app/config_registry.py`, `config_store.py`, `routes/admin_config.py` | **Konfiguration** (`/admin/config`): every field of `Settings` is either a key an admin may set (`KEYS`: plain values in `config_values`, keys and tokens encrypted in `config_secrets`, write-only) or kept in the environment (`ENV_ONLY`, with the reason: root keys, domain, database URLs, storage, `DEMO_MODE`, `WEBHOOK_ALLOW_PRIVATE`, `YUBICO_ROOTS` …). Order: database → environment → default; every process re-reads within ~2 s (guard middleware and job worker). A secret is bound to its endpoint's host, so changing `AI_BASE_URL`, `OVH_ENDPOINT` or `LETTERMINT_API_URL` never sends a stored or environment key to a new host. Login rules can only be tightened (bounds stop at the defaults). Groups have their own admin roles (login: Fuld adgang only); saving needs a step-up, audited as `config.changed`, webhook `config.changed`. A new setting is not done until it is in `KEYS` or `ENV_ONLY` (a test checks) |
 | `server/app/migrations/` | plain SQL, applied by `python -m app.migrate` |
 | `server/app/ai.py`, `routes/ai.py` | optional AI chat (OVHcloud AI Endpoints), client tools, usage + monthly limits |
 | `server/app/consumption.py`, `routes/consumption.py` | AI consumption: what limit applies (budget → own limit → default), budgets per user (monthly cap, warning levels, hard/soft, optional period total, start/end date), alerts (`ai_budget_alerts`, webhooks `ai.budget.*`), reports per period/model/user for `/admin/consumption`, the user's own page `/konto/forbrug` (`GET /api/ai/usage`) |
@@ -74,9 +75,6 @@ use `MAIL_PROVIDER=console` (and `SMS_PROVIDER=console`).
 | `extension/` | MV3 browser extension (side panel) |
 | `deploy/` | `deploy.sh` (on the server), `compose.yml` (prod stack: Postgres, app, NATS, cloudflared), `nats.conf` (NATS + JetStream on the `nats` volume), `postgres-init.sh`, `.env.example`, `app.env.example` · `k8s/` the same app on Kubernetes, one namespace per fork made by the Gær Fleet console in Surdej (`README.md`, `app.yaml`, `deploy.sh`, `cluster/`) · `mail/` the Stalwart mail server on UpCloud (Terraform, `config.toml`, runbook) |
 | `.github/workflows/` | `test.yml` (PRs), `deploy.yml` (push to main → prod), `target.yml` (the only reader of the variable `DEPLOY_TARGET` = `compose` (default) / `k8s` / `none`; every deploy workflow tests its outputs), `build-image.yml` (GHCR), `deploy-k8s.yml`, `rollback.yml`, `sync-upstream.yml` (forks pull gaer-base) |
-| `deploy/` | `deploy.sh` (on the server), `compose.yml` (prod stack: Postgres, app, NATS, cloudflared), `nats.conf` (NATS + JetStream on the `nats` volume), `postgres-init.sh`, `.env.example`, `app.env.example` · `mail/` the Stalwart mail server on UpCloud (Terraform, `config.toml`, runbook) |
-| `.github/workflows/` | `test.yml` (PRs), `aks-main.yml` / `aks-canary.yml` (push to main / canary → AKS msops1 via `aks-deploy.yml`), `deploy.yml` (UpCloud, manual only) |
-| `deploy/aks/` | Kustomize manifests for AKS: `base/` + `overlays/main` and `overlays/canary`; settings in the secret `gaer-env` (see its README) |
 | `mobile/` | Expo app (iOS + Android): native login, then `/m` in a WebView — spec in `specs/mobile/` |
 | `server/app/mcp/` | MCP servers: `/mcp` (appen, as the user) and `/mcp/admin` (admin, drafts) — spec in `specs/mcp/` |
 | `server/app/routes/studio.py`, `server/app/mcp/endpoints.py` | Developer portal `/developer` (admin section `/developer`, roles Data and Fuld; `web/src/developer/`): dashboard, **API Studio** (`/developer/studio/api`, the source description as YAML → `/api/admin/data/sources`, datasets in the catalog) and **MCP Studio** (`/developer/studio/mcp`): endpoints on `/mcp/<key>` in `mcp_endpoints` (0030) with audience, instructions and the tools from the endpoint map; `transport.DynamicEndpoints` serves them, `/api/admin/studio` governs them (step-up, audited) |
@@ -111,7 +109,7 @@ They share the same login (session cookie), the same database and the same API.
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP clients (OAuth bearer) | **MCP servers** (Streamable HTTP): the app as the logged-in user, admin where every change is a draft, and the endpoints defined in `/developer/studio/mcp` on `/mcp/<key>` (as the user, with the tools chosen there). Consent page `/forbind`; deep links `/go` and `/admin/go`; hub in `/admin/mcp`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. | `server/app/mcp/`, skill `gaer-mcp`, `server/app/mcp/endpoints.py` |
 | `/health` | deploy | Database check + version; used by `deploy/deploy.sh` before switching versions. | `main.py` |
 
-<details><summary>All routes (162)</summary>
+<details><summary>All routes (163)</summary>
 
 | Path | Served by | Access | Page |
 | --- | --- | --- | --- |
@@ -248,6 +246,7 @@ They share the same login (session cookie), the same database and the same API.
 | `/admin/retention` | admin app (`admin.html`) | admin | Sletning af logdata |
 | `/admin/consent` | admin app (`admin.html`) | admin | Samtykke og cookies |
 | `/admin/settings` | admin app (`admin.html`) | admin | Indstillinger |
+| `/admin/config` | admin app (`admin.html`) | admin | Konfiguration |
 | `/m` | app (`index.html`) | logged in | Hjem · own chrome |
 | `/m/mapper` | app (`index.html`) | logged in | Mapper (feature `mapper`) · own chrome |
 | `/m/klip` | app (`index.html`) | logged in | Klip · own chrome |
@@ -317,7 +316,7 @@ Rules for routes:
    a kind like `area.what`, ref = an object id or route, never personal data (no user ids, e-mails, phones, IPs). Data that grows gets a row in `retention_policies` with its SQL in
    `retention.CLEANUP_SQL`. New webhook events go in `webhooks.EVENTS` and carry ids, not personal data. What an incoming webhook may do is
    a handler in the code (`webhooks_in.HANDLERS`), never configuration.
-7. **No secrets in the repo.** Configuration comes from environment variables (`server/app/config.py`).
+7. **No secrets in the repo.** Configuration comes from environment variables (`server/app/config.py`) or from /admin/config (`config_registry.py`); never a value in the code or the repo.
 8. Before you say you are done: `pytest server` and `npm run build --prefix web` pass.
 9. UI text is Danish.
 

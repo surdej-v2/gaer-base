@@ -6,6 +6,8 @@ __pycache__/
 *.pyc
 .env
 .env.local
+.clone/
+.devcontainer/logs/
 deploy/.env
 .DS_Store
 deploy/mail/stalwart.env

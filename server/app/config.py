@@ -1,7 +1,14 @@
-"""All configuration comes from environment variables. See .env.example."""
+"""Configuration: environment variables, overlaid by what an admin set in /admin/config.
+
+`Settings()` reads the environment. Most fields can also be set in /admin/config (app/config_registry.py names
+which); app/config_store.py reads those from Postgres and calls apply_overrides(), which rebuilds `settings` as the
+environment with the database values on top. The order is database → environment → the default here. What may never
+be changed from a browser (root keys, database URLs, storage, DEMO_MODE …) is only ever read from the environment.
+Code reads `config.settings.<field>` every time, never a copy, so a change reaches it within a couple of seconds.
+"""
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 
 def _env(name: str, default: str | None = None) -> str | None:
@@ -242,7 +249,23 @@ class Settings:
         return self.origin.startswith("https://")
 
 
-settings = Settings()
+env_settings = Settings()          # the environment alone
+_overrides: dict = {}              # field → value from /admin/config (plain values and decrypted secrets)
+settings = env_settings
+
+
+def apply_overrides(values: dict) -> bool:
+    """Lays the database values over the environment. Returns whether anything changed."""
+    global _overrides, settings
+    if values == _overrides:
+        return False
+    _overrides = dict(values)
+    settings = replace(env_settings, **_overrides)
+    return True
+
+
+def overrides() -> dict:
+    return dict(_overrides)
 
 
 def data_secret(name: str) -> str | None:
@@ -254,6 +277,8 @@ def data_secret(name: str) -> str | None:
 
 
 def reload() -> Settings:
-    global settings
-    settings = Settings()
+    """Reads the environment again (tests); the database values stay on top."""
+    global env_settings, settings
+    env_settings = Settings()
+    settings = replace(env_settings, **_overrides)
     return settings
