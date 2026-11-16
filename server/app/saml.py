@@ -20,6 +20,8 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 from xml.sax.saxutils import escape, quoteattr
 
+import httpx
+
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
@@ -203,11 +205,18 @@ def parse_metadata(data: bytes) -> dict:
 async def fetch_metadata(url: str) -> bytes:
     """The IdP's metadata from its URL (https to a public address only, no redirects, at most 1 MB)."""
     try:
-        webhooks.check_url(url, resolve=True)
+        parsed = httpx.URL(url)
+    except Exception:
+        raise lp.Refused("failed", "ugyldig URL")
+    if parsed.scheme != "https" or not parsed.host:
+        raise lp.Refused("failed", "URL'en skal være https")
+    safe_url = str(parsed)
+    try:
+        webhooks.check_url(safe_url, resolve=True)
     except webhooks.UnsafeUrl as e:
         raise lp.Refused("failed", str(e))
     async with lp.http_client() as client:
-        r = await client.get(url, follow_redirects=False)
+        r = await client.get(safe_url, follow_redirects=False)
     if r.status_code != 200:
         raise lp.Refused("failed", f"HTTP {r.status_code}")
     if len(r.content) > 1_000_000:
