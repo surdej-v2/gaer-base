@@ -90,8 +90,8 @@ async def test_schedules_and_retention_policies(make_client, owner_conn):
     # maintenance, retention.logs, retention.cleanup, knowledge.bin, mail.retention, mail.sync, mail.backup,
     # files.uploads_cleanup, mail.lettermint_poll, secrets.maintenance, secrets.digest, auth.saml_metadata,
     # pipeline.schedule, developer.cache_cleanup, developer.metrics, developer.api_sunset, flow.schedule,
-    # data.transfer_cleanup
-    assert await jobs.schedule_due() == 18
+    # data.transfer_cleanup, store.maintenance
+    assert await jobs.schedule_due() == 19
     assert await jobs.schedule_due() == 0  # next run moved forward
 
     # Old operational data goes; new stays.

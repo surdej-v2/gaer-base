@@ -26,6 +26,8 @@ from app.routes import (admin, admin_files, admin_ops, adoption, ai, app_store, 
                         security, studio, user_area, web)
 from app.routes import admin_mail
 from app.routes import admin_secrets
+from app.routes import admin_datastore
+from app.routes import datastore as datastore_routes
 from app.routes import login_providers as login_provider_routes
 from app.routes import groups as group_routes
 from app.routes import admin_messages
@@ -220,6 +222,7 @@ def create_app() -> FastAPI:
               mcp_hub.router, office.router, review.router, admin_ops.router, hooks.router, nats.router, resources.router, consumption.router,
               user_area.router, mail_routes.router, admin_mail.router, adoption.router, adoption.admin_router,
               knowledge.router, knowledge_admin.router, group_routes.router, group_routes.me_router, admin_secrets.router,
+              datastore_routes.router, admin_datastore.router,
               meta_routes.router, admin_meta.router, mapper_routes.router,
               messages_routes.router, admin_messages.router, admin_transfer.router,
               login_provider_routes.router, login_provider_routes.me_router, login_provider_routes.admin_router,

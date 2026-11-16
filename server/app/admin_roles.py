@@ -20,7 +20,7 @@ ROLES: dict[str, dict] = {
     "support": {"label": "Support", "description": "Hjælper brugere: konti, grupper, spærring, nulstilling af login, efterligning og auth-loggen; sender beskeder, svarer brugerne og modererer samtaler."},
     "indhold": {"label": "Indhold", "description": "Website, filer, App Stores, Viden (vidensrum og agenter) og træstrukturer."},
     "produkt": {"label": "Produkt", "description": "Features og ringe, AI og AI-forbrug, analytics, heatmaps og adoptionsforløb."},
-    "data": {"label": "Data", "description": "Datakatalog, Udforsk, API-kilder og MCP-værktøjer (hvem må bruge hvad), og udviklerportalen /developer (API Studio og MCP Studio)."},
+    "data": {"label": "Data", "description": "Datakatalog, Udforsk, datalageret (NoSQL og KV), API-kilder og MCP-værktøjer (hvem må bruge hvad), og udviklerportalen /developer (API Studio og MCP Studio)."},
     "privatliv": {"label": "Privatliv", "description": "GDPR-forespørgsler, samtykke, sletning af logdata, audit- og auth-log, godkendelse af adgang til fortrolige data og moderering af samtaler."},
     "udvikler": {"label": "Udvikler", "description": "Gær Developer (/developer): opretter og retter kladder af datasæt, pipelines, operationer, multisource-kilder, MCP-endpoints, API'er og flows. Udgivelse går gennem godkendelse."},
     "udvikler_admin": {"label": "Udvikler-admin", "description": "Som Udvikler, og desuden dataforbindelser, eksterne MCP-servere og rollen Udvikler til andre."},
@@ -54,6 +54,7 @@ SECTIONS: dict[str, list[str]] = {
     "/data/explore": ["/api/admin/data"],
     "/data/connect": ["/api/admin/data"],
     "/data/tools": ["/api/admin/data"],
+    "/data/store": ["/api/admin/store"],
     # Export and import of data: in no role but fuld (a package can carry everyone's data, an import change anything).
     "/data/transfer": ["/api/admin/transfer"],
     # The developer portal on /developer (served by the app on /, not /admin): dashboard, API Studio, MCP Studio.
@@ -87,7 +88,7 @@ ROLE_SECTIONS: dict[str, list[str]] = {
     "indhold": ["/web", "/files", "/app-stores", "/knowledge", "/meta"],
     "produkt": ["/analytics", "/heatmaps", "/features", "/ai", "/consumption", "/adoption", "/adoption/journeys",
                 "/adoption/routes", "/adoption/console", "/adoption/access"],
-    "data": ["/data", "/data/explore", "/data/connect", "/data/tools", "/developer"],
+    "data": ["/data", "/data/explore", "/data/connect", "/data/tools", "/data/store", "/developer"],
     "privatliv": ["/gdpr", "/consent", "/retention", "/logs/audit", "/logs/auth", "/access", "/messages/moderation"],
     "drift": ["/login-providers", "/mail", "/secrets", "/mcp", "/integrations", "/webhooks", "/jobs", "/nats", "/resources", "/settings",
               "/messages", "/messages/delivery", "/messages/settings"],

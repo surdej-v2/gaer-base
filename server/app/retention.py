@@ -144,6 +144,9 @@ CLEANUP_SQL = {
                                  delete from secret_access_requests q using d
                                  where q.status <> 'pending' and q.decided_at < d.t""",
     "secret_notifications": "delete from secret_notifications where sent_at < now() - make_interval(days => %s)",
+    "store_revisions": "delete from store_revisions where superseded_at < now() - make_interval(days => %s)",
+    "store_releases": """delete from store_releases where status in ('rejected', 'cancelled', 'expired')
+                         and decided_at < now() - make_interval(days => %s)""",
     "message_deliveries": """delete from message_deliveries where channel <> 'app'
                              and created_at < now() - make_interval(days => %s)""",
     "sms_messages": "delete from sms_messages where created_at < now() - make_interval(days => %s)",

@@ -11,7 +11,7 @@ from datetime import datetime
 
 from fastapi import HTTPException
 
-from app import db, jobs, retention, secret_store, uploads, webhooks
+from app import datastore, db, jobs, retention, secret_store, uploads, webhooks
 from app import meta as meta_tree
 from app.logs import RequestMeta, audit
 from app.security import phone_hash
@@ -141,6 +141,8 @@ async def build_user_export(conn, user_id: int) -> dict:
         "vault_grants": await rows("""select s.name as item, gr.level, gr.granted_at, gr.expires_at, gr.ended_at,
                                               gr.ended_reason from secret_grants gr join secrets s on s.id = gr.secret_id
                                        where gr.user_id = %s order by gr.granted_at""", user_id),
+        # Datalager: personal collections and namespaces with every item, roles and approvals in group ones.
+        **(await datastore.export_for(conn, user_id)),
         "mail_app_passwords": await rows("""select name, created_at, last_used_at, revoked_at from mail_app_passwords
                                             where user_id = %s order by created_at""", user_id),
         # Mail the app sent to you (login codes, GDPR and access links): status only, recipient as a hash.
@@ -316,7 +318,7 @@ async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, r
     """The right to be forgotten. Deletes the user (passkeys, authenticator apps, linked logins at providers, sessions, clips, domain consents, AI usage,
     AI budgets and their alerts, one-time codes, feature level, review sessions and notes, their private tree (meta_nodes with owner_id; shared nodes they made keep created_by = null) and Mapper's titles, pins and views (shared views too), their test accounts, access to
     and from their area (/user), adoption visits, nudges and journey roles, group memberships and their roles, requests, approvals and grants
-    for secrets (secrets where they were A are marked as without accountable person), Viden conversations and agent memberships
+    for secrets (secrets where they were A are marked as without accountable person), their personal collections and namespaces in the data store (group ones lose them as A), Viden conversations and agent memberships
     cascade; their mailbox rows cascade and the mailbox itself is removed in Stalwart by the job mail.principal.delete;
     review screenshots and audio are files; feature usage is purged with the logs; their files in Object Storage (their
     whole home and folders cascade; files they put in /shared stay, with the uploader link set to null); the contact
@@ -352,6 +354,9 @@ async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, r
         # Secrets where they were A lose their accountable person: R and C are told (their RACI rows, requests,
         # approvals, grants, memberships and queued notifications cascade with the user).
         await secret_store.before_user_erased(conn, user_id, meta)
+        # Datalager: personal containers (and their items, revisions and versions) cascade; group containers where
+        # they were A lose their accountable person.
+        await datastore.before_user_erased(conn, user_id, meta)
         # Beskeder: their inbox, threads, preferences and SMS rows cascade; answers they wrote as an admin stay in the
         # other user's thread without their name (author_id is set null by the foreign key).
         await conn.execute("update conversation_messages set author_name = null where author_id = %s and from_admin",

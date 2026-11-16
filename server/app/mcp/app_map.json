@@ -98,6 +98,14 @@
       "title": "Udforsk",
       "anchors": []
     },
+    "/admin/data/store": {
+      "title": "Datalager",
+      "anchors": []
+    },
+    "/admin/data/store/:id": {
+      "title": "Samling i datalageret",
+      "anchors": []
+    },
     "/admin/data/tools": {
       "title": "MCP-værktøjer",
       "anchors": [
