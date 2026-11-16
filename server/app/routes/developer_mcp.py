@@ -7,7 +7,7 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from app import db
-from app.devkit import artifacts, mcp_studio
+from app.devkit import artifacts, mcp_studio, mcp_testgen
 from app.devkit.assist import enabled as ai_enabled
 from app.logs import audit
 from app.mcp import endpoints as endpoints_mod
@@ -220,3 +220,50 @@ async def set_limits(key: str, body: LimitsIn, p: Principal = Depends(require_ad
         await audit(conn, "mcp_endpoint.limits", actor_id=p.user_id, meta=p.meta, table="mcp_endpoints", row_id=key,
                     before={"limits": e.get("limits")}, after={"limits": limits})
     return {"limits": limits}
+
+
+# ── Fase 3 of specs/developer/AI.md: proposed test cases, coverage, variants, why a test case fails ──
+
+@router.get("/{key}/suggestions")
+async def suggestions(key: str, ai: bool = False, p: Principal = Depends(require_admin)):
+    """Coverage per tool and proposed test cases (rules: tools without a test, an empty answer for an unknown value,
+    access as an external test account). With ?ai=true, AI also writes a natural question per untested tool. Nothing
+    is saved here; the bench saves the ones the user picks through POST /{key}/testcases."""
+    async with db.connection() as conn:
+        await _endpoint(conn, key)
+        cases = await db.fetch_all(conn, """select c.*, (select row_to_json(r) from (select passed from dev_mcp_test_runs
+                                            where testcase_id = c.id order by id desc limit 1) r) as last
+                                            from dev_mcp_testcases c where c.endpoint = %s""", (key,))
+        calls = await mcp_testgen.calls_by_tool(conn, key)
+    # The starter tools every endpoint has (whoami, access_*, drafts) are the platform's, not the endpoint's to test.
+    tools = [t for t in await tool_list(key) if t["name"] not in mcp_studio.STARTER_TOOLS]
+    out = mcp_testgen.proposals(tools, cases, calls, await mcp_studio.test_accounts(p))
+    if ai and ai_enabled():
+        tested = {c["tool"] for c in cases if c["tool"]} | {t for c in cases for t in ((c["expect"] or {}).get("tools") or [])}
+        out["items"] += await mcp_testgen.ai_questions([t for t in tools if t["name"] not in tested], p.user_id)
+    return {"coverage": mcp_testgen.coverage(tools, cases, calls), **out, "ai": ai_enabled()}
+
+
+class VariantsIn(BaseModel):
+    question: str = Field(min_length=3, max_length=1000)
+    n: int = Field(default=3, ge=1, le=5)
+
+
+@router.post("/{key}/variants")
+async def variants(key: str, body: VariantsIn, p: Principal = Depends(require_admin)):
+    """"Lav varianter": the same question in other words, as more AI test cases to save."""
+    async with db.connection() as conn:
+        await _endpoint(conn, key)
+    if not ai_enabled():
+        raise HTTPException(409, "AI er slået fra på denne instans")
+    return {"variants": await mcp_testgen.variants(body.question, body.n, p.user_id)}
+
+
+@router.get("/{key}/testcases/{testcase_id}/explain")
+async def explain(key: str, testcase_id: int, p: Principal = Depends(require_admin)):
+    async with db.connection() as conn:
+        await _endpoint(conn, key)
+        tc = await db.fetch_one(conn, "select * from dev_mcp_testcases where id = %s and endpoint = %s", (testcase_id, key))
+        if tc is None:
+            raise HTTPException(404, "Testcasen findes ikke")
+        return await mcp_testgen.explain(conn, key, tc, p.user_id)

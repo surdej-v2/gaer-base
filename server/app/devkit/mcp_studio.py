@@ -98,17 +98,31 @@ async def ai_test(endpoint: str, question: str, principal: Principal) -> dict:
     """MCP-10: which tools an AI client picks, with which arguments, and the answer."""
     from app.mcp.registry import tool_list
 
+    from app import consumption
+
     if not ai.enabled():
         raise HTTPException(409, "AI er slået fra på denne instans")
+    payer = principal.impersonator_id or principal.user_id   # a test account's AI test counts on the developer
     async with db.connection() as conn:
+        if blocked := await consumption.check(conn, payer):
+            raise HTTPException(*blocked)
         row = await db.fetch_one(conn, "select instructions from mcp_endpoints where key = %s", (endpoint,))
     tools = [t for t in await tool_list(endpoint) if t["name"] not in ("confirm_draft", "cancel_draft", "access_request", "access_list")]
     fns = [{"type": "function", "function": {"name": t["name"], "description": t["description"][:1000], "parameters": t["inputSchema"]}}
            for t in tools]
     messages = [{"role": "system", "content": (row or {}).get("instructions") or "Brug værktøjerne til at svare. Svar kort på dansk."},
                 {"role": "user", "content": question}]
-    s = config.settings
     steps, started = [], time.monotonic()
+    used = {"prompt": 0, "completion": 0, "estimated": False}
+    try:
+        return await _ai_loop(messages, fns, endpoint, principal, steps, started, used)
+    finally:
+        if used["prompt"] or used["completion"]:
+            await ai.record_usage(payer, "developer", used["prompt"], used["completion"], used["estimated"])
+
+
+async def _ai_loop(messages: list, fns: list, endpoint: str, principal: Principal, steps: list, started: float, used: dict) -> dict:
+    s = config.settings
     for _ in range(MAX_STEPS + 1):
         payload = {"model": s.ai_model, "messages": messages, "tools": fns, "temperature": 0, "max_tokens": s.ai_max_output_tokens}
         try:
@@ -120,7 +134,12 @@ async def ai_test(endpoint: str, question: str, principal: Principal) -> dict:
             raise HTTPException(424, "AI-tjenesten kunne ikke nås")
         if r.status_code >= 300:
             raise HTTPException(424, f"AI-tjenesten svarede {r.status_code}")
-        msg = ((r.json().get("choices") or [{}])[0].get("message") or {})
+        body = r.json()
+        usage = body.get("usage") or {}
+        used["prompt"] += int(usage.get("prompt_tokens") or 0) or sum(len(str(m.get("content") or "")) for m in messages) // 4
+        used["completion"] += int(usage.get("completion_tokens") or 0)
+        used["estimated"] = used["estimated"] or not usage
+        msg = ((body.get("choices") or [{}])[0].get("message") or {})
         calls = msg.get("tool_calls") or []
         if not calls or len(steps) >= MAX_STEPS:
             return {"steps": steps, "answer": (msg.get("content") or "").strip(), "ms": int((time.monotonic() - started) * 1000),
@@ -142,18 +161,33 @@ async def ai_test(endpoint: str, question: str, principal: Principal) -> dict:
 
 # ── Test cases ──────────────────────────────────────────────────────────────
 
+def _protected(outcome: dict) -> bool:
+    """expect.protected (specs/developer/AI.md fase 3): the caller was refused, got no rows, or the personal fields
+    came back masked."""
+    if outcome["isError"]:
+        return True
+    result = outcome.get("result") or {}
+    if not result.get("rows"):
+        return True
+    return bool(outcome.get("masked") or result.get("masked"))
+
+
 def judge(tc: dict, outcome: dict) -> tuple[bool, list[str]]:
     expect = tc["expect"] or {}
     problems = []
     if tc["kind"] == "direct":
-        if outcome["isError"]:
+        if outcome["isError"] and not expect.get("protected"):
             problems.append(f"Kaldet fejlede: {outcome['result'].get('error')}")
-        else:
+        elif not outcome["isError"]:
             count = outcome["result"].get("count")
             if expect.get("min_rows") is not None and (count or 0) < int(expect["min_rows"]):
                 problems.append(f"Gav {count} rækker, forventede mindst {expect['min_rows']}")
             if expect.get("contains") and str(expect["contains"]) not in json.dumps(outcome["result"], ensure_ascii=False, default=str):
                 problems.append(f"Svaret indeholder ikke “{expect['contains']}”")
+            if expect.get("max_rows") is not None and (count or 0) > int(expect["max_rows"]):
+                problems.append(f"Gav {count} rækker, forventede højst {expect['max_rows']}")
+        if expect.get("protected") and not _protected(outcome):
+            problems.append("Personfelter blev vist i klartekst for testkontoen")
     else:
         chosen = [s["tool"] for s in outcome["steps"]]
         for t in expect.get("tools") or []:
@@ -164,6 +198,10 @@ def judge(tc: dict, outcome: dict) -> tuple[bool, list[str]]:
             for k, v in want.items():
                 if got is None or str(got.get(k)) != str(v):
                     problems.append(f"{t}: {k} skulle være {v}")
+        if expect.get("only_tools"):
+            extra = sorted({t for t in chosen if t not in (expect.get("tools") or [])})
+            if extra:
+                problems.append(f"AI kaldte også {', '.join(extra)}")
         if expect.get("answer_contains") and str(expect["answer_contains"]).lower() not in outcome["answer"].lower():
             problems.append(f"Svaret nævner ikke “{expect['answer_contains']}”")
     return not problems, problems

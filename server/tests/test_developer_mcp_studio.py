@@ -148,3 +148,16 @@ async def test_rate_limits_clients_monitoring_and_alarms(make_client, owner_conn
     notes = (await admin.get(f"{DEV}/notifications")).json()["items"]
     assert any(n["kind"] == "alarm" for n in notes)
     assert (await jobs.HANDLERS["developer.metrics"]({}, {}))["alerts"] == 0          # not again within the hour
+
+
+async def test_the_ai_test_counts_on_the_developer(make_client, owner_conn, ai_on):
+    """specs/developer/AI.md fase 3: the AI test records its tokens (surface developer) on the developer, also when it
+    runs as a test account."""
+    admin, auth, ids = await _setup(make_client, owner_conn)
+    await _guide(admin, ids)
+    uid = await _test_account(admin, owner_conn, audience="internal")
+    r = await admin.post(f"{DEV}/mcp/lejedata/ai", json={"question": "Hvor mange lejemål har E-1?", "as_user_id": uid})
+    assert r.status_code == 200, r.text
+    row = owner_conn.execute("""select u.phone, a.surface, a.prompt_tokens > 0 from ai_usage a join users u on u.id = a.user_id
+                                order by a.id desc limit 1""").fetchone()
+    assert row == ("+4520000001", "developer", True)

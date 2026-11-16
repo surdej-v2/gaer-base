@@ -6,6 +6,7 @@ import { api, errorText } from "../api";
 import { Alert, fmtDate, useLoad } from "../ui";
 import { DevPage } from "./DeveloperShell";
 import { Empty, StatusDot, Tabs } from "./devui";
+import { useAiContext } from "./ai/context";
 
 type Ep = { key: string; path: string; name: string; audience: string; version: string | null; owners: string[]; status: string;
   statusLabel: string; origin: string; artifactId: number | null; tools: number };
@@ -71,7 +72,13 @@ export function TestBench() {
   const [aiOut, setAiOut] = useState<AiOut | null>(null);
   const [runs, setRuns] = useState<{ name: string; passed: boolean; problems: string[] }[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const load = () => key ? api.get<Bench>(`/api/admin/dev/mcp/${key}/bench`).then(setBench).catch((e) => setErr(errorText(e))) : setBench(null);
+  // specs/developer/AI.md fase 3: the checks saved with an AI test case, and variants of its question.
+  const [checks, setChecks] = useState<{ args: boolean; only: boolean; contains: string }>({ args: true, only: false, contains: "" });
+  const [variants, setVariants] = useState<{ q: string; on: boolean }[] | null>(null);
+  const [gen, setGen] = useState(0);   // bumps the proposals after a save or a run
+  const [explainId, setExplainId] = useState<number | null>(null);
+  useAiContext("artifact", eps?.items.find((e) => e.key === key)?.artifactId ?? null);
+  const load = () => key ? api.get<Bench>(`/api/admin/dev/mcp/${key}/bench`).then((b) => { setBench(b); setGen((g) => g + 1); }).catch((e) => setErr(errorText(e))) : setBench(null);
   useEffect(() => { load(); }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const wrap = async (fn: () => Promise<void>) => {
     setErr(null);
@@ -85,9 +92,28 @@ export function TestBench() {
       expect: { min_rows: count ? 1 : 0 }, as_user_id: asUser || null });
     load();
   });
+  const aiExpect = () => {
+    const tools = [...new Set(aiOut?.steps.map((s) => s.tool) ?? [])];
+    const expect: Record<string, unknown> = { tools };
+    if (checks.args && aiOut?.steps.length) expect.args = Object.fromEntries(aiOut.steps.map((s) => [s.tool, s.args]));
+    if (checks.only) expect.only_tools = true;
+    if (checks.contains.trim()) expect.answer_contains = checks.contains.trim();
+    return expect;
+  };
   const saveAi = () => wrap(async () => {
     await api.post(`/api/admin/dev/mcp/${key}/testcases`, { kind: "ai", name: question.slice(0, 120), question,
-      expect: { tools: aiOut?.steps.map((s) => s.tool) ?? [] }, as_user_id: asUser || null });
+      expect: aiExpect(), as_user_id: asUser || null });
+    load();
+  });
+  const makeVariants = () => wrap(async () => {
+    const r = await api.post<{ variants: string[] }>(`/api/admin/dev/mcp/${key}/variants`, { question, n: 3 });
+    setVariants(r.variants.map((q) => ({ q, on: true })));
+  });
+  const saveVariants = () => wrap(async () => {
+    for (const v of variants?.filter((x) => x.on) ?? []) {
+      await api.post(`/api/admin/dev/mcp/${key}/testcases`, { kind: "ai", name: v.q.slice(0, 120), question: v.q, expect: aiExpect(), as_user_id: asUser || null });
+    }
+    setVariants(null);
     load();
   });
   const runAll = (onDraft: boolean) => wrap(async () => {
@@ -155,25 +181,54 @@ export function TestBench() {
                   <div className="dev-card small"><strong>Detaljer</strong><span>Varighed: {aiOut.ms} ms</span>
                     <span>Fra cache: {aiOut.steps.filter((s) => s.cache === "hit").map((_, i) => `trin ${i + 1}`).join(", ") || "intet"}</span>
                     <span>Maskering: {[...new Set(aiOut.steps.flatMap((s) => s.masked ?? []))].join(", ") || "ingen felter"}</span>
-                    <span>Tools kaldt: {aiOut.toolsCalled}</span>
-                    <button className="btn btn-outline btn-sm" onClick={saveAi}>Gem som testcase</button></div>
+                    <span>Tools kaldt: {aiOut.toolsCalled}</span></div>
                 </div>
+              )}
+              {aiOut && (
+                <fieldset className="dev-ai-card" style={{ margin: 0 }}>
+                  <legend className="dev-ai-where" style={{ padding: 0 }}>Gem som testcase med disse kontroller</legend>
+                  <span className="small">AI skal vælge {[...new Set(aiOut.steps.map((s) => s.tool))].join(", ") || "intet tool"}</span>
+                  <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={checks.args} onChange={(e) => setChecks({ ...checks, args: e.target.checked })} /> … med de samme argumenter</label>
+                  <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={checks.only} onChange={(e) => setChecks({ ...checks, only: e.target.checked })} /> … og ingen andre tools</label>
+                  <label className="row small" style={{ gap: 6 }}>Svaret skal nævne
+                    <input className="dev-input" style={{ height: 30, flex: 1 }} value={checks.contains} placeholder="(valgfrit)" onChange={(e) => setChecks({ ...checks, contains: e.target.value })} /></label>
+                  <div className="row" style={{ gap: 6 }}>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={saveAi}>Gem testcase</button>
+                    <button type="button" className="btn btn-outline btn-sm" onClick={makeVariants}>Lav 3 varianter af spørgsmålet</button>
+                  </div>
+                  {variants && (
+                    <div className="stack" style={{ "--gap": "4px" } as React.CSSProperties}>
+                      {variants.length === 0 && <span className="small muted">AI gav ingen varianter.</span>}
+                      {variants.map((v, i) => (
+                        <label key={i} className="row small" style={{ gap: 6 }}>
+                          <input type="checkbox" checked={v.on} onChange={(e) => setVariants(variants.map((x, k) => (k === i ? { ...x, on: e.target.checked } : x)))} /> {v.q}
+                        </label>
+                      ))}
+                      {variants.some((v) => v.on) && <button type="button" className="btn btn-primary btn-sm" style={{ alignSelf: "flex-start" }} onClick={saveVariants}>
+                        Gem {variants.filter((v) => v.on).length} varianter med samme kontroller</button>}
+                    </div>
+                  )}
+                </fieldset>
               )}
               <span className="tiny muted">Gemte testcases skal bestå, før en major-version udgives.</span>
             </div>
           )}
           {tab === "cases" && (
             <div className="stack">
+              <Proposals endpoint={key} gen={gen} onSaved={load} />
               {bench.testcases.length === 0 ? <Empty>Ingen testcases endnu. Gem et kald eller en AI-test.</Empty> : (
                 <div className="dev-wrap"><table className="dev-table">
                   <thead><tr><th>Testcase</th><th>Type</th><th>Seneste</th><th /></tr></thead>
                   <tbody>{bench.testcases.map((c) => (
                     <tr key={c.id}><td>{c.name}</td><td>{c.kind === "ai" ? "AI" : "Direkte"}</td>
                       <td>{c.last ? <StatusDot status={c.last.passed ? "ok" : "failed"} label={`${c.last.passed ? "Bestået" : "Fejlet"} ${fmtDate(c.last.ran_at)}`} /> : "—"}</td>
-                      <td><button className="btn btn-ghost btn-sm" onClick={() => del(c.id)}>Slet</button></td></tr>
+                      <td><div className="row" style={{ gap: 4, flexWrap: "nowrap", justifyContent: "flex-end" }}>
+                        {c.last && !c.last.passed && <button className="dev-ai-chipbtn" onClick={() => setExplainId(explainId === c.id ? null : c.id)}>Forklar</button>}
+                        <button className="btn btn-ghost btn-sm" onClick={() => del(c.id)}>Slet</button></div></td></tr>
                   ))}</tbody>
                 </table></div>
               )}
+              {explainId && <Explanation endpoint={key} id={explainId} onClose={() => setExplainId(null)} />}
               <div className="row" style={{ gap: 8 }}>
                 <button className="btn btn-outline btn-sm" onClick={() => runAll(false)}>Kør mod udgivet version</button>
                 {bench.draft && <button className="btn btn-primary btn-sm" onClick={() => runAll(true)}>Kør mod kladde {bench.draft.version}</button>}
@@ -185,6 +240,129 @@ export function TestBench() {
       )}
       {err && <Alert>{err}</Alert>}
     </DevPage>
+  );
+}
+
+// ── Fase 3 of specs/developer/AI.md: proposed test cases and coverage, why a test case fails ─────────────
+
+type Testcase = { kind: string; name: string; question?: string; tool?: string; args?: Record<string, unknown>; expect: Record<string, unknown>; as_user_id?: number };
+type Proposal = { key: string; why: string; seen: number; needsArgs: boolean; testcase: Testcase };
+type Suggestions = { coverage: { tool: string; testcases: number; calls30d: number; passed: boolean | null }[]; items: Proposal[]; notes: string[]; ai: boolean };
+
+const WHY_CLASS: Record<string, string> = { "tool uden test": "blue", kanttilfælde: "amber", adgang: "red", "AI-spørgsmål": "blue" };
+
+function expectText(e: Record<string, unknown>): string {
+  const out: string[] = [];
+  if (e.min_rows !== undefined) out.push(`mindst ${e.min_rows} rækker`);
+  if (e.max_rows !== undefined) out.push(Number(e.max_rows) === 0 ? "tomt svar, ingen fejl" : `højst ${e.max_rows} rækker`);
+  if (e.protected) out.push("ingen personfelter i klartekst");
+  if (Array.isArray(e.tools) && e.tools.length) out.push(`AI vælger ${e.tools.join(", ")}`);
+  if (e.answer_contains) out.push(`svaret nævner “${e.answer_contains}”`);
+  return out.join(" · ") || "kaldet lykkes";
+}
+
+/** Proposed test cases from rules (and, on request, AI questions). The user picks; nothing is saved before "Tilføj". */
+function Proposals({ endpoint, gen, onSaved }: { endpoint: string; gen: number; onSaved: () => void }) {
+  const [data, setData] = useState<Suggestions | null>(null);
+  const [on, setOn] = useState<Record<string, boolean>>({});
+  const [args, setArgs] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const load = (withAi = false) => api.get<Suggestions>(`/api/admin/dev/mcp/${endpoint}/suggestions${withAi ? "?ai=true" : ""}`)
+    .then((d) => {
+      setData(d);
+      setOn(Object.fromEntries(d.items.map((p) => [p.key, !p.needsArgs])));
+      setArgs(Object.fromEntries(d.items.map((p) => [p.key, JSON.stringify(p.testcase.args ?? {})])));
+    }, (e) => setErr(errorText(e)));
+  useEffect(() => { load(); }, [endpoint, gen]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!data) return err ? <Alert>{err}</Alert> : null;
+  const tested = data.coverage.filter((c) => c.testcases > 0).length;
+  const chosen = data.items.filter((p) => on[p.key]);
+  const add = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      for (const p of chosen) {
+        const tc = p.testcase.kind === "direct" ? { ...p.testcase, args: JSON.parse(args[p.key] || "{}") } : p.testcase;
+        await api.post(`/api/admin/dev/mcp/${endpoint}/testcases`, tc);
+      }
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof SyntaxError ? "Argumenterne er ikke gyldig JSON" : errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="stack">
+      <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <strong className="small">Dækning: {tested} af {data.coverage.length} tools har en testcase</strong>
+        {data.coverage.map((c) => (
+          <span key={c.tool} className={`pill${c.testcases === 0 ? " amber" : c.passed === false ? " red" : ""}`} title={`${c.calls30d} kald de seneste 30 dage`}>
+            {c.tool} · {c.testcases}
+          </span>
+        ))}
+      </div>
+      {(data.items.length > 0 || data.notes.length > 0 || data.ai) && (
+        <section className="dev-ai-card" aria-labelledby="mcp-props">
+          <div className="row" style={{ gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+            <h2 id="mcp-props" className="dev-ai-title">{data.items.length ? `${data.items.length} foreslåede testcases` : "Ingen nye forslag"}</h2>
+            <span className="tiny muted">ud fra tools uden test, kanttilfælde, adgang og kaldsloggen. Kun metadata; ingen værdier fra rigtige kald</span>
+          </div>
+          {data.notes.map((n) => <span key={n} className="small">{n}</span>)}
+          {data.items.map((p) => (
+            <div key={p.key} className="row" style={{ gap: 8, alignItems: "flex-start", background: "#fff", border: "1px solid var(--hm-border)", borderRadius: 10, padding: "8px 10px" }}>
+              <input type="checkbox" checked={!!on[p.key]} onChange={(e) => setOn({ ...on, [p.key]: e.target.checked })} aria-label={`Medtag ${p.testcase.name}`} style={{ marginTop: 3 }} />
+              <div className="stack" style={{ "--gap": "3px", flex: 1, minWidth: 0 } as React.CSSProperties}>
+                <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                  <strong className="small">{p.testcase.name}</strong>
+                  <span className={`pill ${WHY_CLASS[p.why] ?? ""}`}>{p.why}</span>
+                  {p.seen > 0 && <span className="tiny muted">kaldt {p.seen} gange de seneste 30 dage</span>}
+                </div>
+                <span className="tiny muted">Forventer: {expectText(p.testcase.expect)}{p.testcase.as_user_id ? " · som testkonto" : ""}</span>
+                {p.testcase.kind === "direct" && (
+                  <input className="dev-input mono" style={{ height: 28, fontSize: 12 }} value={args[p.key] ?? "{}"} aria-label={`Argumenter til ${p.testcase.name}`}
+                         onChange={(e) => setArgs({ ...args, [p.key]: e.target.value })} />
+                )}
+                {p.needsArgs && <span className="tiny" style={{ color: "#92400e" }}>Udfyld argumenterne, før den kan tilføjes.</span>}
+              </div>
+            </div>
+          ))}
+          <div className="row" style={{ gap: 6 }}>
+            {chosen.length > 0 && <button className="btn btn-primary btn-sm" onClick={add} disabled={busy}>Tilføj {chosen.length} valgte</button>}
+            {data.ai && <button className="btn btn-outline btn-sm" onClick={() => load(true)} disabled={busy}>Lav spørgsmål med AI</button>}
+          </div>
+          {err && <span className="small" role="alert" style={{ color: "#b91c1c" }}>{err}</span>}
+        </section>
+      )}
+    </div>
+  );
+}
+
+type Explained = { passed: boolean | null; problems: string[]; changes: { tool: string; before: string | null; after: string | null }[];
+  text: string; ai: boolean; endpointPath: string | null };
+
+function Explanation({ endpoint, id, onClose }: { endpoint: string; id: number; onClose: () => void }) {
+  const { data, error } = useLoad(() => api.get<Explained>(`/api/admin/dev/mcp/${endpoint}/testcases/${id}/explain`), [endpoint, id]);
+  if (error) return <Alert>{error}</Alert>;
+  if (!data) return <span className="small muted">Finder årsagen …</span>;
+  return (
+    <div className="dev-card" style={{ borderColor: "#fecaca" }}>
+      <div className="row" style={{ gap: 8 }}>
+        <strong className="small" style={{ flex: 1 }}>Hvorfor fejler testcasen?</strong>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}>Luk</button>
+      </div>
+      {data.ai && data.problems.map((pr) => <span key={pr} className="small">{pr}</span>)}
+      <span className="small"><b className="dev-ai-where" style={{ display: "inline" }}>{data.ai ? "AI: " : ""}</b>{data.text}</span>
+      {data.changes.map((c) => (
+        <pre key={c.tool} className="dev-code" style={{ whiteSpace: "pre-wrap" }}>
+          {`${c.tool}\n- ${c.before ?? "(fandtes ikke)"}\n+ ${c.after ?? "(fjernet i kladden)"}`}
+        </pre>
+      ))}
+      <div className="row" style={{ gap: 6 }}>
+        {data.endpointPath && <Link to={data.endpointPath} className="btn btn-primary btn-sm">Ret beskrivelsen i endpointet</Link>}
+      </div>
+    </div>
   );
 }
 

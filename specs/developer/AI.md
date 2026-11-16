@@ -1,6 +1,6 @@
 # AI i Gær Developer — chat og forslag overalt
 
-Status: fase 0 (backend), fase 1 (shell, oversigt, ⌘K) og fase 2 (pipeline-editoren) er bygget. Fase 3–6 er planlagt. Designet ligger på canvasset „Developer med AI“
+Status: fase 0 (backend), fase 1 (shell, oversigt, ⌘K), fase 2 (pipeline-editoren) og fase 3 (MCP-testbænken) er bygget. Fase 4–6 er planlagt. Designet ligger på canvasset „Developer med AI“
 (artboards: Oversigt, Pipeline-editor, ⌘K, MCP-testbænk, Action-studie, API-dokumentation, AI-mønstre, telefon).
 
 ## Mål
@@ -58,11 +58,15 @@ tilbage, og React fejlede, når en samtale blev lukket.
 | Endpoints | `POST /api/admin/dev/pipelines/help` (regler, ingen AI: forslag, beskrivelser, grå tekst for det valgte trin); `POST /api/admin/dev/pipelines/complete` („Andet forslag“: AI's tilføjelse, beholdt kun hvis pipelinen stadig kan kompileres, ellers reglens); `POST /api/admin/dev/pipelines/{id}/note` (ændringsnote ud fra kontraktforskellen mod den udgivne version — serverens patch/minor/major, teksten skrevet af AI eller listen af ændringer) |
 | Editoren | `Pipeline.tsx`: forslag med stiplet kant over trinene („Brug“ / „Afvis“), beskrivelse under det valgte trin, grå tekst under feltet (Tab tager den, Esc skjuler, „Andet forslag“ med AI), „Forklar trinnet“, „Forklar fejlen“ når seneste kørsel fejlede, ændringsnote der følger versionen til godkendelse. Et `propose_pipeline_change` for den åbne pipeline lægges i editoren med „Fortryd“ (`useAiProposalHandler`; for en anden pipeline bliver det i panelet). Intet gemmes, før brugeren trykker Gem kladde eller Send til godkendelse |
 
-## Fase 3 — MCP-testbænk
+## Fase 3 — MCP-testbænk (bygget)
 
-- Foreslåede testcases fra kaldsloggen og tools uden test; kontroller i `dev_mcp_testcases.expect`
-  (`tool`, `args`, `answer_contains`, `masked`); omskrevet uden personoplysninger.
-- Forklaring af en fejlet testcase (toolbeskrivelse udgivet vs. kladde), dækning pr. tool, „Lav 3 varianter“.
+| Del | Hvor |
+| --- | --- |
+| Forslag | `devkit/mcp_testgen.py`, regler på det, der kendes uden at se data: endpointets tools og parametre, antal kald pr. tool i `mcp_log` (kun antal; de loggede værdier er maskerede), de gemte testcases og testkontiene. Tre slags: *tool uden test* (et direkte kald med toolets første eksempel, eller uden argumenter, når intet er påkrævet — ellers udfylder brugeren dem), *kanttilfælde* (en ukendt værdi i en tekst-parameter skal give et tomt svar, ikke en fejl), *adgang* (et gult eller rødt tool kaldt som ekstern testkonto må ikke vise personfelter i klartekst; uden en ekstern testkonto siger forslaget, at den skal oprettes). Platformens starter-tools (`whoami`, `access_*`, kladder) er ikke med |
+| Nye kontroller | `mcp_studio.judge`: `max_rows`, `protected` (afvist, ingen rækker eller maskerede felter) og `only_tools` (AI kalder ingen andre tools) ud over `min_rows`, `contains`, `tools`, `args`, `answer_contains` |
+| AI | `ai_questions()` skriver et naturligt spørgsmål pr. tool uden test (kun når brugeren beder om det); `variants()` omskriver et spørgsmål; `explain()` forklarer en fejlet testcase ud fra problemerne og forskellen i toolbeskrivelser mellem udgivet version og kladde (uden AI: problemerne og „Beskrivelsen af X er ændret i kladden“). AI-testen i testbænken går nu gennem `consumption.check` og tæller på udvikleren (surface `developer`), også når den kører som testkonto |
+| Endpoints | `GET /api/admin/dev/mcp/{key}/suggestions[?ai=true]` (dækning pr. tool + forslag), `POST /api/admin/dev/mcp/{key}/variants`, `GET /api/admin/dev/mcp/{key}/testcases/{id}/explain`. Forslag gemmes med det eksisterende `POST /{key}/testcases`, som logger i audit-loggen |
+| Testbænken | `McpStudie.tsx`: på fanen Gemte testcases dækning pr. tool og forslag med flueben og redigerbare argumenter („Tilføj N valgte“, „Lav spørgsmål med AI“), „Forklar“ på en fejlet testcase med forskellen i beskrivelsen og et link til endpointet; i AI-testen kontroller at gemme med (samme argumenter, ingen andre tools, svaret skal nævne …) og „Lav 3 varianter af spørgsmålet“ |
 
 ## Fase 4 — API-dokumentation
 
@@ -81,6 +85,6 @@ tilbage, og React fejlede, når en samtale blev lukket.
 
 ## Tests
 
-`server/tests/test_developer_ai.py`: kontekst uden værdier, valg af studie med og uden AI, AI-resumé på en version, der venter, og i `test_developer_ai_pipeline.py` flytningen af en `$match` (samme rækker), beskrivelser, grå tekst med og uden AI og ændringsnoten, citerede værdier fjernet fra fejltekster, budget nået → 429
+`server/tests/test_developer_ai.py`: kontekst uden værdier, valg af studie med og uden AI, AI-resumé på en version, der venter, i `test_developer_ai_pipeline.py` flytningen af en `$match` (samme rækker), beskrivelser, grå tekst med og uden AI og ændringsnoten, og i `test_developer_ai_mcp.py` forslag, dækning, de nye kontroller, AI-spørgsmål og varianter, forklaringen af en fejlet testcase og budgettet i AI-testen, citerede værdier fjernet fra fejltekster, budget nået → 429
 (også i `assist.complete`), AI slået fra → 404 og forslag virker stadig, `/api/ai/chat` afviser surface `developer`,
 afvisning og fortryd med audit, afvisninger i GDPR-eksporten og slettet med brugeren.
