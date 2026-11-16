@@ -326,12 +326,10 @@ async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, r
     for secrets (secrets where they were A are marked as without accountable person), their personal collections and namespaces in the data store (group ones lose them as A), Viden conversations and agent memberships
     cascade; their mailbox rows cascade and the mailbox itself is removed in Stalwart by the job mail.principal.delete;
     review screenshots and audio are files; feature usage is purged with the logs; their files in Object Storage (their
-    whole home and folders cascade; files they put in /shared stay, with the uploader link set to null); the contact
-    details on their GDPR requests, their unfinished uploads (rows cascade, objects removed), export and import
-    packages that may hold personal data plus the copies an import kept for undo (/admin/data/transfer), and
     whole home and folders cascade; files they put in /shared stay, with the uploader link set to null; so do the TAS documents and images they
     changed); the contact
-    details on their GDPR requests, their unfinished uploads (rows cascade, objects removed), and
+    details on their GDPR requests, their unfinished uploads (rows cascade, objects removed), export and import
+    packages that may hold personal data plus the copies an import kept for undo (/admin/data/transfer), and
     log data about them (via the purge user). The erasure itself is logged without personal data."""
     async with db.connection() as conn:
         user = await ensure_can_erase(conn, user_id)

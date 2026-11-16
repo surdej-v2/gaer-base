@@ -40,8 +40,6 @@ import Prompts from "./developer/Prompts";
 import Trees from "./developer/Trees";
 import Inbox from "./pages/Inbox";
 import Conversations from "./pages/Conversations";
-import Develop from "./pages/Develop";
-import Trees from "./pages/Trees";
 import Backoffice from "./pages/Backoffice";
 import ExtensionLayout from "./extension/ExtensionLayout";
 import ExtensionPage from "./extension/ExtensionPage";
@@ -228,8 +226,6 @@ export default function App() {
           <Route path="prompts" element={<Prompts />} />
           <Route path="trae" element={<Trees />} />
         </Route>
-        <Route path="/develop" element={<RequireUser><Develop /></RequireUser>} />
-        <Route path="/develop/trae" element={<RequireUser><Trees /></RequireUser>} />
         <Route path="/backoffice" element={<RequireUser><Backoffice /></RequireUser>} />
 
         <Route path="/extension/login" element={<Login home="/extension" embedded />} />

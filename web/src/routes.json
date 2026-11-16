@@ -853,6 +853,8 @@
    "app": "server",
    "access": "token",
    "title": "API'er fra API-studie"
+  },
+  {
    "path": "/backoffice",
    "group": "backoffice",
    "app": "app",

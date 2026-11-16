@@ -41,8 +41,6 @@ herfra ind i sin fork.
 | `/beskeder`, `/samtaler`, `/admin/messages` | logget ind (`/admin/messages`: admin, Support, Privatliv og Drift) | **Beskeder** fra administrationen: udsendelse i to trin med overslag, indbakke på `/beskeder`, SMS kun med brugerens eget ja, e-mail, svar som privat tråd med administrationen. `/admin/messages` til afsendelse, svar, levering og regler. **Samtaler**: Fællessamtalen og direkte beskeder med anmeld, bloker og ordfilter; moderering i `/admin/messages/moderation`. |
 | `/forbind`, `/go`, `/flow-godkendelse` | logget ind | **MCP-samtykke** (`/forbind`: en klient beder om adgang; `mcp:admin` kræver frisk anden faktor) og **deep links** (`/go?path=…&focus=…`, også `/admin/go`), der åbner en side og fokuserer et `data-deeplink`-anker. **Flow-godkendelser** (`/flow-godkendelse/<token>`): et trin i et flow fra Action-studie venter på, at en af de udpegede godkender eller afviser; linket kommer på mail, og man svarer logget ind. |
 | `/developer/…` | interne brugere med admin-rollen Udvikler eller Udvikler-admin (eller Data eller Fuld); /gaer/… for API-nøgler og tokens | **Gær Developer** (spec i `specs/developer/`): egen sidebar, brødkrumme og ⌘K. Fem studier på én kerne af versionerede artefakter med RACI-ejere og godkendelse: Datastudie, Pipeline, MCP-studie, API-studie og Action-studie (flows: udløser + handlinger, en workflow-motor som Logic Apps og Power Automate), plus datakatalog, forbindelser, godkendelser og eksport/import. |
-| `/forbind`, `/go` | logget ind | **MCP-samtykke** (`/forbind`: en klient beder om adgang; `mcp:admin` kræver frisk anden faktor) og **deep links** (`/go?path=…&focus=…`, også `/admin/go`), der åbner en side og fokuserer et `data-deeplink`-anker. |
-| `/develop` | logget ind | **Promptkatalog** til udviklingsprocessen: færdige prompts til Claude (artifacts, nye features, endpoints, migrationer, tests, review, fejlfinding) med kategori, søgning og kopiér-knap. Linket fra forsiden. `/develop/trae` viser **træstrukturer** (TreeView, TreeSelect) mod de rigtige data: fire visninger og inputfelterne. |
 | `/backoffice` | logget ind (redigering: admin-rollen Fuld adgang eller Indhold) | **TAS – terminalsimulatoren** med assistent som på `/w/`, plus **Admin Portal**, hvor redaktører retter menuer, viden, fejlsøgning, tilbehør, oversættelser og TAS-indstillinger, ser kladder og udgiver. |
 | `/admin/…` | admin (+ MFA) | Administration — en selvstændig app (`web/admin.html`). Kræver anden faktor efter tre logins med engangskode. Alt logges. |
 | `/m/…` | logget ind | Mobil-app (PWA) med bundmenu, Mapper, AI, klip, filer og profil. |
@@ -53,7 +51,7 @@ herfra ind i sin fork.
 | `/mcp`, `/mcp/admin`, `/mcp/<key>` | MCP-klienter (OAuth) | MCP-servere: appen som den indloggede bruger, admin med kladder, og egne endpoints fra MCP Studio på `/mcp/<nøgle>`. OAuth: `/.well-known/oauth-*`, `/mcp/authorize`, `/mcp/token`, `/mcp/register`. |
 | `/health` | udrulning | Sundhedstjek (database + version), bruges af `deploy/deploy.sh`. |
 
-<details><summary>Alle ruter (161)</summary>
+<details><summary>Alle ruter (162)</summary>
 
 | Sti | Svarer | Adgang | Side |
 | --- | --- | --- | --- |
@@ -131,8 +129,6 @@ herfra ind i sin fork.
 | `/developer/actions/koersler/:id` | appen | admin | Kørsel |
 | `/developer/actions/:id` | appen | admin | Flow |
 | `/gaer/{path}` | serveren | OAuth | API'er fra API-studie |
-| `/develop` | appen | logget ind | Udvikling |
-| `/develop/trae` | appen | logget ind | Træstrukturer |
 | `/backoffice` | appen | logget ind | Backoffice |
 | `/admin` | admin-appen | admin | Statistik |
 | `/admin/go` | admin-appen | admin | Deep link |
