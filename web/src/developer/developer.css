@@ -139,9 +139,30 @@
 .dev-ai-summary b { color: #1e40af; }
 .dev-palette-list li.ai { color: #1e40af; }
 @media (max-width: 1100px) { .dev-ai-dock { width: 340px; } .dev-ai-btn-text, .dev-ai-btn kbd { display: none; } }
+/* Fase 6: on a phone the panel is a sheet from the bottom — half or full height, a handle to tap or drag, a scrim
+   behind it, a floating "Spørg AI" when it is closed, touch targets of 44 px and 16 px text so iOS does not zoom */
+.dev-ai-fab, .dev-ai-scrim, .dev-ai-handle { display: none; }
 @media (max-width: 767px) {
-  .dev-ai-dock { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; height: 75vh; z-index: 50;
-    border-left: 0; border-radius: 16px 16px 0 0; box-shadow: 0 -8px 24px rgb(15 23 42 / 0.18); }
+  .dev-ai-dock.ai-sheet { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; z-index: 50; border-left: 0;
+    border-radius: 20px 20px 0 0; box-shadow: 0 -8px 24px rgb(15 23 42 / 0.18); transition: height 0.18s ease;
+    padding-bottom: env(safe-area-inset-bottom); }
+  .dev-ai-dock.ai-sheet.half { height: 58vh; height: 58dvh; }
+  .dev-ai-dock.ai-sheet.full { height: calc(100vh - 12px); height: calc(100dvh - 12px); border-radius: 16px 16px 0 0; }
+  .dev-ai-scrim { display: block; position: fixed; inset: 0; z-index: 49; border: 0; padding: 0; background: rgb(15 23 42 / 0.35); cursor: pointer; }
+  .dev-ai-handle { display: grid; place-items: center; flex: none; height: 24px; border: 0; background: transparent; cursor: grab; touch-action: none; }
+  .dev-ai-handle span { width: 40px; height: 5px; border-radius: 9999px; background: #cbd5e1; }
+  .dev-ai-handle:focus-visible { outline: 2px solid var(--hm-primary); outline-offset: -2px; }
+  .dev-ai-dock.ai-sheet .dev-ai-head { padding-top: 0; }
+  .dev-ai-dock.ai-sheet .dev-icon-btn { width: 44px; height: 44px; }
+  .dev-ai-dock.ai-sheet .dev-ai-known { flex-wrap: nowrap; overflow-x: auto; }
+  .dev-ai-dock.ai-sheet .chat-input textarea { font-size: 16px; }
+  .dev-ai-dock.ai-sheet .chat-input .btn { min-height: 44px; }
+  .dev-ai-fab { display: inline-flex; align-items: center; gap: 8px; position: fixed; right: 16px; z-index: 40;
+    bottom: calc(20px + env(safe-area-inset-bottom)); height: 48px; padding: 0 18px 0 14px; border-radius: 9999px;
+    border: 0; background: var(--hm-primary); color: #f8fafc; font: 600 15px var(--hm-font-sans); cursor: pointer;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.15), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+  .dev-ai-fab:focus-visible { outline: 3px solid #93b4f5; outline-offset: 2px; }
+  .dev-top .dev-ai-btn { display: none; }   /* the floating "Spørg AI" takes its place on a phone */
 }
 /* Fase 2: suggestions between the stages (dashed: not applied), the grey completion under a stage */
 .dev-ai-inline { border: 1px dashed #93b4f5; background: #f5f8ff; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }

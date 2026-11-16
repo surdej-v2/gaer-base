@@ -1,6 +1,6 @@
 # AI i Gær Developer — chat og forslag overalt
 
-Status: fase 0 (backend), fase 1 (shell, oversigt, ⌘K), fase 2 (pipeline-editoren), fase 3 (MCP-testbænken), fase 4 (API-dokumentationen) og fase 5 (Action-studie) er bygget. Fase 6 er planlagt. Designet ligger på canvasset „Developer med AI“
+Status: fase 0 (backend), fase 1 (shell, oversigt, ⌘K), fase 2 (pipeline-editoren), fase 3 (MCP-testbænken), fase 4 (API-dokumentationen), fase 5 (Action-studie) og fase 6 (telefon) er bygget. Designet ligger på canvasset „Developer med AI“
 (artboards: Oversigt, Pipeline-editor, ⌘K, MCP-testbænk, Action-studie, API-dokumentation, AI-mønstre, telefon).
 
 ## Mål
@@ -88,9 +88,13 @@ tilbage, og React fejlede, når en samtale blev lukket.
 | Risikotjek | `devkit/flow_assist.risks()`, regler uden AI: en godkendelse, hvis svar intet senere trin læser (flowet fortsætter også ved afvisning — rettelsen lægger resten bag „Hvis godkendt“ og afslutter ved afvisning), kun én godkender, en frist over en uge, data fra en operation med røde eller personfelter sendt videre med mail, Besked, HTTP, AI, en hændelse eller en fil, en nøgle skrevet i et HTTP-trin (header eller query) i stedet for en API-kilde, og mail eller Besked inde i For hver. `POST /api/admin/dev/flows/risks`. (Godkendelser har allerede en frist — `timeout_hours`, standard 72 — så tjekket ser på, om svaret bruges, i stedet for på en manglende frist) |
 | UI | „Nyt flow“ (`Actions.tsx`): beskrivelsen (også fra „Hvad vil du bygge?“) → „Lav kladde“ → trinene med flueben og tjekket → „Opret flowet med N trin“. Designeren viser tjekket, mens man retter, med „Fortsæt kun, hvis godkendt“ som rettelse og „Fortryd“. Et `propose_flow_steps` lægges i designeren for det åbne flow, eller som kladde på „Nyt flow“ for et nyt; intet gemmes, før brugeren gemmer |
 
-## Fase 6 — telefon
+## Fase 6 — telefon (bygget)
 
-- Under 768 px bliver `AiDock` et ark nedefra (lukket, halvt, fuldt).
+Under 768 px er `AiDock` et ark nedefra (`.ai-sheet`; ikke `.sheet`, som appen bruger til sine egne ark): halv højde
+(58 % af skærmen) eller fuld (skærmen minus 12 px). Håndtaget skifter mellem dem ved et tryk og kan trækkes — op mod
+fuld, ned mod halv, længere ned lukker (`snap()`: over 72 % → fuld, under 28 % → lukket). Et mørkt lag bag arket lukker
+det, Esc lukker, og når panelet er lukket, åbner en flydende „Spørg AI“ det (topbarens knap skjules på telefon). Knapper
+er mindst 44 px, inputfeltet har 16 px tekst, så iOS ikke zoomer, og „Kender:“-chips ruller vandret.
 
 ## Tests
 
