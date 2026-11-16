@@ -53,6 +53,7 @@ KINDS: dict[str, str] = {
     "job.failed": "Baggrundsjob der fejlede (ref = type)",
     "meta.node_created": "Noder oprettet i træstrukturer (ref = node-id)",
     "mapper.import": "Import af favoritter til Mapper (ref = rodens node-id, værdi = genveje lagt i mapper)",
+    "developer.ai.dismissed": "AI-forslag afvist i Developer (ref = forslagets slags)",
 }
 
 _nc = None          # nats.aio.client.Client once connected

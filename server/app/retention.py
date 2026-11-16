@@ -109,6 +109,7 @@ CLEANUP_SQL = {
     "dev_mcp_test_runs": "delete from dev_mcp_test_runs where ran_at < now() - make_interval(days => %s)",
     "dev_pipeline_runs": "delete from dev_pipeline_runs where status in ('succeeded', 'failed', 'deferred') and queued_at < now() - make_interval(days => %s)",
     "dev_notifications": "delete from dev_notifications where read_at is not null and created_at < now() - make_interval(days => %s)",
+    "dev_ai_dismissals": "delete from dev_ai_dismissals where dismissed_at < now() - make_interval(days => %s)",
     "jobs": "delete from jobs where status in ('succeeded', 'failed', 'dead') and finished_at < now() - make_interval(days => %s)",
     "webhook_deliveries": """delete from webhook_deliveries where status in ('succeeded', 'dead')
                              and created_at < now() - make_interval(days => %s)""",

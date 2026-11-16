@@ -33,18 +33,16 @@ async def usage(p: Principal = Depends(current_user)):
 
 @router.post("/chat")
 async def chat(body: ai.ChatIn, p: Principal = Depends(current_user)):
-    if not ai.enabled():
-        raise HTTPException(404, "AI er ikke slået til på denne instans")
+    if body.surface == "developer":
+        # Gær Developer has its own chat, where the server builds the context (/api/admin/dev/ai/chat).
+        raise HTTPException(400, "Brug /api/admin/dev/ai/chat i Gær Developer")
     async with db.connection() as conn:
-        pol = await consumption.policy(conn, p.user_id)
+        if blocked := await consumption.check(conn, p.user_id):
+            raise HTTPException(*blocked)
         app_name = await settings_store.get(conn, "app_name")
         level = await user_level(conn, p.user_id)
         off = await db.fetch_all(conn, "select key from features where ring < %s", (level,))
     who = ai.SignedIn(name=p.display_name, role=p.role, disabled_features=frozenset(r["key"] for r in off),
                       impersonated=p.impersonator_id is not None)
-    if pol["blocked"] == "off":
-        raise HTTPException(403, consumption.BLOCKED_TEXT["off"])
-    if pol["blocked"]:
-        raise HTTPException(429, consumption.BLOCKED_TEXT[pol["blocked"]])
     return StreamingResponse(ai.stream_chat(body, p.user_id, app_name, who), media_type="text/event-stream",
                              headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})

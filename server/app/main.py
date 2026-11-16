@@ -38,6 +38,7 @@ from app.routes import mapper as mapper_routes
 from app.routes import mail as mail_routes
 from app.routes import admin_users
 from app.routes import developer as developer_routes
+from app.routes import developer_ai as developer_ai_routes
 from app.routes import developer_data as developer_data_routes
 from app.routes import developer_studio as developer_studio_routes
 from app.routes import developer_mcp as developer_mcp_routes
@@ -229,7 +230,7 @@ def create_app() -> FastAPI:
               meta_routes.router, admin_meta.router, mapper_routes.router,
               messages_routes.router, admin_messages.router, admin_transfer.router,
               login_provider_routes.router, login_provider_routes.me_router, login_provider_routes.admin_router,
-              developer_routes.router, developer_data_routes.router,
+              developer_ai_routes.router, developer_routes.router, developer_data_routes.router,
               developer_studio_routes.router, developer_mcp_routes.router,
               developer_api_routes.router, gaer_api.router,
               developer_flow_routes.router, developer_flow_routes.public,

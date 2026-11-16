@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from app import config, db, integrations, route_manifest, settings_store
 
-Surface = Literal["app", "extension", "word", "outlook", "document", "mobile"]
+Surface = Literal["app", "extension", "word", "outlook", "document", "mobile", "developer"]
 
 # Tests replace this with an httpx.MockTransport.
 transport: httpx.AsyncBaseTransport | None = None
@@ -73,6 +73,7 @@ TOOLS: dict[str, list[dict]] = {
     "extension": [SAVE_CLIP, *FILE_TOOLS],
     "mobile": [SAVE_CLIP, *FILE_TOOLS],
     "app": [SAVE_CLIP, *FILE_TOOLS],
+    "developer": [],  # filled by app/devkit/ai_tools.py: reading tools and proposals for the studios' editors
 }
 
 SURFACE_TEXT = {
@@ -82,6 +83,9 @@ SURFACE_TEXT = {
     "extension": "Brugeren bruger browserudvidelsen og ser en webside.",
     "mobile": "Brugeren bruger mobil-appen.",
     "app": "Brugeren bruger web-appen.",
+    "developer": ("Brugeren arbejder i Gær Developer (/developer): datasæt, pipelines, MCP-endpoints, API'er og flows. "
+                  "Du ser kun metadata (navne, typer, klassifikation) og aldrig værdier. Du gemmer aldrig selv: "
+                  "foreslå ændringer med propose-værktøjerne, så brugeren kan se dem i editoren og gemme."),
 }
 
 
@@ -145,6 +149,9 @@ def current_page(path: str | None) -> tuple[str, str] | None:
 def pages_for(who: SignedIn, surface: Surface) -> list[tuple[str, str]]:
     """The app's pages this user can open, as (path, title). The mobile app lists its own /m pages."""
     mobile = surface == "mobile"
+    if surface == "developer":
+        return [(r["path"], r["title"]) for r in route_manifest.ROUTES
+                if r["path"].startswith("/developer") and ":" not in r["path"]]
     out = []
     for r in route_manifest.ROUTES:
         path = r["path"]

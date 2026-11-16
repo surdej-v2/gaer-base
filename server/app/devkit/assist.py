@@ -10,7 +10,7 @@ import re
 
 import httpx
 
-from app import ai, config, integrations
+from app import ai, config, consumption, db, integrations
 
 
 def enabled() -> bool:
@@ -18,9 +18,13 @@ def enabled() -> bool:
 
 
 async def complete(system: str, user: str, *, user_id: int | None = None, max_tokens: int = 900) -> str | None:
-    """One non-streaming chat completion. None when AI is off or the provider fails (callers fall back)."""
+    """One non-streaming chat completion. None when AI is off, closed, the user's limit or budget is spent (AI-3 in
+    specs/developer/AI.md), or the provider fails — callers fall back."""
     if not enabled():
         return None
+    async with db.connection() as conn:
+        if await consumption.check(conn, user_id):
+            return None
     s = config.settings
     payload = {"model": s.ai_model, "temperature": 0.1, "max_tokens": max_tokens,
                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user[:24000]}]}

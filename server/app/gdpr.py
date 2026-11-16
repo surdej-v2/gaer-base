@@ -123,6 +123,8 @@ async def build_user_export(conn, user_id: int) -> dict:
                                                   where user_id = %s order by id""", user_id),
         "developer_api_calls": await rows("""select ts, api, major, method, path, status from dev_api_log
                                               where user_id = %s order by id""", user_id),
+        "developer_ai_dismissed_suggestions": await rows("""select key, kind, dismissed_at from dev_ai_dismissals
+                                                             where user_id = %s order by dismissed_at""", user_id),
         "groups": await rows("""select g.name, g.slug, m.role, m.added_at from group_members m join groups g on g.id = m.group_id
                                 where m.user_id = %s order by g.name""", user_id),
         # The secret manager ("vault_*", so no export ever contains the word of the TOTP check): roles and access, never a value.
@@ -323,8 +325,8 @@ async def erase_user(user_id: int, *, actor_id: int | None, meta: RequestMeta, r
     """The right to be forgotten. Deletes the user (passkeys, authenticator apps, linked logins at providers, sessions, clips, domain consents, AI usage,
     AI budgets and their alerts, one-time codes, feature level, review sessions and notes, their private tree (meta_nodes with owner_id; shared nodes they made keep created_by = null) and Mapper's titles, pins and views (shared views too), their test accounts, access to
     and from their area (/user), adoption visits, nudges and journey roles, group memberships and their roles, requests, approvals and grants
-    for secrets (secrets where they were A are marked as without accountable person), their personal collections and namespaces in the data store (group ones lose them as A), Viden conversations and agent memberships
-    cascade; their mailbox rows cascade and the mailbox itself is removed in Stalwart by the job mail.principal.delete;
+    for secrets (secrets where they were A are marked as without accountable person), their personal collections and namespaces in the data store (group ones lose them as A), Viden conversations and agent memberships,
+    the AI suggestions they dismissed in Developer cascade; their mailbox rows cascade and the mailbox itself is removed in Stalwart by the job mail.principal.delete;
     review screenshots and audio are files; feature usage is purged with the logs; their files in Object Storage (their
     whole home and folders cascade; files they put in /shared stay, with the uploader link set to null; so do the TAS documents and images they
     changed); the contact

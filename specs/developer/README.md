@@ -57,6 +57,7 @@ the way. The repo's own rules win over the spec's technology choices (raw SQL, p
 | `server/app/devkit/masking.py` | the one masking function (F-10) |
 | `server/app/devkit/catalog.py` | datasets as versioned artifacts, lineage (F-5, F-7 … F-9) |
 | `server/app/devkit/assist.py` | AI suggestions and impact analysis through the instance's AI layer; heuristics without AI |
+| `server/app/devkit/ai_context.py`, `ai_tools.py`, `ai_suggestions.py`, `server/app/routes/developer_ai.py` | AI chat and suggestions everywhere in /developer ([AI.md](AI.md)): the context the server builds from `{kind, id}` (metadata only), the client tools (reading and proposals), rule-based suggestions with dismissals (`dev_ai_dismissals`), `/api/admin/dev/ai/*` |
 | `server/app/routes/developer.py` | `/api/admin/dev`: overview, artifacts, approvals, reviews, messages, catalog, developers, search |
 | `server/app/migrations/0032_developer_foundation.sql` | artifact tables, catalog columns, lineage, roles |
 | `web/src/developer/DeveloperShell.tsx`, `nav.ts`, `developer.css` | the shell: sidebar, top bar, palette |
@@ -97,6 +98,7 @@ the way. The repo's own rules win over the spec's technology choices (raw SQL, p
 - **Catalog edits (F-5).** A dataset gets a `dataset` artifact the first time it is changed from /developer; version
   1.0.0 is the catalog as it was. /admin/data keeps its direct edits for admins with the role Data (unchanged).
 - **AI (F-8).** Suggestions use the existing AI settings (`AI_API_KEY`, `AI_MODEL`, …) and count as AI usage on the
-  surface `developer`. Without AI, a heuristic (the most similar classified field by name) answers, and the UI says so.
+  surface `developer`; every call passes `consumption.check` (AI on, kill switch, the user's limit and budget). Chat and
+  suggestions in every studio: [AI.md](AI.md). Without AI, a heuristic (the most similar classified field by name) answers, and the UI says so.
 - **Erasure.** Roles, approvals and messages go with the user (`on delete cascade`); versions keep `created_by = null`.
   An artifact whose only A is erased has no A until an owner or a Udvikler-admin sets one.

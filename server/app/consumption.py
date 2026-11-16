@@ -117,6 +117,28 @@ BLOCKED_TEXT = {
     "total": "Du har brugt hele dit AI-budget for perioden",
 }
 
+AI_OFF_TEXT = "AI er ikke slået til på denne instans"
+AI_CLOSED_TEXT = "AI er lukket lige nu"
+
+
+async def check(conn, user_id: int | None) -> tuple[int, str] | None:
+    """The one check before any AI call (specs/developer/AI.md, AI-3): AI configured, the kill switch "ai" open, and
+    — for a user — their limit and budget. None when the call may go ahead, else (HTTP status, Danish text).
+    Calls without a user (jobs) only check the first two."""
+    from app import ai, killswitch
+    if not ai.enabled():
+        return 404, AI_OFF_TEXT
+    if await killswitch.is_active("ai"):
+        return 503, AI_CLOSED_TEXT
+    if user_id is None:
+        return None
+    pol = await policy(conn, user_id)
+    if pol["blocked"] == "off":
+        return 403, BLOCKED_TEXT["off"]
+    if pol["blocked"]:
+        return 429, BLOCKED_TEXT[pol["blocked"]]
+    return None
+
 
 # ── After each AI call ─────────────────────────────────────────────────────
 
