@@ -69,6 +69,14 @@
       "title": "App Stores",
       "anchors": []
     },
+    "/admin/config": {
+      "title": "Konfiguration",
+      "anchors": [
+        "config-import",
+        "config-save-{x}",
+        "config-{x}"
+      ]
+    },
     "/admin/consent": {
       "title": "Samtykke og cookies",
       "anchors": []
@@ -323,6 +331,10 @@
       "title": "Webhooks",
       "anchors": []
     },
+    "/backoffice": {
+      "title": "Backoffice",
+      "anchors": []
+    },
     "/beskeder": {
       "title": "Beskeder",
       "anchors": []
@@ -509,12 +521,6 @@
     },
     "/developer/prompts": {
       "title": "Promptkatalog",
-    "/backoffice": {
-      "title": "Backoffice",
-      "anchors": []
-    },
-    "/develop": {
-      "title": "Udvikling",
       "anchors": [
         "prompt-{x}"
       ]
